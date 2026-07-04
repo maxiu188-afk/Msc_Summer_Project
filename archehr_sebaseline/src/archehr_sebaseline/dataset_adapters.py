@@ -5,11 +5,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+import xml.etree.ElementTree as ET
 
 from .common_schema import make_common_example
 
 
-SUPPORTED_DATASETS = ["fake", "pubmedqa"]
+SUPPORTED_DATASETS = ["fake", "pubmedqa", "archehr_qa"]
 
 
 FAKE_COMMON_FIXTURES = [
@@ -131,6 +132,199 @@ def load_pubmedqa_common_examples(
     return examples[:limit] if limit is not None else examples
 
 
+def _load_json_or_jsonl(path: str | Path) -> Any:
+    input_path = Path(path)
+    if input_path.suffix.lower() == ".xml":
+        return _load_archehr_xml_records(input_path)
+    if input_path.suffix.lower() == ".jsonl":
+        records = []
+        with input_path.open("r", encoding="utf-8") as infile:
+            for line_number, line in enumerate(infile, start=1):
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                try:
+                    records.append(json.loads(stripped))
+                except json.JSONDecodeError as exc:
+                    raise ValueError(f"Invalid JSONL at {input_path}:{line_number}") from exc
+        return records
+    return _load_json(input_path)
+
+
+def _element_text(parent: ET.Element, tag: str) -> str | None:
+    child = parent.find(tag)
+    if child is None or child.text is None:
+        return None
+    text = child.text.strip()
+    return text or None
+
+
+def _load_archehr_xml_records(path: str | Path) -> list[dict[str, Any]]:
+    """Load the official ArchEHR-QA XML case format without answer keys."""
+
+    tree = ET.parse(path)
+    root = tree.getroot()
+    records: list[dict[str, Any]] = []
+    for case in root.findall(".//case"):
+        case_id = case.attrib.get("id")
+        if not case_id:
+            continue
+        sentences = []
+        for index, sentence in enumerate(case.findall(".//note_excerpt_sentences/sentence"), start=1):
+            text = (sentence.text or "").strip()
+            if not text:
+                continue
+            sentences.append(
+                {
+                    "sentence_id": sentence.attrib.get("id") or f"S{index}",
+                    "text": text,
+                }
+            )
+        records.append(
+            {
+                "id": case_id,
+                "patient_question": _element_text(case, "patient_question") or "",
+                "clinician_question": _element_text(case, "clinician_question"),
+                "clinical_specialty": _element_text(case, "clinical_specialty"),
+                "evidence": sentences,
+            }
+        )
+    if not records:
+        raise ValueError(f"No ArchEHR-QA cases found in XML file: {path}")
+    return records
+
+
+def _records_from_loaded_archehr(loaded: Any) -> list[dict[str, Any]]:
+    if isinstance(loaded, list):
+        records = loaded
+    elif isinstance(loaded, dict):
+        records = (
+            loaded.get("examples")
+            or loaded.get("data")
+            or loaded.get("records")
+            or loaded.get("questions")
+        )
+        if records is None:
+            records = [loaded]
+    else:
+        raise ValueError("ArchEHR-QA loader expects a JSON object/list or JSONL records.")
+    if not isinstance(records, list) or not all(isinstance(record, dict) for record in records):
+        raise ValueError("ArchEHR-QA records must be JSON objects.")
+    return records
+
+
+def _normalize_evidence_items(record: dict[str, Any], *, example_id: str) -> tuple[list[str], list[str]]:
+    evidence = (
+        record.get("evidence_sentences")
+        or record.get("evidence")
+        or record.get("clinical_note")
+        or record.get("note_sentences")
+        or record.get("sentences")
+        or record.get("context")
+        or record.get("note")
+    )
+    if isinstance(evidence, str):
+        evidence = [{"sentence_id": "S1", "text": evidence}]
+    if not isinstance(evidence, list):
+        raise ValueError(f"ArchEHR-QA example {example_id} has unsupported evidence format.")
+
+    sentence_ids: list[str] = []
+    sentence_texts: list[str] = []
+    for index, item in enumerate(evidence, start=1):
+        if isinstance(item, str):
+            sentence_id = f"S{index}"
+            text = item
+        elif isinstance(item, dict):
+            sentence_id = (
+                item.get("sentence_id")
+                or item.get("id")
+                or item.get("citation")
+                or item.get("sentence_index")
+                or index
+            )
+            text = item.get("text") or item.get("sentence") or item.get("content")
+        else:
+            raise ValueError(f"ArchEHR-QA example {example_id} has a non-string evidence item.")
+        text = str(text or "").strip()
+        if not text:
+            continue
+        sentence_ids.append(str(sentence_id))
+        sentence_texts.append(text)
+    if not sentence_texts:
+        raise ValueError(f"ArchEHR-QA example {example_id} has no evidence sentences.")
+    return sentence_ids, sentence_texts
+
+
+def _normalize_relevant_sentence_ids(record: dict[str, Any]) -> list[str] | None:
+    values = (
+        record.get("gold_relevant_sentence_ids")
+        or record.get("relevant_sentence_ids")
+        or record.get("essential_sentence_ids")
+        or record.get("citations")
+        or record.get("gold_citations")
+    )
+    if values is None:
+        return None
+    if isinstance(values, (str, int)):
+        values = [values]
+    if not isinstance(values, list):
+        return None
+    return [str(value) for value in values]
+
+
+def archehr_records_to_common(
+    records: list[dict[str, Any]], *, split: str = "dev"
+) -> list[dict[str, Any]]:
+    """Normalize ArchEHR-QA-style local records to the project schema."""
+
+    common_examples = []
+    for index, record in enumerate(records, start=1):
+        example_id = record.get("id") or record.get("example_id") or record.get("qid") or index
+        example_id = str(example_id)
+        sentence_ids, sentence_texts = _normalize_evidence_items(record, example_id=example_id)
+        patient_question = (
+            record.get("patient_question")
+            or record.get("question")
+            or record.get("patientQuestion")
+            or ""
+        )
+        clinician_question = (
+            record.get("clinician_question")
+            or record.get("clinician_rewrite")
+            or record.get("clinicianQuestion")
+            or record.get("clinical_question")
+        )
+        example = make_common_example(
+            dataset="archehr_qa",
+            example_id=example_id,
+            split=str(record.get("split") or split),
+            question=str(patient_question),
+            clinician_question=str(clinician_question) if clinician_question else None,
+            context="\n".join(sentence_texts),
+            evidence_sentences=sentence_texts,
+            gold_answer=record.get("gold_answer")
+            or record.get("clinician_answer")
+            or record.get("answer")
+            or record.get("reference_answer"),
+            citations=_normalize_relevant_sentence_ids(record),
+        )
+        example["evidence_sentence_ids"] = sentence_ids
+        example["gold_relevant_sentence_ids"] = _normalize_relevant_sentence_ids(record)
+        common_examples.append(example)
+    return common_examples
+
+
+def load_archehr_common_examples(
+    data_path: str | Path,
+    *,
+    split: str = "dev",
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
+    loaded = _load_json_or_jsonl(data_path)
+    examples = archehr_records_to_common(_records_from_loaded_archehr(loaded), split=split)
+    return examples[:limit] if limit is not None else examples
+
+
 def load_common_examples(
     *,
     dataset: str,
@@ -147,5 +341,9 @@ def load_common_examples(
         if data_path is None:
             raise ValueError("--data_path is required for dataset=pubmedqa.")
         return load_pubmedqa_common_examples(data_path, split=split, limit=limit)
+    if dataset_name in {"archehr_qa", "archehr", "archehrqa"}:
+        if data_path is None:
+            raise ValueError("--data_path is required for dataset=archehr_qa.")
+        return load_archehr_common_examples(data_path, split=split, limit=limit)
     supported = ", ".join(SUPPORTED_DATASETS)
     raise ValueError(f"Unsupported dataset: {dataset}. Supported datasets: {supported}.")

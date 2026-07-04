@@ -1,0 +1,619 @@
+CogStack-KCL-UCL at ArchEHR-QA 2025: Investigating Hybrid LLM
+Approaches for Grounded Clinical Question Answering
+ShubhamAgarwal1,ThomasSearle1,2,3,KawsarNoor2,RichardDobson1,2,3
+1DepartmentofBiostatistics&HealthInformatics,King’sCollegeLondon,London,U.K.
+2InstituteofHealthInformatics,UniversityCollegeLondon,London,U.K.
+3CogStackLimited,London,U.K.
+Correspondence:shubham.agarwal@kcl.ac.uk
+Abstract andgreatersatisfactionwithcare(Hanetal.,2019;
+Otte-Trojel et al., 2014; Carini et al., 2021; Den-
+WepresentoursystemfortheArchEHRshared
+dereetal.,2019). Portalsenablingrecordreview
+task,whichfocusesonansweringclinicaland
+and follow-up questions have been shown to fos-
+patient-facingquestionsgroundedinreal-world
+EHRdata. Ourcorecontributionisa2-Stage terbetterself-managementandreduceconflictin
+promptingpipelinethatseparatesevidencese- decision-making (Najafi et al., 2022; Shay and
+lectionfromanswergenerationwhileemploy- Lafata,2015).
+ingin-contextlearningstrategies. Ourexperi- Beyond empowerment, these digital systems
+mentationleveragedtheopen-weightGemma-
+helpreducemedicalerrors, improvecommunica-
+v3 family of models, with our best submis-
+tion of complex information, and foster trust be-
+sionusingtheGemma-12Bmodelsecuring5th
+tween patients and providers (Bell et al., 2017;
+placeoverallontheunseentestset. Through
+systematic experimentation, we demonstrate DesRoches et al., 2020). Integrating robust and
+theeffectivenessoftaskdecompositioninim- responsivequestion-answeringcapabilitiesintopa-
+provingbothfactualaccuracyandanswerrele- tientportalsoffersapromisingdirectionforadvanc-
+vanceingroundedclinicalquestionanswering. ing truly patient-centered care. The potential of
+conversationalagentstofurtherenhancecommuni-
+1 Introduction
+cationandengagementisincreasinglyrecognized,
+As the adoption of digital systems in healthcare with recent studies showing early but promising
+becomeubiquitous,patientswillexpecttobeable resultsinclinicalcontexts(Laranjoetal.,2018).
+pose questions of their recent experiences. Re-
+sponding to these questions in a rapid, thorough 2 Background
+andmostimportantlysafewaywillensurepatients
+2.1 RetrievalAugmentedGeneration
+aremoreinvolvedontheircareandreceiveoverall
+improvedcare. Awidelyadoptedframeworkforbuildingquestion-
+Effectivecommunicationbetweenpatientsand answering systems is Retrieval-Augmented Gen-
+theirhealthcareprovidersisacornerstoneofquality eration (RAG) (Lewis et al., 2020), which uses a
+careasitplaysacriticalroleintreatmentadherence, Causal Large Language Models (LLMs) to gen-
+recovery,andoverallhealthoutcomes(Zolnierek erateanswers. Inthisframework, aretrieverfirst
+andDiMatteo,2009). Patientportalshaveemerged selectsrelevantpassagesfromaknowledgesource,
+as a key tool for facilitating this communication, whicharethenpassedascontexttotheLLMthat
+providing individuals with direct access to their leveragesittogenerateanswers. Inthemedicaldo-
+health information and enabling ongoing interac- main,RAGhasbeenappliedtotaskssuchasclini-
+tion with their care teams (Irizarry et al., 2015). caldecisionsupport(Zakkaetal.,2024),medical
+Modernpatientportalsgobeyondsimpledataac- literature retrieval (Tian et al., 2024), and patient
+cess—theysupportsecuremessaging,prescription education(Xiongetal.,2024),generatingpatient-
+refillrequests,anddeliveryoftailorededucational friendly explanations of medical conditions and
+materials(Lylesetal.,2020). procedures(Yangetal.,2025).
+Agrowingbodyofresearchhighlightsthatpa-
+2.2 ArchEHRsharedtask
+tient engagement through these digital platforms
+is associated with improved health literacy, bet- Responding to patients’ queries on portals offers
+terunderstanding,increasedmedicationadherence, numerousbenefits,asdiscussedinSection1,butit
+126
+BioNLP2025SharedTasks,pages126–135
+August1,2025©2025AssociationforComputationalLinguistics
+hasbecomeacontributortoclinicianburden. Au- • Secondly,weexperimentwithaclassicalsen-
+tomaticallygeneratingaccurate,safe,andcontext- tenceembeddings,fine-tuningclassifiersfor
+aware responses to patient questions using data classification of relevant evidence to inform
+fromEHRscanhelpalleviatethispressure. thegenerationstep.
+AlthoughRAGoffersacompellingframeworkfor
+thistask,itfacesseverallimitations,especiallyin These approaches are similar to a general RAG
+themedicaldomain. Generatedresponsescanbe process, butimportantlyourretrieverstepiscon-
+incorrect, particularly when retrieved documents strained to only sentences, and to three distinct
+areambiguousorconflicting,leadingtohallucina- classesofinformativenessforthegeneratedsum-
+tions(Wongetal.,2025). ThecomplexityofRAG mary,i.e. essential,supplementaryornot-relevant
+systemscanmakeitchallengingtotracethereason- sentenceclasses.
+ingbehindgeneratedanswers,whichisespecially
+3.1 Approaches
+criticalinmedicalcontexts(Yangetal.,2025).
+The ArchEHR shared task (Soni and Demner- 3.1.1 2-StagePromptApproach
+Fushman, 2025a), hosted on PhysioNet (Gold-
+Thisapproachconsistsoftwostages,eachtargeting
+bergeretal.,2000),proposesabenchmarkspecif-
+aspecificsubtask: Stage1–SentenceClassifica-
+icallydesignedtoevaluategroundedquestionan-
+tionandRetrievalandStage2–Generation. For
+swering in the clinical domain. The task focuses
+both the stages, an LLM is prompted to perform
+on answering patient-facing questions using evi-
+thespecifiedsubtask. Belowisadescriptionofthe
+dence from EHR notes, with a strong emphasis
+stages:
+on two core criteria: factuality, which measures
+whetherthegeneratedanswerissupportedbycited • Stage 1: Given a query, Stage 1 focuses on
+evidence,andrelevance,whichassesseshowwell identifyingthemostrelevantsentencesfrom
+theresponsealignswiththepatient’soriginalquery theclinicalnotes. Bypassingfocusedcontext
+(Soni and Demner-Fushman, 2025c). This aims to the generation stage, it improves perfor-
+ataddressingtheabovediscussedlimitationsand manceasthegenerationstagefocusesonclin-
+thereby advancing safe and trustworthy patient- icallymeaningfulevidence,leadingtomore
+centeredclinicalQAsystems. preciseandcontext-awareresponses.
+2.2.1 Dataset • Stage 2: Stage 2 performs generation us-
+TheArchEHRdataset(SoniandDemner-Fushman, ing the filtered context, allowing the model
+2025b) is constructed using the MIMIC-III can leverage all its capability effectively to
+database (Johnson et al., 2016), a large, publicly produceaccurate,clinicallyrelevantanswers.
+availableresourceofde-identifiedICUrecords,en- Thisensuresthatthefinalresponseisnotonly
+suring realistic clinical language and complexity. coherentbutalsogroundedintherelevantevi-
+Each instance in the dataset contains a patient- dence,minimizingtheriskofhallucinations
+posed question, a clinician-refined rewrite, a set ormisinformation.
+ofevidencesentencesfromrealclinicalnotes,and
+agoldstandardanswer. The 2-Stage prompt is the proposed approach
+Thetaskrequiressystemstogenerateresponses in this work. Its ability to break down the task
+groundedintheprovidedevidence,withcitations into manageable stages improves the clarity and
+tospecificsupportingsentences. Thetaskdoesnot performance of each step, resulting in a higher
+enforce answers to use either or only one of the performingpipeline. Furtherdetailsarediscussed
+patientorclinicianfocusedquestions. inSection5.
+3.1.2 1-StagePromptand2-StageFine-tuned
+3 Methodology
+ClassifierApproach
+Wepresenttwogroupsofapproachesforthetask: The1-StagePromptcombinessentenceclassifica-
+tion and answer generation into a single prompt
+• Firstly,wepromptLLMseitherin2-Stagesor to the LLM, requiring the model to both identify
+acombined1-Stageapproach,asdescribedin relevantevidenceandgeneratearesponseatonce.
+Section3.1.1and3.1.2respectively. Thisapproachsimplifiesandaimstostreamlinethe
+127
+processbytacklingthetaskasasinglecoherentob- tasksandtheirdemonstratedreasoningcapabilities
+jective. Thisapproachalsoutilisestheprompting with more manageable parameter sizes. Notably,
+techniquesmentionedinSection3.2. theGemmav3modelsoutperformtheirpredeces-
+The 2-Stage fine-tuned classifier approach fol- sorsacrossmultiplereasoningtasks(GemmaTeam
+lows the same 2 stage structure as the 2-Stage et al., 2025), making them suitable for complex
+prompting method, but uses a fine-tuned classi- clinical question answering. Our initial experi-
+fiertoperformthesentenceclassificationin-place mentsalsoincludedMistral7Bv0.2instructmodel
+of an LLM. Specifically, we use Sentence-BERT (Jiangetal.,2023).
+embeddings(ReimersandGurevych,2019)toen- Experimentation utilized a shared university re-
+codesentencesandtrainaclassifiertoperformthe source machine with 3 Nvidia A100 GPUs via
+task using the dev test. This approach allows for KCLCREATE(King’sCollegeLondone-Research
+greatercontroloverthesentencefilteringstageand team, 2025). We also utilised LLama-cpp and
+enablesfine-tuningonthetask-specificdata. GGML/GGUFquantizedmodelsfordirectlyrun-
+ningmodelsonlocallyavailablehardware.
+3.2 FewShotLearning
+We attempted to use the Gemma 27B with ini-
+Toguidethemodelthroughbothstages,welever- tialexperimentsfor1-Stagepromptingbutfound
+agein-contextlearningviafew-shotpromptingto themodelrefusedtoconsistentlyreturnresultson
+ensureconsistentandcontextuallyaccurateoutputs. the dev set. We did not continue experimenting
+Carefullydesignedpromptswhichincludeasmall with this model and do not report results. Simi-
+number of examples, help the model understand larly,weattemptedtousetheQwen2.57Binstruct
+thetask,distinguishrelevantfromirrelevantinfor- model(QwenTeam,2024). Wedidnotreportthe
+mation,andstructureitsresponsesappropriately. results for it as the performance was poor for all
+Promptdesignwasiterativelyrefinedbasedon approaches.
+empiricalperformanceduringsentenceclassifica-
+3.5 Evaluation
+tionandanswergenerationphases. Ourapproach
+integratestask-specificexamplesthatincludedvar- TheArchEHRtaskisevaluatedthroughcitedevi-
+ied clinical scenarios to better guide the model, denceclassificationperformancerepresentingFac-
+allowing it to also grasp the clinical nuances of tualityandthequalityofthegeneratedresponses
+thetasks. AppendixA.2providesourprompttem- usingthecitedevidencerepresentingRelevance.
+plates. Factualityismeasuredthroughprecision,recall
+andF1ofpredictionofeachsourcesentencerepre-
+3.3 OutputGuardrailsandFormat
+sentingofoneofthreeclasses‘essential’,‘supple-
+Enforcement
+mentary’, ‘not-relevant’. Scoring is strict if only
+To ensure consistency and adherence to format ‘essential’labelsareincludedorlenientifboth‘es-
+requirements across both stages, we implement sential’and‘supplementary’sentencesarecounted
+guardrails across both stages of the pipeline. An towardsfinalcalculations.
+output parser validates the model’s responses in Relevanceusesacollectionofn-grambasedau-
+both stages with the expected format criteria. In tomatedevaluationmetricsBLUE(Papinenietal.,
+caseswheretheinitialoutputfailstoadheretothe 2002),ROUGE(Lin,2004),SARI(Xuetal.,2016)
+requiredformat,weutilizeanadditionalparserthat andmodelbasedmetricsBERTScore(Zhangetal.,
+leveragesanLLMtoreattemptansweringandfor- 2020), AlignScore (Zha et al., 2023) and MED-
+matting. Thislowerstheprobabilityofaresponse CON (wai Yim et al., 2023). Scoring generated
+being discarded by allowing it to be reformatted text for relevance to a provided question can be
+correctly. subjective, butaggregatingarangeofscorespro-
+videssomemeanstoautomaticallyevaluatesystem
+3.4 Pre-TrainedModels
+performanceatscale.
+Inourpipeline,weusetheGemmafamilyofmod- Whileopen-domainmetricscangiveabroadin-
+els (Gemma Team et al., 2025), specifically the dicationoffluencyandsemanticsimilarity,MED-
+instructiontunedmodels. Thesemodelsareopenly CONdirectlyassessesthepreservationofmedical
+availableandbasedofftheclosedsourceGoogle relevance, offering a more trustworthy signal in
+Geminimodels. WeselectedGemmamodelsdueto safety-criticalclinicalquestionanswering.
+theirstrongperformanceoninstruction-following External knowledge was permitted during this
+128
+task, and a real system would likely include the proachexposedthelimitationsofamonolithicde-
+integrationofexternalknowledgesupplementing sign, as the LLM struggled with handling both
+existingknowledgewithintheLLMormodelap- classification and generation simultaneously. To
+proach. Forexample,alocal,regionalornational address this, we introduced a 2-Stage fine-tuned
+clinicalguidelinecouldbereferencedbyanLLM classifier approach, which showed promise and
+during a generation if a question involved why a achievedhighfactualityandprecisionbutwascon-
+courseofactionwastaken. strainedbylimiteddataforeffectivetraining. With
+Ourapproachdidnotuseanyexternalknowledge, theseinsights,weadoptedthe2-Stagepromptap-
+orexternalclinicalknowledgebasesuchasUMLS proach,whichretainedtheadvantagesoftasksepa-
+(Bodenreider, 2004) or SNOMED CT (Stearns rationwithoutrequiringfine-tuning. Thisapproach
+etal.,2001). ThisisfurthermentionedinSection outperformedtheothers,deliveringstrongerresults
+6. inbothfactualityandrelevance.
+ThisapproachmimicstheChain-of-Thoughtrea-
+4 Results
+soningprocess(Weietal.,2022),wherebybreak-
+ingdownthetaskintosmaller,sequentialsubtasks
+4.1 2-StagePromptApproach
+encourages more structured reasoning, improves
+Our approach was evaluated on the dev set and
+factual alignment, and reduces cognitive load on
+testsetusingthespecifiedmetrics,andtheresults
+themodel, enablingittoperformeachstepmore
+demonstrate promising performance for clinical
+reliably and accurately. It also provides a more
+question-answeringtasks. Asshownintheresults
+interpretablepipelinewhereeachstagecanbein-
+table1,theGemma12Bmodeloutperformedthe
+dependentlyevaluated,enhancingoverallsystem
+othermodelsacrossallmetrics,achievinganover-
+transparency.
+all score of 47.03. This suggests that the larger
+While the proposed approach achieves strong
+modelsarebetterequippedtofollowinstructions
+results, it depends heavily on prompt design and
+and capture the complex relationships and con-
+the inherent capabilities of the underlying LLM.
+textwithinclinicaldata*. Whilethelargermodels
+Wefurtherdiscussthelimitationsandfuturework
+consistently outperformed the smaller ones*, the
+inthebelowsections.
+smallermodelsexhibitedastrongabilitytohandle
+complexclinicaldata.
+6 Conclusions&FutureWork
+4.2 1-StagePromptand2-StageFine-tuned
+Ourworkpresentsa2-Stagefew-shotprompting
+ClassifierApproach
+approachtogroundedclinicalQAfromreal-world
+As shown in Appendix A.1, both the 1-Stage
+EHRdata. LeveragingtheGemma-v3-12Bmodel,
+prompt and 2-Stage fine-tuned classifier ap-
+ourbestapproachsecures5thplaceoverallonthe
+proaches underperform relative to the 2-Stage
+unseentestset,demonstratingagoodbalancebe-
+promptapproach, especiallyfortheGemma12B
+tweenfactuality,recognisingthecorrectsentences
+model which shows a performance decrease of
+that should be used in the generated answer, and
+34.7%and47.1%respectively. The1-StagePrompt
+relevancethequalityofthegeneratedtextfromthe
+approachlagsinbothfactualityandrelevance,ex-
+citedevidence. Thissystematictaskdecomposition
+ceptforaslightgaininrelevancefortheGemma
+enhancesperformancealongwithprovidingamore
+4Bmodel.
+transparentmethod,crucialforsensitivehealthcare
+Similarly, the 2-Stage fine-tuned classifier ap-
+contexts.
+proach is subpar overall except Factuality for
+Our future work involves integration of exter-
+Gemma4Bmodel. Notably,thisapproachachieves
+nalworldknowledgeintosystemresponses,either
+highprecisionscores(forstrictandlenient),with
+as ‘guardrails’ or to directly improve system re-
+lenientmacroprecisionscoreof86.25.
+sponses. An example of such world knowledge
+5 Discussion could be clinical guideline that informed or im-
+pactedacourseofaction,butisnotdirectlyrefer-
+ThedevelopmentofourapproachfortheArchEHR
+encedinthesourceEHRnotes. Secondly,weaim
+taskevolvedthroughseveraliterations,eachbuild-
+to explore fine-tuning a Casual Large Language
+ingonpreviousinsights. The1-Stagepromptap-
+Model on a more expansive and curated dataset
+*ExceptGemma27BmodelasdiscussedinSection3.4 for sentence classification. This would enhance
+129
+Table1: Pipelineperformancefor2-stagepromptingapproach
+Factuality Relevance
+Overall
+Model Strict Lenient Overall Overall
+BLEU SARI score
+MacroF1 MicroF1 MacroF1 MicroF1 factuality relevance
+Devsetperformance
+Mistral7B 41.89 38.65 43.38 42.21 38.65 3.44 57.4 35.3 36.98
+Gemma1B 25.41 23.38 29.91 28.76 23.38 3.2 62.99 32.54 27.96
+Gemma4B 36.4 31.9 38.2 37.1 31.9 4.1 65.5 38.5 35.2
+Gemma12B 51.35 49.81 51.59 48.92 49.82 8.99 71.84 44.2 47.03
+Testsetperformance
+Gemma12B 51.4 47.5 52.1 47.6 47.5 4.7 70.0 42.6 45.0
+the quality and consistency of context filtering, especiallyimportanttobalanceavailabilityofhard-
+therebyimprovingdownstreamanswerqualityand warewithmodelandsystemperformance.
+reducing reliance on prompt-based reasoning by
+theLLM. Acknowledgments
+Welooktointegratethedevelopmentandtesting
+of these methods as we actively pursue safe and ThisworkwassupportedbyHealthDataResearch
+reliableclinicalQAoverEHRs. UK,aninitiativefundedbyUKResearchandIn-
+novation, Department of Health and Social Care
+Limitations (England) and the devolved administrations, and
+leading medical research charities. SA, TS, RD
+OurworkispresentedasasolutiontotheArchEHR
+arepart-fundedbytheNationalInstituteforHealth
+sharedtask,andprovidesresultsonasmalldevel-
+Research(NIHR)BiomedicalResearchCentreat
+opmentandunseenlargertestset. Ourbestmethod
+South London and Maudsley NHS Foundation
+generaliseswelltotheunseentestdemonstrating
+Trust and King’s College London. RD is also
+thesuitabilityofourmethodtothetask.
+supported by The National Institute for Health
+However, the proposed system is limited in a
+Research University College London Hospitals
+numberofways. Firstly,thetaskandproposedsys-
+BiomedicalResearchCentre. Thispaperrepresents
+temassumesthatentiresentencesareeitherwholly
+independentresearchpartfundedbytheNational
+relevantorusefultoaresponse,representingaform
+InstituteforHealthResearch(NIHR)Biomedical
+ofextractivesummarisation,whereasitislikelyan
+Research Centre at South London and Maudsley
+optimalresponsewilllikelybehelpedtoabstrac-
+NHSFoundationTrustandKing’sCollegeLondon.
+tivelysummarisefromacrossoneormorepartial
+Theviewsexpressedarethoseoftheauthorsand
+sentencestogeneratearesponse.
+notnecessarilythoseoftheNHS,theNIHRorthe
+Secondly,thedatasetissmallandonlyrepresen-
+Department of Health and Social Care. The fun-
+tative of a single provider USA based ICU. Fur-
+ders had no role in study design, data collection
+therworkcouldexpandevaluationofsuchsystems
+andanalysis,decisiontopublish,orpreparationof
+acrosshealthsystemsandgeographies.
+themanuscript.
+Usageofourproposedsystemina‘production’
+environment will likely require extensive use of
+hardware resources, namely GPU compute. Due
+References
+to the sensitivity of patient EHR data, clinical
+providers will likely require patient QA systems SigallKBell,TomDelbanco,JoannGElmore,PaulS
+that leverage LLM technology to be secure and Fitzgerald, Alan Fossa, Katharine Harcourt, and
+SuzanneGLeveille.2017. Frequencyandtypesof
+isolatedfromothersystemsalongsideadheringto
+patient-reported errors in electronic health record
+regulatory standard such as HIPPA or GDPR. In
+ambulatory care notes. JAMA Network Open,
+deployment of clinical informatics systems it is 320(18):1867–1878.
+130
+Olivier Bodenreider. 2004. The unified medical lan- King’sCollegeLondone-Researchteam.2025. King’s
+guagesystem(umls): integratingbiomedicaltermi- computationalresearch,engineeringandtechnology
+nology. Nucleicacidsresearch,32(suppl_1):D267– environment(CREATE).
+D270.
+Liliana Laranjo, Adam G Dunn, Helen L Tong, Ah-
+ElenaCarini,LucaVillani,AnnaMariaPezzullo,Anto- met Baki Kocaballi, Jing Chen, Rifat Bashir, Didi
+nioGentili,AntonellaBarbara,WalterRicciardi,and Surian,BlancaGallego,FarahMagrabi,andEnrico
+StefaniaBoccia.2021. Theimpactofdigitalpatient Coiera.2018. Conversationalagentsinhealthcare: a
+portalsonhealthoutcomes,systemefficiency,andpa- systematicreview. JournaloftheAmericanMedical
+tientattitudes: Updatedsystematicreview. Journal InformaticsAssociation,25(9):1248–1258.
+ofMedicalInternetResearch,23(9):e26189.
+PatrickLewis,EthanPerez,AleksandraPiktus,Fabio
+Ronald Dendere, Christine Slade, Andrew Burton- Petroni,VladimirKarpukhin,NamanGoyal,Hein-
+Jones, Clair Sullivan, Andrew Staib, and Monika richKüttler, MikeLewis, Wen-tauYih, TimRock-
+Janda.2019. Patientportalsfacilitatingengagement täschel,and1others.2020. Retrieval-augmentedgen-
+withinpatientelectronicmedicalrecords: Asystem- erationforknowledge-intensivenlptasks. Advances
+aticreview. JournalofMedicalInternetResearch, inneuralinformationprocessingsystems,33:9459–
+21(4):e12779. 9474.
+CatherineMDesRoches,SigallKBell,ZhaohuiDong, Chin-YewLin.2004. Rouge: Apackageforautomatic
+JoannGElmore,PaulFitzgerald,KatharineHarcourt, evaluation of summaries. In Text Summarization
+and Suzanne G Leveille. 2020. Patients managing BranchesOut,pages74–81.AssociationforCompu-
+medicationsandreadingtheirvisitnotes:Asurveyof tationalLinguistics.
+opennotesparticipants. AnnalsofInternalMedicine,
+Courtney R Lyles, Eugene C Nelson, Susan Framp-
+172(1):35–38.
+ton, Patricia C Dykes, Anupama G Cemballi, and
+Urmimala Sarkar. 2020. Using electronic health
+GemmaTeam,AishwaryaKamath,JohanFerret,Shreya
+record portals to improve patient engagement: re-
+Pathak,NinoVieillard,RamonaMerhej,SarahPerrin,
+searchprioritiesandbestpractices. Annalsofinter-
+Tatiana Matejovicova, Alexandre Ramé, Morgane
+nalmedicine,172(11_Supplement):S123–S129.
+Rivière,LouisRouillard,ThomasMesnard,Geoffrey
+Cideron,Jean-BastienGrill,SabelaRamos,Edouard
+Faezeh Najafi, Pirhossein Shojaei, Saeed Shojaee
+Yvinec,MichelleCasbon,EtiennePot,IvoPenchev,
+Moghaddam, Mehdi Jafari, and Arash Rashidian.
+and 197 others. 2025. Gemma 3 technical report.
+2022. Impactofpatientengagementonhealthcare
+arXiv[cs.CL].
+quality: Ascopingreview. AnnalsofGlobalHealth,
+88(1):78.
+ALGoldberger,LAAmaral,LGlass,JMHausdorff,
+P C Ivanov, R G Mark, J E Mietus, G B Moody,
+TineOtte-Trojel,AntoinettedeBont,JorisvandeKlun-
+C K Peng, and H E Stanley. 2000. PhysioBank,
+dert,andThomasGRundall.2014. Howoutcomes
+PhysioToolkit,andPhysioNet: componentsofanew
+areachievedthroughpatientportals: arealistreview.
+research resource for complex physiologic signals.
+JournaloftheAmericanMedicalInformaticsAssoci-
+Circulation,101(23):E215–20.
+ation,21(4):751–757.
+Haixia Han, Kelly Gleason, Ruopeng Sun, Heather
+KishorePapineni,SalimRoukos,ToddWard,andWei-
+Miller, Huong Kang, Yan Gai, and David Rosen-
+JingZhu.2002. Bleu: amethodforautomaticevalu-
+thal.2019. Usingpatientportalstoimprovepatient
+ationofmachinetranslation. InProceedingsofthe
+outcomes: Systematicreview. JMIRHumanFactors,
+40thAnnualMeetingoftheAssociationforCompu-
+6(4):e15038.
+tationalLinguistics,pages311–318.Associationfor
+ComputationalLinguistics.
+TayaIrizarry,AnnetteDeVitoDabbs,andChristineR
+Curran.2015. Patientportalsandpatientengagement:
+Qwen Team. 2024. Qwen2.5: A party of foundation
+a state of the science review. Journal of medical
+models.
+Internetresearch,17(6):e148.
+NilsReimersandIrynaGurevych.2019. Sentence-bert:
+Albert Q Jiang, Alexandre Sablayrolles, Arthur Men- Sentenceembeddingsusingsiamesebert-networks.
+sch,ChrisBamford,DevendraSinghChaplot,Diego arXivpreprintarXiv:1908.10084.
+delasCasas,FlorianBressand,GiannaLengyel,Guil-
+laumeLample,LucileSaulnier,and1others.2023. LAubreeShayandJenniferElstonLafata.2015. Where
+Mistral7b. arXivpreprintarXiv:2310.06825. istheevidence? asystematicreviewofshareddeci-
+sionmakingandpatientoutcomes. Medicaldecision
+Alistair E W Johnson, Tom J Pollard, Lu Shen, Li- making,35(1):114–131.
+WeiHLehman,MenglingFeng,MohammadGhas-
+semi, Benjamin Moody, Peter Szolovits, Leo An- Sarvesh Soni and Dina Demner-Fushman. 2025a.
+thony Celi, and Roger G Mark. 2016. MIMIC-III, ArchEHR-QA: BioNLP at ACL 2025 shared task
+afreelyaccessiblecriticalcaredatabase. SciData, on grounded electronic health record question an-
+3:160035. swering.
+131
+Sarvesh Soni and Dina Demner-Fushman. 2025b. A and1others.2024. Almanac—retrieval-augmented
+dataset for addressing patient’s information needs language models for clinical medicine. Nejm ai,
+related to clinical course of hospitalization. arXiv 1(2):AIoa2300068.
+preprint.
+YuhengZha,YichiYang,RuichenLi,andZhitingHu.
+Sarvesh Soni and Dina Demner-Fushman. 2025c. 2023. Alignscore: Evaluating factual consistency
+OverviewoftheArchEHR-QA2025sharedtaskon with a unified alignment function. In Proceedings
+groundedquestionansweringfromelectronichealth of the 61st Annual Meeting of the Association for
+records. InThe24thWorkshoponBiomedicalNatu- ComputationalLinguistics,pages11300–11316.As-
+ralLanguageProcessingandBioNLPSharedTasks, sociationforComputationalLinguistics.
+Vienna,Austria.AssociationforComputationalLin-
+guistics. TianyiZhang,VarshaKishore,FelixWu,KilianQWein-
+berger,andYoavArtzi.2020. Bertscore: Evaluating
+MQStearns,CPrice,KASpackman,andAYWang. text generation with bert. In International Confer-
+2001. SNOMED clinical terms: overview of the enceonLearningRepresentations(ICLR).
+developmentprocessandprojectstatus. Proc.AMIA
+Symp.,pages662–666. Kelly B Haskard Zolnierek and M Robin DiMatteo.
+2009. Physiciancommunicationandpatientadher-
+Shubo Tian, Qiao Jin, Lana Yeganova, Po-Ting Lai, ence to treatment: a meta-analysis. Medical care,
+QingqingZhu,XiuyingChen,YifanYang,Qingyu 47(8):826–834.
+Chen, Won Kim, Donald C Comeau, and 1 others.
+2024. Opportunitiesandchallengesforchatgptand
+large language models in biomedicine and health.
+BriefingsinBioinformatics,25(1):bbad493.
+Wen wai Yim, Yujuan Fu, Asma Ben Abacha, Neal
+Snider,ThomasLin,andMelihaYetisgen.2023. Aci-
+bench: anovelambientclinicalintelligencedataset
+for benchmarking automatic visit note generation.
+ScientificData,10(1):586.
+JasonWei,XuezhiWang,DaleSchuurmans,Maarten
+Bosma,FeiXia,EdChi,QuocVLe,DennyZhou,
+and1others.2022. Chain-of-thoughtpromptingelic-
+its reasoning in large language models. Advances
+inneuralinformationprocessingsystems,35:24824–
+24837.
+Lionel Wong, Ayman Ali, Raymond Xiong, Shan-
+nonZeijangShen,YoonKim,andMonicaAgrawal.
+2025. Retrieval-augmented systems can be dan-
+gerous medical communicators. arXiv preprint
+arXiv:2502.14898.
+Guangzhi Xiong, Qiao Jin, Zhiyong Lu, and Aidong
+Zhang. 2024. Benchmarking retrieval-augmented
+generationformedicine. InFindingsoftheAssocia-
+tionforComputationalLinguisticsACL2024,pages
+6233–6251.
+WeiXu,CourtneyNapoles,ElliePavlick,QuanzeChen,
+and Chris Callison-Burch. 2016. Optimizing sta-
+tistical machine translation for text simplification.
+TransactionsoftheAssociationforComputational
+Linguistics,4:401–415.
+Rui Yang, Yilin Ning, Emilia Keppo, Mingxuan
+Liu, Chuan Hong, Danielle S Bitterman, Jasmine
+ChiatLingOng,DanielShuWeiTing,andNanLiu.
+2025. Retrieval-augmented generation for genera-
+tiveartificialintelligenceinhealthcare. npjHealth
+Systems,2(1):2.
+Cyril Zakka, Rohan Shad, Akash Chaurasia, Alex R
+Dalal,JenniferLKim,MichaelMoor,RobynFong,
+Curran Phillips, Kevin Alexander, Euan Ashley,
+132
+A Appendix
+A.1 Resultsforallapproaches
+Table2: Pipelineperformancefor1-Stagepromptapproach
+DevsetPerformance
+Factuality Relevance
+Overall
+Model Strict Lenient Overall Overall
+BLEU SARI score
+MacroF1 MicroF1 MacroF1 MicroF1 factuality relevance
+Gemma4B 24.66 25.25 24.65 24.89 25.25 3.57 68.63 41.79 33.52
+Gemma12B 21.10 22.56 21.03 21.13 22.56 1.36 65.70 38.84 30.70
+Table3: Pipelineperformancefor2-Stageapproachwithfine-tunedclassifier
+DevsetPerformance
+Factuality Relevance
+Overall
+Model Strict Overall Overall
+BLEU SARI score
+Macro Micro factuality relevance
+MacroF1 MicroF1
+Precision Precision
+Gemma4B 72.08 35.0 71.42 37.43 37.43 1.32 56.38 27.932 32.67
+Gemma12B 70.0 22.93 69.56 19.8 19.8 2.99 62.29 29.89 24.88
+A.2 Promptfor2-Stagepipeline
+A.2.1 ForStage1
+"""
+<bos><start_of_turn>user You are a clinical assistant. Use the context below to perform the given
+task. Your response must be a JSON list of citations.
+Answer using the given context to help, if you don’t know the answer, just say that you don’t know,
+don’t try to make up an answer.
+Format of Context:
+ID: <chunk ID> ; text : <text>
+ID: <chunk ID> ; text : <text>
+...
+The context contains all sentences from note excerpts. These sentences have two categories: relevant
+and not relevant.
+Your task is to using reasoning and filter out the ones that are relevant to the question, and
+respond with their ID. Ensure to pick all the relevant ones, prioritise higher recall over
+precision.
+Include all chunks that are directly relevant and reasonably connected to answering the question.
+Only exclude chunks that are clearly unrelated.
+Output format:
+Your output must be a list of structured objects with:
+- ’citation’: the chunk ID (e.g., ’1’)
+- ’citation’: the chunk ID (e.g., ’2’)
+- ’citation’: the chunk ID (e.g., ’4’)
+DO NOT add explanations, only the above output.
+NOTE: The sentences may not be directly relevant, you will have to infer it.
+Examples:
+133
+# Example 1:
+**Context:**
+ID: 1 ; Text: "The patient complained of frequent urination and excessive thirst. Laboratory tests
+revealed elevated blood glucose levels."
+ID: 2 ; Text: "The patient was diagnosed with type 2 diabetes mellitus."
+ID: 3 ; Text: "Dietary counseling was initiated to help manage blood sugar levels."
+ID: 4 ; Text: "The patient also reported occasional headaches over the past month."
+**Question:** What is the patient’s diagnosis?
+**Answer:**
+[{{"citation": "2"}},
+{{"citation": "1"}},
+{{"citation": "3"}}]
+**Reasoning:
+ID 2 gives the direct diagnosis (must include).
+ID 1 gives symptoms and test results leading to diagnosis (should include).
+ID 3 mentions management for blood sugar slightly grey, but include as it supports the context of the
+diagnosis.
+ID 4 about headaches is unrelated (exclude).
+# Example 2:
+**Context:**
+ID: 1 ; Text: "The patient sustained a fractured right femur after a fall from a ladder."
+ID: 2 ; Text: "An open reduction and internal fixation (ORIF) surgery was performed to stabilize the
+fracture."
+ID: 3 ; Text: "The patient was prescribed physical therapy after hospital discharge."
+ID: 4 ; Text: "The patient’s blood pressure was also found to be elevated during admission."
+**Question:** What treatment did the patient receive for the femur fracture?
+**Answer:**
+[{{"citation": "2"}},
+{{"citation": "3"}},
+{{"citation": "1"}}]
+**Reasoning:
+ID 2 describes surgical treatment (must include).
+ID 3 is post-surgical physical therapy (treatment-related; include).
+ID 1 gives context about the fracture itself include because it’s important background to understand
+the treatment.
+ID 4 about blood pressure is unrelated (exclude).
+Context: {context}
+Question: {query}
+DO NOT add explanations, only the mentioned output <end_of_turn>
+<start_of_turn>model
+"""
+A.2.2 PromptforStage2
+"""
+<bos><start_of_turn>user You are a clinical assistant. Use all of the context below to answer the
+question. Your response must be a JSON list of sentence-grounding pairs.
+Answer the question using the given context to help, if you don’t know the answer, just say that you
+don’t know, don’t try to make up an answer.
+Format of Context:
+ID: <chunk ID> ; text : <text>
+ID: <chunk ID> ; text : <text>
+...
+Output format:
+Your output must be a list of structured objects with:
+- ’statement’: part of the response
+- ’citation’: the chunk ID (e.g., ’1’) it came from to ground it in evidence
+- ’statement’: part of the response
+- ’citation’: the chunk ID (e.g., ’2’) it came from to ground it in evidence
+134
+- ’statement’: part of the response
+- ’citation’: the chunk ID (e.g., ’4’) it came from to ground it in evidence
+DO NOT add explanations, only the above output.
+NOTE: Use all of the sources and cite all sources, do not omit any one, all are relevant.
+Examples
+# Example 1:
+**Context:**
+ID: 1 ; Text: "The patient complained of frequent urination and excessive thirst. Laboratory tests
+revealed elevated blood glucose levels."
+ID: 2 ; Text: "The patient was diagnosed with type 2 diabetes mellitus."
+**Question:** What is the patient’s diagnosis?
+**Answer:**
+[{{"statement": "The patient was diagnosed with type 2 diabetes mellitus.", "citation": "2"}},
+{{"statement": "Laboratory tests revealed elevated blood glucose levels.", "citation": "1"}}]
+# Example 2:
+**Context:**
+ID: 1 ; Text: "An open reduction and internal fixation (ORIF) surgery was performed to stabilize the
+fracture."
+ID: 2 ; Text: "The patient was prescribed physical therapy after hospital discharge."
+**Question:** What treatment did the patient receive for the femur fracture?
+**Answer:**
+[{{"statement": "The patient underwent open reduction and internal fixation (ORIF) surgery to
+stabilize the femur fracture.", "citation": "1"}},
+{{"statement": "The patient was prescribed physical therapy after hospital discharge.", "citation":
+"2"}}]
+Context: {context}
+Question: {query}
+You can combine the sentences too, there is a word limit , so be succinct.
+DO NOT add explanations, only the mentioned output.
+USE ALL SOURCES, ALL OF THEM ARE IMPORTANT. <end_of_turn>
+<start_of_turn>model
+"""
+135

@@ -1,32 +1,101 @@
 ﻿# ArchEHR-QA Semantic Entropy Baseline
 
-This project contains the current Level 3/4 Semantic Entropy baseline for grounded clinical QA experiments. Earlier local-only smoke levels have been removed from the active code path; the maintained workflow now starts from the common dataset schema and the Level 4 token-score/NLI pipeline.
+This is the active project package for the grounded clinical QA uncertainty baseline.
 
-## Current Status
+The current maintained research path is a simple ArchEHR-QA Semantic Entropy baseline:
 
-- Level 3: common-schema stability pipeline.
-- Level 4: Qwen2.5-7B PubMedQA pilot with token-score baselines, likelihood-weighted Semantic Entropy, and NLI bidirectional-entailment clustering.
-- Latest server pilot: 50 examples x 5 samples, CUDA, Qwen2.5-7B-Instruct, NLI clustering, health check PASS.
-
-## Install
-
-```powershell
-python -m venv archehr_sebaseline\.venv
-archehr_sebaseline\.venv\Scripts\python.exe -m pip install -r archehr_sebaseline\requirements.txt
+```text
+ArchEHR-QA XML/JSON/JSONL
+-> structured grounded prompt
+-> multi-sample cited answer generation
+-> answer-level Semantic Entropy
+-> citation-set uncertainty
+-> lightweight analysis report
 ```
 
-On Isambard:
+The goal is to evaluate uncertainty in LLM answers, not to build a complex answer-improvement or leaderboard-optimized ArchEHR-QA system.
 
-```bash
-cd $SCRATCHDIR/final_project/archehr_sebaseline
-module load cray-python || true
-python -m venv .venv_level2
-source .venv_level2/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+## Package Layout
+
+```text
+archehr_sebaseline/
+  scripts/                  CLI and Slurm entry points
+  src/archehr_sebaseline/   Python package
+  tests/                    Unit tests and smoke fixtures
+  docs/                     Plans, handoffs, method notes, literature extracts
+  requirements.txt          Minimal Python dependencies
+  SERVER_RUN.md             Historical server run guide
 ```
 
-## Tests
+## Important Modules
+
+Data loading:
+
+```text
+src/archehr_sebaseline/dataset_adapters.py
+src/archehr_sebaseline/common_schema.py
+src/archehr_sebaseline/data_io.py
+```
+
+Prompting and parsing:
+
+```text
+src/archehr_sebaseline/prompting.py
+src/archehr_sebaseline/answer_parsing.py
+```
+
+Generation and token scores:
+
+```text
+src/archehr_sebaseline/generation.py
+src/archehr_sebaseline/baseline_uq.py
+```
+
+Semantic Entropy and clustering:
+
+```text
+src/archehr_sebaseline/entropy.py
+src/archehr_sebaseline/simple_clustering.py
+src/archehr_sebaseline/nli_clustering.py
+src/archehr_sebaseline/semantic_scores.py
+```
+
+ArchEHR-QA SE baseline:
+
+```text
+src/archehr_sebaseline/pipeline_archehr_se.py
+src/archehr_sebaseline/citation_uq.py
+```
+
+Historical PubMedQA/Level 4 path:
+
+```text
+src/archehr_sebaseline/pipeline_level3.py
+src/archehr_sebaseline/pipeline_level4.py
+src/archehr_sebaseline/evaluation/pubmedqa_labels.py
+```
+
+## Entry Points
+
+Main ArchEHR-QA SE baseline:
+
+```text
+scripts/run_archehr_se.py
+scripts/run_archehr_se.sbatch
+```
+
+Historical Level 3/4 scripts:
+
+```text
+scripts/run_level3.py
+scripts/run_level3.sbatch
+scripts/run_level4.py
+scripts/run_level4.sbatch
+scripts/check_level4_outputs.py
+scripts/evaluate_pubmedqa_labels.py
+```
+
+## Local Tests
 
 From `D:\work\FinalProject\code`:
 
@@ -34,93 +103,95 @@ From `D:\work\FinalProject\code`:
 python -m unittest discover archehr_sebaseline\tests
 ```
 
-## Level 3
+Current expected result:
 
-Level 3 runs the common-schema pipeline with exact cleaned-answer clustering.
-
-```powershell
-python archehr_sebaseline\scripts\run_level3.py --dataset fake --output_dir archehr_sebaseline\outputs\level3 --num_samples 3 --max_examples 10 --overwrite
+```text
+Ran 30 tests
+OK
 ```
 
-PubMedQA:
+## ArchEHR-QA SE Baseline
+
+The main script reads ArchEHR-QA-style XML, JSON, or JSONL files.
+
+Local smoke example:
 
 ```powershell
-python archehr_sebaseline\scripts\run_level3.py --dataset pubmedqa --data_path D:\path\to\ori_pqal.json --split pqal --output_dir archehr_sebaseline\outputs\level3_pubmedqa --num_samples 3 --max_examples 10 --overwrite
+python archehr_sebaseline\scripts\run_archehr_se.py `
+  --data_path D:\path\to\archehr-qa.xml `
+  --output_dir archehr_sebaseline\outputs\archehr_se_smoke `
+  --model_name sshleifer/tiny-gpt2 `
+  --num_samples 2 `
+  --max_examples 1 `
+  --clustering_method exact `
+  --overwrite
 ```
 
-## Level 4
-
-Level 4 records token log probabilities, token entropies, sequence NLL, per-example UQ summaries, discrete SE, likelihood-weighted SE, and NLI semantic clusters.
-
-Local exact-clustering smoke:
-
-```powershell
-python archehr_sebaseline\scripts\run_level4.py --dataset pubmedqa --data_path D:\path\to\ori_pqal.json --split pqal --output_dir archehr_sebaseline\outputs\level4_pubmedqa --model_name sshleifer/tiny-gpt2 --num_samples 1 --max_examples 1 --max_new_tokens 16 --device cpu --clustering_method exact --overwrite
-```
-
-Server Qwen2.5-7B NLI pilot:
+Server-style NLI run:
 
 ```bash
-DATASET=pubmedqa \
-DATA_PATH=$SCRATCHDIR/final_project/data/pubmedqa/ori_pqal.json \
-OUTPUT_DIR=$SCRATCHDIR/final_project/archehr_sebaseline/outputs/level4_qwen25_7b_nli_50x5 \
+python scripts/run_archehr_se.py \
+  --data_path $SCRATCHDIR/final_project/data/archehr_qa/dev/archehr-qa.xml \
+  --output_dir $SCRATCHDIR/final_project/archehr_sebaseline/outputs/archehr_se_qwen25_nli \
+  --model_name Qwen/Qwen2.5-7B-Instruct \
+  --num_samples 10 \
+  --max_new_tokens 256 \
+  --device cuda \
+  --torch_dtype float16 \
+  --local_files_only \
+  --clustering_method nli \
+  --nli_model_name microsoft/deberta-v2-xlarge-mnli \
+  --nli_local_files_only \
+  --overwrite
+```
+
+Slurm version:
+
+```bash
+DATA_PATH=$SCRATCHDIR/final_project/data/archehr_qa/dev/archehr-qa.xml \
+OUTPUT_DIR=$SCRATCHDIR/final_project/archehr_sebaseline/outputs/archehr_se_dev_n10 \
 MODEL_NAME=Qwen/Qwen2.5-7B-Instruct \
-MAX_EXAMPLES=50 \
-NUM_SAMPLES=5 \
-MAX_NEW_TOKENS=128 \
+MAX_EXAMPLES=20 \
+NUM_SAMPLES=10 \
+MAX_NEW_TOKENS=256 \
 DEVICE=cuda \
 TORCH_DTYPE=float16 \
 LOCAL_FILES_ONLY=1 \
 CLUSTERING_METHOD=nli \
 NLI_MODEL_NAME=microsoft/deberta-v2-xlarge-mnli \
 NLI_LOCAL_FILES_ONLY=1 \
-sbatch --time=01:00:00 scripts/run_level4.sbatch
+sbatch --time=03:00:00 scripts/run_archehr_se.sbatch
 ```
 
-## Health Check
-
-```bash
-python scripts/check_level4_outputs.py \
-  $OUT \
-  --expected_examples 50 \
-  --expected_num_samples 5 \
-  --expected_generations 250 \
-  --require_cuda \
-  --require_nli \
-  --write_report $OUT/health_check.txt
-```
-
-The check validates required artifacts, row counts, summary consistency, JSONL/CSV parsing, token-score fields, cluster-size consistency, entropy ranges, and non-finite text markers.
-
-## Level 5 PubMedQA Evaluation
-
-Level 5 evaluates Level 4 uncertainty scores against a PubMedQA yes/no/maybe
-answer-quality proxy. The maintained heuristic extracts explicit generated
-labels, uses conservative majority voting, and marks tied known votes as
-`unknown`.
-
-See [docs/level5_evaluation_method.md](docs/level5_evaluation_method.md) for
-the full evaluation definition and limitations.
-
-```powershell
-python archehr_sebaseline\scripts\evaluate_pubmedqa_labels.py server_results\level4_qwen25_7b_nli_50x5 --overwrite
-```
-
-The script writes:
+## ArchEHR-QA SE Outputs
 
 ```text
-pubmedqa_label_predictions.csv
-pubmedqa_eval_summary.json
-rejection_curve.csv
-auroc_bar.svg
-rejection_curve.svg
+examples.jsonl
+prompts.jsonl
+generations.jsonl
+parsed_generations.jsonl
+cleaned_generations.jsonl
+answer_clusters.jsonl
+answer_se_scores.csv
+generation_uq.csv
+citation_uq.csv
+analysis_report.md
+summary.txt
 ```
 
-For the local 50x5 Qwen2.5-7B pilot, this maintained evaluator reports
-`28/50 = 0.560` majority accuracy and AUROC values around `0.55-0.57` for the
-current uncertainty scores. Open the SVG files in a browser for a quick visual
-summary of the AUROC table and selective-prediction curve.
+## Documentation
+
+Key docs:
+
+```text
+docs/archehr_se_baseline_plan.md
+docs/level5_evaluation_method.md
+docs/progress_level4.md
+docs/handoff_guide.md
+docs/literature_notes.md
+docs/extracted_literature_text/
+```
 
 ## Data Boundary
 
-Restricted clinical datasets are not downloaded by this project. Put manually approved data under explicit local paths and pass them through `--data_path`.
+Restricted clinical datasets are not downloaded by this project. Place approved data manually and pass it through explicit paths such as `--data_path`.
