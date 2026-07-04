@@ -1,0 +1,30 @@
+{
+  "auroc_incorrect_by_score": {
+    "mean_normalized_nll": 0.5698051948051948,
+    "mean_token_entropy": 0.5568181818181818,
+    "normalized_discrete_semantic_entropy": 0.547077922077922,
+    "normalized_likelihood_weighted_semantic_entropy": 0.5511363636363636,
+    "predictive_entropy": 0.5698051948051948
+  },
+  "dataset": "pubmedqa",
+  "gold_label_counts": {
+    "maybe": 7,
+    "no": 18,
+    "yes": 25
+  },
+  "known_sample_predictions": 151,
+  "majority_accuracy": 0.56,
+  "majority_correct": 28,
+  "majority_label_counts": {
+    "maybe": 4,
+    "no": 19,
+    "unknown": 9,
+    "yes": 18
+  },
+  "majority_ties": 4,
+  "majority_unknown": 9,
+  "num_examples": 50,
+  "num_generations": 250,
+  "per_sample_accuracy_known": 0.6490066225165563,
+  "unknown_sample_predictions": 99
+}

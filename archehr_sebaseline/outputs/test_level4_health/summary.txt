@@ -1,0 +1,19 @@
+Level 4 token-score Semantic Entropy pilot run complete
+dataset: fake
+split: dev
+data_path: 
+examples: 2
+generations: 6
+model_name: static-test
+num_samples: 3
+device: cpu
+torch_dtype: 
+local_files_only: False
+requested_clustering_method: nli
+clustering_method: nli_bidirectional_entailment
+nli_model_name: fake-nli
+token_scores: True
+output_dir: D:\work\FinalProject\code\archehr_sebaseline\outputs\test_level4_health
+scores:
+- fake_001: clusters=[2, 1], H_discrete=0.6365141683, H_weighted=0.6365141683, PE=0.5000000000
+- fake_002: clusters=[2, 1], H_discrete=0.6365141683, H_weighted=0.6365141683, PE=0.5000000000

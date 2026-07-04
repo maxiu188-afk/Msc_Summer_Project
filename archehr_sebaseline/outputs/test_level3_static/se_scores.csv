@@ -1,0 +1,3 @@
+example_id,num_samples,num_clusters,cluster_sizes,semantic_entropy,normalized_semantic_entropy,clustering_method
+fake_001,3,2,"[2, 1]",0.6365141683,0.5793801643,exact_clean_answer
+fake_002,3,2,"[2, 1]",0.6365141683,0.5793801643,exact_clean_answer

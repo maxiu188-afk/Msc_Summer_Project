@@ -1,0 +1,794 @@
+Article
+Detecting hallucinations in large language
+models using semantic entropy
+https://doi.org/10.1038/s41586-024-07421-0 Sebastian Farquhar1,2 ✉, Jannik Kossen1,2, Lorenz Kuhn1,2 & Yarin Gal1
+Received: 17 July 2023
+Accepted: 12 April 2024 Large language model (LLM) systems, such as ChatGPT1 or Gemini2, can show
+impressive reasoning and question-answering capabilities but often ‘hallucinate’
+Published online: 19 June 2024
+false outputs and unsubstantiated answers3,4. Answering unreliably or without the
+Open access
+necessary information prevents adoption in diverse fields, with problems including
+Check for updates fabrication of legal precedents5 or untrue facts in news articles6 and even posing a
+risk to human life in medical domains such as radiology7. Encouraging truthfulness
+through supervision or reinforcement has been only partially successful8. Researchers
+need a general method for detecting hallucinations in LLMs that works even with new
+and unseen questions to which humans might not know the answer. Here we develop
+new methods grounded in statistics, proposing entropy-based uncertainty estimators
+for LLMs to detect a subset of hallucinations—confabulations—which are arbitrary and
+incorrect generations. Our method addresses the fact that one idea can be expressed
+in many ways by computing uncertainty at the level of meaning rather than specific
+sequences of words. Our method works across datasets and tasks without a priori
+knowledge of the task, requires no task-specific data and robustly generalizes to new
+tasks not seen before. By detecting when a prompt is likely to produce a confabulation,
+our method helps users understand when they must take extra care with LLMs and
+opens up new possibilities for using LLMs that are otherwise prevented by their
+unreliability.
+‘Hallucinations’ are a critical problem9 for natural language genera- We show how to detect confabulations by developing a quantita-
+tion systems using large language models (LLMs), such as ChatGPT1 or tive measure of when an input is likely to cause an LLM to generate
+Gemini2, because users cannot trust that any given output is correct. arbitrary and ungrounded answers. Detecting confabulations allows
+Hallucinations are often defined as LLMs generating “content systems built on LLMs to avoid answering questions likely to cause
+that is nonsensical or unfaithful to the provided source content”9–11 confabulations, to make users aware of the unreliability of answers
+but they have come to include a vast array of failures of faithfulness to a question or to supplement the LLM with more grounded search
+and factuality. We focus on a subset of hallucinations which we call or retrieval. This is essential for the critical emerging field of free-
+‘confabulations’12 for which LLMs fluently make claims that are both form generation in which naive approaches, suited to closed vocabu-
+wrong and arbitrary—by which we mean that the answer is sensitive lary and multiple choice, fail. Past work on uncertainty for LLMs has
+to irrelevant details such as random seed. For example, when asked a focused on simpler settings, such as classifiers16,17 and regressors18,19,
+medical question “What is the target of Sotorasib?” an LLM confabu- whereas the most exciting applications of LLMs relate to free-form
+lates by sometimes answering KRASG12 ‘C’ (correct) and other times generations.
+KRASG12 ‘D’ (incorrect) despite identical instructions. We distinguish The term hallucination in the context of machine learning originally
+this from cases in which a similar ‘symptom’ is caused by the following comes from filling in ungrounded details, either as a deliberate strat-
+different mechanisms: when LLMs are consistently wrong as a result of egy20 or as a reliability problem4. The appropriateness of the meta-
+being trained on erroneous data such as common misconceptions13; phor has been questioned as promoting undue anthropomorphism21.
+when the LLM ‘lies’ in pursuit of a reward14; or systematic failures of Although we agree that metaphor must be used carefully with LLMs22,
+reasoning or generalization. We believe that combining these dis- the widespread adoption of the term hallucination reflects the fact
+tinct mechanisms in the broad category hallucination is unhelpful. that it points to an important phenomenon. This work represents a
+Our method makes progress on a portion of the problem of providing step towards making that phenomenon more precise.
+scalable oversight15 by detecting confabulations that people might To detect confabulations, we use probabilistic tools to define and
+otherwise find plausible. However, it does not guarantee factuality then measure the ‘semantic’ entropy of the generations of an LLM—an
+because it does not help when LLM outputs are systematically bad. Nev- entropy that is computed over meanings of sentences. High entropy
+ertheless, we significantly improve question-answering accuracy for corresponds to high uncertainty23–25—so semantic entropy is one way
+state-of-the-art LLMs, revealing that confabulations are a great source of to estimate semantic uncertainties. Semantic uncertainty, the broader
+error at present. category of measures we introduce, could be operationalized with other
+1OATML, Department of Computer Science, University of Oxford, Oxford, UK. 2These authors contributed equally: Sebastian Farquhar, Jannik Kossen, Lorenz Kuhn. ✉e-mail: sebfar@gmail.com
+Nature | Vol 630 | 20 June 2024 | 625
+Article
+a Semantic entropy
+Paris Paris
+It’s Paris It’s Paris
+Where is the France’s capital Paris France’s capital Paris
+Eiffel Tower? Rome Rome
+It’s Rome It’s Rome
+Berlin Berlin
+b Application to FactualBio paragraphs
+User: Question
+Who is Freddie Frith?
+Generate answers and Semantic entropy
+Factoid decomposition Possible questions cluster by meaning probability
+Freddie Frith was an Q1 of M for Fact 1: Five-time motorcycle racing world...
+English motorcycle What notable
+road racer who accomplishments Motorcycle road racing world...
+be in c a b m ot e h a p r c e h - a W m o p rl i d on Fred F d a ie c t F 1 ri t o h f w 7 a : s an did F ac re h d ie d v ie e ? Frith Motorcycle racing champion...
+War II and post-war English motorcycle
+eras. He won the road racer Motorcycle racing. 1935 and 1937 Grand Q2 of M for Fact 1:
+Prix motorcycle What was Freddie He was a world champion motorcycle... racing European Frith known for?
+Championships. He was president of the
+After retiring Auto Cycle Union...
+from competition,
+he became the
+president of the Auto Q1 of M for Fact 6: 1909
+Cycle Union, the When was Freddie 1909
+governing body of Frith’s year of
+r B ac ri i t n is g h . H m e o w to a rc s y a c l l s e o Fact 6 of 7 : birth? 1909
+an accomplished Frith was born
+motorcycle dealer in 1911 30 May 1909
+Q2 of M for Fact 6:
+and manufacturer.
+Frith was born in 1911 When was Freddie 29 March 1909
+Frith born?
+and died in 1988. 26 October 1911
+measures of uncertainty, such as mutual information, instead. Entropy well as being used to measure factuality in abstractive summarization30,
+in free-form generation is normally hard to measure because answers especially when applied at the right granularity31.
+might mean the same thing (be semantically equivalent) despite being Semantic entropy detects confabulations in free-form text genera-
+expressed differently (being syntactically or lexically distinct). This tion across a range of language models and domains, without previous
+causes naive estimates of entropy or other lexical variation scores26 to domain knowledge. Our evaluations cover question answering in trivia
+be misleadingly high when the same correct answer might be written knowledge (TriviaQA32), general knowledge (SQuAD 1.1; ref. 33), life
+in many ways without changing its meaning. sciences (BioASQ34) and open-domain natural questions (NQ-Open35)
+By contrast, our semantic entropy moves towards estimating the derived from actual queries to Google Search36. In addition, seman-
+entropy of the distribution of meanings of free-form answers to ques- tic entropy detects confabulations in mathematical word problems
+tions, insofar as that is possible, rather than the distribution over the (SVAMP37) and in a biography-generation dataset, FactualBio, accom-
+‘tokens’ (words or word-pieces) which LLMs natively represent. This panying this paper.
+can be seen as a kind of semantic consistency check27 for random seed Our results for TriviaQA, SQuAD, BioASQ, NQ-Open and SVAMP are
+variation. An overview of our approach is provided in Fig. 1 and a worked all evaluated context-free and involve sentence-length answers (96 ± 70
+example in Supplementary Table 1. characters, mean ± s.d.) and use LLaMA 2 Chat (7B, 13B and 70B param-
+Intuitively, our method works by sampling several possible answers eters)38, Falcon Instruct (7B and 40B)39 and Mistral Instruct (7B)40. In the
+to each question and clustering them algorithmically into answers that Supplementary Information, we further consider short-phrase-length
+have similar meanings, which we determine on the basis of whether answers. Results for FactualBio (442 ± 122 characters) use GPT-4
+answers in the same cluster entail each other bidirectionally28. That (ref. 1). At the time of writing, GPT-4 (ref. 1) did not expose output prob-
+is, if sentence A entails that sentence B is true and vice versa, then we abilities41 or hidden states, although it does now. As a result, we propose
+consider them to be in the same semantic cluster. We measure entail- a discrete approximation of our estimator for semantic entropy which
+ment using both general-purpose LLMs and natural language inference allows us to run experiments without access to output probabilities,
+(NLI) tools developed specifically for detecting entailment for which which we use for all GPT-4 results in this paper and which performs
+we show direct evaluations in Supplementary Tables 2 and 3 and Sup- similarly well.
+plementary Fig. 1. Textual entailment has previously been shown to Our confabulation detection with semantic entropy is more robust
+correlate with faithfulness10 in the context of factual consistency29 as to user inputs from previously unseen domains than methods which
+626 | Nature | Vol 630 | 20 June 2024
+noitalubafnoc
+ylekil
+toN
+noitalubafnoc
+ylekiL
+Misleadingly high naive entropy Low semantic entropy
+LLM answers Probability LLM answers Probability
+Cluster
+answers by
+semantic
+User: Question Generate meaning
+LLLLMM LLLLMM
+Generate
+LLLLMM
+Fig. 1 | Overview of semantic entropy and confabulation detection. a, Naive factoids. For each factoid, an LLM generates questions to which that factoid
+entropy-based uncertainty measures variation in the exact answers, treating might have been the answer. The original LLM then samples M possible answers
+‘Paris’, ‘It’s Paris’ and ‘France’s capital Paris’ as different. But this is unsuitable to these questions. Finally, we compute the semantic entropy over the answers
+for language tasks for which sometimes different answers mean the same to each specific question, including the original factoid. Confabulations are
+things. Our semantic entropy clusters answers which share meanings before indicated by high average semantic entropy for questions associated with that
+computing the entropy. A low semantic entropy shows that the LLM is confident factoid. Here, semantic entropy classifies Fact 1 as probably not a confabulation
+about the meaning. b, Semantic entropy can also detect confabulations in because generations often mean the same thing, despite very different
+longer passages. We automatically decompose a long generated answer into wordings, which a naive entropy would have missed.
+Semantic entropy Naive entropy Embedding regression
+Discrete semantic entropy P(True), ref. 24 Embedding regression - OOD
+0.8 0.8 0.8
+0.7 0.7 0.7
+0.6 0.6 0.6
+0.5 0.5 0.5
+0.4 0.4 0.4
+0.3 0.3 0.3
+AUROC AURAC AUROC AURAC AUROC AURAC
+LLaMA 2 Chat 7B LLaMA 2 Chat 13B LLaMA 2 Chat 70B
+0.8 0.8 0.8
+0.7 0.7 0.7
+0.6 0.6 0.6
+0.5 0.5 0.5
+0.4 0.4 0.4
+0.3 0.3 0.3
+AUROC AURAC AUROC AURAC AUROC AURAC
+Falcon 7B Instruct Falcon 40B Instruct Mistral 7B Instruct
+Fig. 2 | Detecting confabulations in sentence-length generations. Semantic performance improvement of a system that refuses to answer questions which
+entropy outperforms leading baselines and naive entropy. AUROC (scored on are judged likely to cause confabulations. Results are an average over five
+the y-axes) measures how well methods predict LLM mistakes, which correlate datasets, with individual metrics provided in the Supplementary Information.
+with confabulations. AURAC (likewise scored on the y-axes) measures the
+aim to ‘learn’ how to detect confabulations from a set of example dem-
+Detecting confabulations in QA and math
+onstrations. Our method is unsupervised, meaning that we do not
+need labelled examples of confabulations. By contrast, supervised In Fig. 2, we show that both semantic entropy and its discrete approxi-
+methods detect confabulations by learning patterns behind examples mation outperform our best baselines for sentence-length generations.
+of confabulations, assuming that future questions preserve these pat- These results are averaged across datasets and provide the actual scores
+terns. But this assumption is often untrue in new situations or with on the held-out evaluation dataset. We report the raw average score
+confabulations that human overseers are unable to identify (com- across held-out evaluation datasets without standard error because
+pare Fig. 17 of ref. 24). As a strong supervised baseline, we compare the distributional characteristics are more a property of the models
+to an embedding regression method inspired by ref. 24 which trains and datasets selected than the method. Consistency of relative results
+a logistic regression classifier to predict whether the model correctly across different datasets is a stronger indicator of variation in this case.
+answered a question on the basis of the final ‘embedding’ (hidden state) Semantic entropy greatly outperforms the naive estimation of uncer-
+of the LLM. We also use the P(True) method24 which looks at the prob- tainty using entropy: computing the entropy of the length-normalized
+ability with which an LLM predicts that the next token is ‘True’ when joint probability of the token sequences. Naive entropy estimation
+few-shot prompted to compare a main answer with ‘brainstormed’ ignores the fact that token probabilities also express the uncertainty of
+alternatives. the model over phrasings that do not change the meaning of an output.
+Confabulations contribute substantially to incorrect answers given Our methods also outperform the supervised embedding regression
+by language models. We show that semantic entropy can be used to pre- method both in- and out-of-distribution. In pale-yellow bars we show
+dict many incorrect model answers and to improve question-answering that embedding regression performance deteriorates when its train-
+accuracy by refusing to answer those questions the model is uncertain ing data do not match the deployment distribution—which mirrors the
+about. Corresponding to these two uses, we evaluate two main metrics. common real-world case in which there is a distribution shift between
+First, the widely used area under the receiver operating characteristic training and deployment42—the plotted value is the average metric for
+(AUROC) curve for the binary event that a given answer is incorrect. embedding regression trained on one of the four ‘off-distribution’
+This measure captures both precision and recall and ranges from datasets for that evaluation. This is critical because reliable uncertainty
+0 to 1, with 1 representing a perfect classifier and 0.5 representing is most important when the data distribution shifts. Semantic entropy
+an un-informative classifier. We also show a new measure, the area also outperforms P(True) which is supervised ‘in-context’; that is, it is
+under the ‘rejection accuracy’ curve (AURAC). This studies the case in adapted to the deployment task with a few training examples provided
+which the confabulation detection score is used to refuse to answer in the LLM prompt itself. The discrete variant of semantic entropy per-
+the questions judged most likely to cause confabulations. Rejection forms similarly to our standard estimator, despite not requiring exact
+accuracy is the accuracy of the answers of the model on the remaining output probabilities.
+questions and the area under this curve is a summary statistic over Averaged across the 30 combinations of tasks and models we study,
+many thresholds (representative threshold accuracies are provided in semantic entropy achieves the best AUROC value of 0.790 whereas
+Supplementary Material). The AURAC captures the accuracy improve- naive entropy (0.691), P(True) (0.698) and the embedding regression
+ment which users would experience if semantic entropy was used to baseline (0.687) lag behind it. Semantic entropy performs well con-
+filter out questions causing the highest entropy. sistently, with stable performance (between 0.78 and 0.81 AUROC)
+Nature | Vol 630 | 20 June 2024 | 627
+Article
+Table 1 | Semantic entropy applied to examples
+Question Model answer Reference Generations for entropy Prediction
+answer
+Semantic entropy Naive entropy
+• All the above are under the industrial sector of
+Refineries, process Refineries, process construction.
+chemical, power chemical, power
+Industrial or heavy • The refineries, process chemical, power
+generation, mills and generation, mills and
+civil or heavy generation, mills and manufacturing plants are Not confabulation Confabulation
+manufacturing plants manufacturing plants
+engineering. under the industrial sector of construction.
+are under what sector are under the industrial
+of construction? sector of construction. • These are all under the heavy industrial sector
+of construction.
+• The stard10 protein plays a crucial role
+in regulating the dynamics of the actin
+cytoskeleton and cell adhesion during cell
+The stard10 protein migration and cell division.
+functions as a negative
+• The stard10 protein functions as a negative
+regulator of the mTOR
+What is the function of STARD10 is a lipid regulator of the meiotic recombination process,
+pathway by inhibiting Confabulation Confabulation
+the stard10 protein? transfer protein. specifically by inhibiting the activity of the Dmc1
+the activity of the
+recombinase enzyme.
+mTORC1 and mTORC2
+complexes. • The stard10 protein functions as a regulator of
+lipid metabolism, promoting the breakdown of
+lipids in the liver and inhibiting their synthesis in
+the liver and adipose tissue.
+• ‘Fado’ is the national music of Portugal.
+Of which European
+country is ‘fado’ the Portugal. Portugal. • ‘Fado’ is the national music of Portugal. Not confabulation Not confabulation
+national music?
+• Fado is the national music of Portugal.
+• BSkyB’s digital service was launched in 1998.
+When was BSkyB’s BSkyB’s digital • BSkyB’s digital service was launched on
+digital service 1 October 1998. service was 1 October 1998. Confabulation Not confabulation
+launched? launched in 1998.
+• BSkyB’s digital service was launched on
+1 October 1998.
+The first row of Table 1 demonstrates a case in which semantic entropy correctly predicts that an answer is not a confabulation if naive entropy would incorrectly predict a confabulation. All of
+the generations from the model mean the same thing as each other so they are clustered together despite using different phrasings. The second row provides an example in which semantic
+entropy and naive entropy would both correctly predict a confabulation, in which each generation is both lexically distinct and also means something different. The third row is an example in
+which semantic entropy and naive entropy would both correctly predict no confabulation because the multiple generations are almost lexically identical. The fourth row gives an example
+in which semantic entropy might fail but naive entropy might succeed. In our experiment, semantic entropy clustered the answers into those which provided a specific date and those which
+gave only a year and treated the model as ‘uncertain’. This highlights the importance of context in semantic clustering. The examples come from LLaMA 2 Chat 70B generations for SQuAD,
+BioASQ and TriviaQA.
+across the different model families (LLaMA, Falcon and Mistral) and entropy and naive entropy both correctly predict the presence of
+scales (from 7B to 70B parameters) which we study (we report summary confabulations when the form and meaning vary together (second
+statistics for each dataset and model as before). Although semantic row) and predict the absence of confabulations when the form and
+entropy outperforms the baselines across all model sizes, P(True) meaning are both constant across several resampled generations
+seems to improve with model size, suggesting that it might become (third row). In the final row, we give an example in which semantic
+more competitive for very capable honest models in settings that the entropy is erroneously high as a result of overly sensitive semantic
+model understands well (which are, however, not the most important clustering relative to the reference answer. Our clustering method
+cases to have good uncertainty). We use ten generations to compute distinguishes the answers which provide a precise date from those
+entropy, selected using analysis in Supplementary Fig. 2. Further which only provide a year. For some contexts that would have been
+results for short-phrase generations are described in Supplementary correct but in this context the distinction between the specific day
+Figs. 7–10. and the year is probably irrelevant. This highlights the importance
+The results in Fig. 2 offer a lower bound on the effectiveness of seman- of context and judgement in clustering, especially in subtle cases, as
+tic entropy at detecting confabulations. These evaluations determine well as the shortcomings of evaluating against fixed reference answers
+whether semantic entropy and baseline methods can detect when the which do not capture the open-ended flexibility of conversational
+answers of the model are incorrect (which we validate against human deployments of LLMs.
+correctness evaluations in Supplementary Table 4). In addition to errors
+from confabulations (arbitrary incorrectness), this also includes other
+Detecting confabulations in biographies
+types of mistakes for which semantic entropy is not suited, such as
+consistent errors learned from the training data. The fact that methods Semantic entropy is most natural for sentences that express a single
+such as embedding regression are able to spot other kinds of errors, not proposition but the idea of semantic equivalence is trickier to apply to
+just confabulations, but still are outperformed by semantic entropy, longer passages which express many propositions which might only
+suggests that confabulations are a principal category of errors for agree partially43. Nevertheless, we can use semantic entropy to detect
+actual generations. confabulations in longer generations, such as entire paragraphs of text.
+Examples of questions and answers from TriviaQA, SQuAD and To show this, we develop a dataset of biographical generations from
+BioASQ, for LLaMA 2 Chat 70B, are shown in Table 1. These illustrate GPT-4 (v.0613) for 21 individuals notable enough to have their own
+how only semantic entropy detects when the meaning is constant Wikipedia page but without extensive online biographies. From each
+but the form varies (the first row of the table) whereas semantic biography generated by GPT-4, we automatically extract propositional
+628 | Nature | Vol 630 | 20 June 2024
+Discrete semantic entropy lack of LLM knowledge. These are a substantial portion of the failures at
+0.8 P(True), ref. 24 variant present and will continue even as models grow in capabilities because
+Self-check baseline
+situations and cases that humans cannot reliably supervise will persist.
+Confabulations are a particularly noteworthy failure mode for question
+0.7
+answering but appear in other domains too. Semantic entropy needs
+no previous domain knowledge and we expect that algorithmic adap-
+0.6
+tations to other problems will allow similar advances in, for example,
+abstractive summarization. In addition, extensions to alternative input
+0.5 variations such as rephrasing or counterfactual scenarios would allow
+a similar method to act as a form of cross-examination44 for scalable
+0.4 oversight through debate45.
+AUROC AURAC 80% 90% 95% 100% The success of semantic entropy at detecting errors suggests that
+Rejection accuracy LLMs are even better at “knowing what they don’t know” than was
+argued by ref. 24—they just don’t know they know what they don’t
+Fig. 3 | Detecting GPT-4 confabulations in paragraph-length biographies.
+know. Our method explicitly does not directly address situations in
+The discrete variant of our semantic entropy estimator outperforms baselines
+which LLMs are confidently wrong because they have been trained
+both when measured by AUROC and AURAC metrics (scored on the y-axis). The
+with objectives that systematically produce dangerous behaviour,
+AUROC and AURAC are substantially higher than for both baselines. At above
+cause systematic reasoning errors or are systematically mislead-
+80% of questions being answered, semantic entropy has the highest accuracy.
+Only when the top 20% of answers judged most likely to be confabulations are ing the user. We believe that these represent different underlying
+rejected does the answer accuracy on the remainder for the P(True) baseline mechanisms—despite similar ‘symptoms’—and need to be handled
+exceed semantic entropy. separately.
+One exciting aspect of our approach is the way it makes use of clas-
+sical probabilistic machine learning methods and adapts them to the
+factual claims about the individual (150 factual claims in total), which unique properties of modern LLMs and free-form language generation.
+we manually label as true or false. We hope to inspire a fruitful exchange of well-studied methods and
+Applying semantic entropy to this problem is challenging. Naively, emerging new problems by highlighting the importance of meaning
+one might simply regenerate each sentence (conditioned on the text when addressing language-based machine learning problems.
+so far) and then compute semantic entropy over these regenerations.
+However, the resampled sentences often target different aspects of
+Online content
+the biography: for example, one time describing family and the next
+time profession. This is analogous to the original problem semantic Any methods, additional references, Nature Portfolio reporting summa-
+entropy was designed to resolve: the model is uncertain about the right ries, source data, extended data, supplementary information, acknowl-
+ordering of facts, not about the facts themselves. To address this, we edgements, peer review information; details of author contributions
+break down the entire paragraph into factual claims and reconstruct and competing interests; and statements of data and code availability
+questions which might have been answered by those claims. Only then are available at https://doi.org/10.1038/s41586-024-07421-0.
+do we apply semantic entropy (Fig. 1) by generating three new answers
+to each question (selected with analysis in Supplementary Figs. 3 and 4)
+1. GPT-4 technical report. Preprint at https://arxiv.org/abs/2303.08774 (2023).
+and computing the semantic entropy over those generations plus the
+2. Gemini: a family of highly capable multimodal models. Preprint at https://arxiv.org/abs/
+original factual claim. We aggregate these by averaging the semantic 2312.11805 (2023).
+entropy over all the questions to get an uncertainty score for each 3. Xiao, Y. & Wang, W. Y. On hallucination and predictive uncertainty in conditional language
+generation. In Proc. 16th Conference of the European Chapter of the Association for
+proposition, which we use to detect confabulations. Unaggregated
+Computational Linguistics 2734–2744 (Association for Computational Linguistics, 2021).
+results are shown in Supplementary Figs. 5 and 6. 4. Rohrbach, A., Hendricks, L. A., Burns, K., Darrell, T. & Saenko, K. Object hallucination in
+As GPT-4 did not allow access to the probability of the generation image captioning. In Proc. 2018 Conference on Empirical Methods in Natural Language
+Processing (eds Riloff, E., Chiang, D., Hockenmaier, J. & Tsujii, J.) 4035–4045 (Association
+at the time of writing, we use a discrete variant of semantic entropy for Computational Linguistics, 2018).
+which makes the further approximation that we can infer a discrete 5. Weiser, B. Lawyer who used ChatGPT faces penalty for made up citations. The New York
+empirical distribution over semantic meaning clusters from only the Times (8 Jun 2023).
+6. Opdahl, A. L. et al. Trustworthy journalism through AI. Data Knowl. Eng. 146, 102182
+generations (Methods). This allows us to compute semantic entropy (2023).
+using only the black-box outputs of an LLM. However, we were unable 7. Shen, Y. et al. ChatGPT and other large language models are double-edged swords.
+to compute the naive entropy baseline, the standard semantic entropy Radiology 307, e230163 (2023).
+8. Schulman, J. Reinforcement learning from human feedback: progress and challenges.
+estimator or the embedding regression baseline for GPT-4 without Presented at the Berkeley EECS Colloquium. YouTube www.youtube.com/
+output probabilities and embeddings. watch?v=hhiLw5Q_UFg (2023).
+In Fig. 3 we show that the discrete variant of semantic entropy effec- 9. Ji, Z. et al. Survey of hallucination in natural language generation. ACM Comput. Surv.55,
+248 (2023).
+tively detects confabulations on this dataset. Its AUROC and AURAC are 10. Maynez, J., Narayan, S., Bohnet, B. & McDonald, R. On faithfulness and factuality in
+higher than either a simple ‘self-check’ baseline—which just asks the abstractive summarization. In Proc. 58th Annual Meeting of the Association for
+Computational Linguistics (eds Jurafsky, D., Chai, J., Schluter, N. & Tetreault, J.) 1906–1919
+LLM whether the factoid is likely to be true—or a variant of P(True) which
+(Association for Computational Linguistics, 2020).
+has been adapted to work for the paragraph-length setting. Discrete 11. Filippova, K. Controlled hallucinations: learning to generate faithfully from noisy data.
+semantic entropy has better rejection accuracy performance until In Findings of the Association for Computational Linguistics: EMNLP 2020 (eds Webber,
+B., Cohn, T., He, Y. & Liu, Y.) 864–870 (Association for Computational Linguistics, 2020).
+20% of the questions have been rejected at which point P(True) has
+12. Berrios, G. Confabulations: a conceptual history. J. Hist. Neurosci. 7, 225–241 (1998).
+a narrow edge. This indicates that the questions predicted to cause 13. Lin, S., Hilton, J. & Evans, O. Teaching models to express their uncertainty in words.
+confabulations are indeed more likely to be wrong. Transact. Mach. Learn. Res. (2022).
+14. Evans, O. et al. Truthful AI: developing and governing AI that does not lie. Preprint at
+https://arxiv.org/abs/2110.06674 (2021).
+15. Amodei, D. et al. Concrete problems in AI safety. Preprint at https://arxiv.org/abs/
+Discussion 1606.06565 (2016).
+16. Jiang, Z., Araki, J., Ding, H. & Neubig, G. How can we know when language models know?
+Our probabilistic approach, accounting for semantic equivalence,
+On the calibration of language models for question answering. Transact. Assoc. Comput.
+detects an important class of hallucinations: those that are caused by a Linguist. 9, 962–977 (2021).
+Nature | Vol 630 | 20 June 2024 | 629
+Article
+17. Desai, S. & Durrett, G. Calibration of pre-trained transformers. In Proc. 2020 Conference 34. Tsatsaronis, G. et al. An overview of the BIOASQ large-scale biomedical semantic
+on Empirical Methods in Natural Language Processing (EMNLP) (eds Webber, B., Cohn, T., indexing and question answering competition. BMC Bioinformatics 16, 138 (2015).
+He, Y. & Liu, Y.) 295–302 (Association for Computational Linguistics, 2020). 35. Lee, K., Chang, M.-W. & Toutanova, K. Latent retrieval for weakly supervised open domain
+18. Glushkova, T., Zerva, C., Rei, R. & Martins, A. F. Uncertainty-aware machine translation question answering. In Proc. 57th Annual Meeting of the Association for Computational
+evaluation. In Findings of the Association for Computational Linguistics: EMNLP 2021 (eds Linguistics 6086–6096 (Association for Computational Linguistics, 2019).
+Moens, M-F., Huang, X., Specia, L. & Yih, S.) 3920–3938 (Association for Computational 36. Kwiatkowski, T. et al. Natural questions: a benchmark for question answering research.
+Linguistics, 2021). Transact. Assoc. Comput. Linguist. 7, 452–466 (2019).
+19. Wang, Y., Beck, D., Baldwin, T. & Verspoor, K. Uncertainty estimation and reduction of 37. Patel, A., Bhattamishra, S. & Goyal, N. Are NLP models really able to solve simple math
+pre-trained models for text regression. Transact. Assoc. Comput. Linguist. 10, 680–696 word problems? In Proc. 2021 Conference of the North American Chapter of the Association
+(2022). for Computational Linguistics: Human Language Technologies (eds Toutanova, K. et al.)
+20. Baker, S. & Kanade, T. Hallucinating faces. In Proc. Fourth IEEE International Conference 2080–2094 (Assoc. Comp. Linguistics, 2021).
+on Automatic Face and Gesture Recognition. 83–88 (IEEE, Catalogue no PR00580, 38. Touvron, H. et al. Llama 2: open foundation and fine-tuned chat models. Preprint at
+2002). https://arxiv.org/abs/2307.09288 (2023).
+21. Eliot, L. AI ethics lucidly questioning this whole hallucinating AI popularized trend that 39. Penedo, G. et al. The RefinedWeb dataset for Falcon LLM: outperforming curated
+has got to stop. Forbes Magazine (24 August 2022). corpora with web data, and web data only. In Proc. 36th Conference on Neural
+22. Shanahan, M. Talking about large language models. Commun. Assoc. Comp. Machinery Information Processing Systems (eds Oh, A. et al.) 79155–79172 (Curran Associates,
+67, 68–79 (2024). 2023)
+23. MacKay, D. J. C. Information-based objective functions for active data selection. Neural 40. Jiang, A. Q. et al. Mistral 7B. Preprint at https://arxiv.org/abs/2310.06825 (2023).
+Comput. 4, 590–604 (1992). 41. Manakul, P., Liusie, A. & Gales, M. J. F. SelfCheckGPT: Zero-Resource Black-Box
+24. Kadavath, S. et al. Language models (mostly) know what they know. Preprint at https:// hallucination detection for generative large language models. In Findings of the
+arxiv.org/abs/2207.05221 (2022). Association for Computational Linguistics: EMNLP 2023 (eds Bouamor, H., Pino, J. & Bali, K.)
+25. Lindley, D. V. On a measure of the information provided by an experiment. Ann. Math. 9004–9017 (Assoc. Comp. Linguistics, 2023).
+Stat. 27, 986–1005 (1956). 42. Mukhoti, J., Kirsch, A., van Amersfoort, J., Torr, P. H. & Gal, Y. Deep deterministic
+26. Xiao, T. Z., Gomez, A. N. & Gal, Y. Wat zei je? Detecting out-of-distribution translations with uncertainty: a new simple baseline. In IEEE/CVF Conference on Computer Vision and
+variational transformers. In Workshop on Bayesian Deep Learning at the Conference on Pattern Recognition 24384–24394 (Computer Vision Foundation, 2023).
+Neural Information Processing Systems (NeurIPS, Vancouver, 2019). 43. Schuster, T., Chen, S., Buthpitiya, S., Fabrikant, A. & Metzler, D. Stretching sentence-pair
+27. Christiano, P., Cotra, A. & Xu, M. Eliciting Latent Knowledge (Alignment Research NLI models to reason over long documents and clusters. In Findings of the Association for
+Center, 2021); https://docs.google.com/document/d/1WwsnJQstPq91_Yh-Ch2XRL8H_ Computational Linguistics: EMNLP 2022 (eds Goldberg, Y. et al.) 394–412 (Association for
+EpsnjrC1dwZXR37PC8/edit. Computational Linguistics, 2022).
+28. Negri, M., Bentivogli, L., Mehdad, Y., Giampiccolo, D. & Marchetti, A. Divide and conquer: 44. Barnes, B. & Christiano, P. Progress on AI Safety via Debate. AI Alignment Forum
+crowdsourcing the creation of cross-lingual textual entailment corpora. In Proc. 2011 www.alignmentforum.org/posts/Br4xDbYu4Frwrb64a/writeup-progress-on-ai-safety-via-
+Conference on Empirical Methods in Natural Language Processing 670–679 (Association debate-1 (2020).
+for Computational Linguistics, 2011). 45. Irving, G., Christiano, P. & Amodei, D. AI safety via debate. Preprint at https://arxiv.org/
+29. Honovich, O. et al. TRUE: Re-evaluating factual consistency evaluation. In Proc. Second abs/1805.00899 (2018).
+DialDoc Workshop on Document-grounded Dialogue and Conversational Question
+Answering 161–175 (Association for Computational Linguistics, 2022).
+Publisher’s note Springer Nature remains neutral with regard to jurisdictional claims in
+30. Falke, T., Ribeiro, L. F. R., Utama, P. A., Dagan, I. & Gurevych, I. Ranking generated
+published maps and institutional affiliations.
+summaries by correctness: an interesting but challenging application for natural
+language inference. In Proc. 57th Annual Meeting of the Association for Computational
+Linguistics 2214–2220 (Association for Computational Linguistics, 2019). Open Access This article is licensed under a Creative Commons Attribution
+31. Laban, P., Schnabel, T., Bennett, P. N. & Hearst, M. A. SummaC: re-visiting NLI-based 4.0 International License, which permits use, sharing, adaptation, distribution
+models for inconsistency detection in summarization. Trans. Assoc. Comput. Linguist. 10, and reproduction in any medium or format, as long as you give appropriate
+163–177 (2022). credit to the original author(s) and the source, provide a link to the Creative Commons licence,
+32. Joshi, M., Choi, E., Weld, D. S. & Zettlemoyer, L. TriviaQA: a large scale distantly supervised and indicate if changes were made. The images or other third party material in this article are
+challenge dataset for reading comprehension. In Proc. 55th Annual Meeting of the included in the article’s Creative Commons licence, unless indicated otherwise in a credit line
+Association for Computational Linguistics 1601–1611 (Association for Computational to the material. If material is not included in the article’s Creative Commons licence and your
+Linguistics. 2017). intended use is not permitted by statutory regulation or exceeds the permitted use, you will
+33. Rajpurkar, P., Zhang, J., Lopyrev, K. & Liang, P. SQuAD: 100,000+ questions for machine need to obtain permission directly from the copyright holder. To view a copy of this licence,
+compression of text. In Proc. 2016 Conference on Empirical Methods in Natural Language visit http://creativecommons.org/licenses/by/4.0/.
+Processing (eds Su, J., Duh, K. & Carreras, X.) 2383–2392 (Association for Computational
+Linguistics, 2016). © The Author(s) 2024
+630 | Nature | Vol 630 | 20 June 2024
+Methods
+Principles of semantic uncertainty
+Semantic entropy as a strategy for overcoming confabulation builds If we naively calculate the predictive entropy directly from the probabil-
+on probabilistic tools for uncertainty estimation. It can be applied ities of the generated sequence of tokens, we conflate the uncertainty
+directly to any LLM or similar foundation model without requiring any of the model over the meaning of its answer with the uncertainty over
+modifications to the architecture. Our ‘discrete’ variant of semantic the exact tokens used to express that meaning. For example, even if the
+uncertainty can be applied even when the predicted probabilities for model is confident in the meaning of a generation, there are still usually
+the generations are not available, for example, because access to the many different ways for phrasing that generation without changing its
+internals of the model is limited. meaning. For the purposes of detecting confabulations, the uncertainty
+In this section we introduce background on probabilistic methods of the LLM over meanings is more important than the uncertainty over
+and uncertainty in machine learning, discuss how it applies to language the exact tokens used to express those meanings.
+models and then discuss our contribution, semantic entropy, in detail. Our semantic uncertainty method therefore seeks to estimate only
+the uncertainty the LLM has over the meaning of its generation, not
+Background the choice of words. To do this, we introduce an algorithm that clusters
+Uncertainty and machine learning. We aim to detect confabulations model generations by meaning and subsequently calculates semantic
+in LLMs, using the principle that the model will be uncertain about uncertainty. At a high level this involves three steps:
+generations for which its output is going to be arbitrary. 1. Generation: sample output sequences of tokens from the predictive
+One measure of uncertainty is the predictive entropy of the output distribution of a LLM given a context x.
+distribution, which measures the information one has about the output 2. Clustering: cluster sequences by their meaning using our clustering
+given the input25. The predictive entropy (PE) for an input sentence x algorithm based on bidirectional entailment.
+is the conditional entropy (H) of the output random variable Y with 3. Entropy estimation: estimate semantic entropy by summing prob-
+realization y given x, abilities of sequences that share a meaning following equation (2)
+and compute their entropy.
+PE(x)=H(Y∣x)=−∑P(y∣x)lnP(y∣x).
+(1) Generating a set of answers from the model. Given some context x
+y as input to the LLM, we sample M sequences, {s(1), …, s(M)} and record
+their token probabilities, {P(s(1)∣x), …, P(s(M)∣x)}. We sample all our gen-
+A low predictive entropy indicates an output distribution which is erations from a single model, varying only the random seed used for
+heavily concentrated whereas a high predictive entropy indicates that sampling from the token probabilities. We do not observe the method
+many possible outputs are similarly likely. to be particularly sensitive to details of the sampling scheme. In our
+implementation, we sample at temperature 1 using nucleus sampling
+Aleatoric and epistemic uncertainty. We do not distinguish between (P = 0.9) (ref. 49) and top-K sampling (K = 50) (ref. 50). We also sample
+aleatoric and epistemic uncertainty in our analysis. Researchers some- a single generation at low temperature (0.1) as an estimate of the ‘best
+times separate aleatoric uncertainty (uncertainty in the underlying generation’ of the model to the context, which we use to assess the
+data distribution) from epistemic uncertainty (caused by having only accuracy of the model. (A lower sampling temperature increases the
+limited information)46. Further advances in uncertainty estimation probability of sampling the most likely tokens).
+which separate these kinds of uncertainty would enhance the potential
+for our semantic uncertainty approach by allowing extensions beyond Clustering by semantic equivalence. To estimate semantic entropy
+entropy. we need to cluster generated outputs from the model into groups of
+outputs that mean the same thing as each other.
+Joint probabilities of sequences of tokens. Generative LLMs produce This can be described using ‘semantic equivalence’ which is the rela-
+strings of text by selecting tokens in sequence. Each token is a wordpiece tion that holds between two sentences when they mean the same thing.
+that often represents three or four characters (though especially com- We can formalize semantic equivalence mathematically. Let the space
+mon sequences and important words such as numbers typically get of tokens in a language be T. The space of all possible sequences of
+their own token). To compute entropies, we need access to the prob- tokens of length N is then S ≡TN. Note that N can be made arbitrarily
+N
+abilities the LLM assigns to the generated sequence of tokens. The large to accommodate whatever size of sentence one can imagine and
+probability of the entire sequence, s, conditioned on the context, x, is one of the tokens can be a ‘padding’ token which occurs with certainty
+the product of the conditional probabilities of new tokens given past for each token after the end-of-sequence token. For some sentence
+tokens, whose resulting log-probability is logP(s∣x)=∑
+i
+logP(s i∣s
+<i
+,x), s∈S
+N
+, composed of a sequence of tokens, s
+i
+∈T, there is an associ-
+where s is the ith output token and s denotes the set of previous ated meaning. Theories of meaning are contested51. However, for
+i <i
+tokens. specific models and deployment contexts many considerations can
+be set aside. Care should be taken comparing very different models
+Length normalization. When comparing the log-probabilities of gen- and contexts.
+erated sequences, we use ‘length normalization’, that is, we use an Let us introduce a semantic equivalence relation, E( ⋅ , ⋅ ), which holds
+arithmetic mean log-probability,
+N
+1 ∑
+i
+NlogP(s i∣s
+<i
+,x), instead of the for any two sentences that mean the same thing—we will operational-
+sum. In expectation, longer sequences have lower joint likelihoods ize this presently. Recall that an equivalence relation is any reflexive,
+because of the conditional independence of the token probabilities47. symmetric and transitive relation and that any equivalence relation on
+The joint likelihood of a sequence of length N shrinks exponentially in a set corresponds to a set of equivalence classes. Each semantic equiv-
+N. Its negative log-probability therefore grows linearly in N, so longer alence class captures outputs that can be considered to express the
+sentences tend to contribute more to entropy. We therefore interpret same meaning. That is, for the space of semantic equivalence classes
+length-normalizing the log-probabilities when estimating the entropy C the sentences in the set c∈C can be regarded in many settings as
+as asserting that the expected uncertainty of generations is independ- expressing a similar meaning such that ∀s,s′∈c:E(s,s′). So we can
+ent of sentence length. Length normalization has some empirical build up these classes of semantically equivalent sentences by check-
+success48, including in our own preliminary experiments, but little ing if new sentences share a meaning with any sentences we have already
+theoretical justification in the literature. clustered and, if so, adding them into that class.
+Article
+We operationalize E( ⋅ , ⋅ ) using the idea of bidirectional entailment, from the number of generations in each cluster, disregarding the token
+which has a long history in linguistics52 and natural language process- probabilities. That is, we approximate P(C i∣x) as ∑
+1
+M Ic
+M
+=Ci, the proportion
+ing28,53,54. A sequence, s, means the same thing as a second sequence, of all the sampled answers which belong to that cluster. Effectively,
+s′, only if the sequences entail (that is, logically imply) each other. For this just assumes that each output that was actually generated was
+example, ‘The capital of France is Paris’ entails ‘Paris is the capital of equally probable—estimating the underlying distribution as the cat-
+France’ and vice versa because they mean the same thing. (See later egorical empirical distribution. In the limit of M the estimator converges
+for a discussion of soft equivalence and cases in which bidirectional to equation (5) by the law of large numbers. We find that discrete seman-
+entailment does not guarantee equivalent meanings). tic entropy results in similar performance empirically.
+Importantly, we require that the sequences mean the same thing We provide a worked example of the computation of semantic
+with respect to the context—key meaning is sometimes contained in entropy in Supplementary Note 1.
+the context. For example, ‘Paris’ does not entail ‘The capital of France
+is Paris’ because ‘Paris’ is not a declarative sentence without context. Detecting confabulations in QA and math
+But in the context of the question ‘What is the capital of France?’, the Semantic entropy is designed to detect confabulations, that is, model
+one-word answer does entail the longer answer. outputs with arbitrary meaning. In our experiments, we use semantic
+Detecting entailment has been the object of study of a great deal of uncertainty to predict model accuracy, demonstrating that confabula-
+research in NLI55. We rely on language models to predict entailment, tions make up a notable fraction of model mistakes. We further show
+such as DeBERTa-Large-MNLI56, which has been trained to predict entail- that semantic uncertainty can be used to improve model accuracy by
+ment, or general-purpose LLMs such as GPT-3.5 (ref. 57), which can refusing to answer questions when semantic uncertainty is high. Last,
+predict entailment given suitable prompts. semantic uncertainty can be used to give users a way to know when
+We then cluster sentences according to whether they bidirection- model generations are probably unreliable.
+ally entail each other using the algorithm presented in Extended Data
+Fig. 1. Note that, to check if a sequence should be added to an existing Tasks. We use the datasets BioASQ34, SQuAD33, TriviaQA32, SVAMP37
+cluster, it is sufficient to check if the sequence bidirectionally entails and NQ-Open35. BioASQ is a life-sciences question-answering dataset
+any of the existing sequences in that cluster (we arbitrarily pick the first based on the annual challenge of the same name. The specific dataset
+one), given the transitivity of semantic equivalence. If a sequence does we use is based on the QA dataset from Task B of the 2023 BioASQ
+not share meaning with any existing cluster, we assign it its own cluster. challenge (11B). SQuAD is a reading comprehension dataset whose
+context passages are drawn from Wikipedia and for which the answers
+Computing the semantic entropy. Having determined the classes of to questions can be found in these passages. We use SQuAD 1.1 which
+generated sequences that mean the same thing, we can estimate the excludes the unanswerable questions added in v.2.0 that are deliberate-
+likelihood that a sequence generated by the LLM belongs to a given class ly constructed to induce mistakes so they do not in practice cause con-
+by computing the sum of the probabilities of all the possible sequences fabulations to occur. TriviaQA is a trivia question-answering dataset.
+of tokens which can be considered to express the same meaning as SVAMP is a word-problem maths dataset containing elementary-school
+mathematical reasoning tasks. NQ-Open is a dataset of realistic ques-
+P(c∣x)= ∑ P(sx)= ∑ ∏P(s i s <i ,x). (2) tions aggregated from Google Search which have been chosen to be
+s∈c s∈c i answerable without reference to a source text. For each dataset, we
+use 400 train examples and 400 test examples randomly sampled
+Formally, this treats the output as a random variable whose event- from the original larger dataset. Note that only some of the methods
+space is the space of all possible meaning-classes, C, a sub-σ-algebra of require training, for example semantic entropy does not use the train-
+the standard event-space S. We can then estimate the semantic entropy ing data. If the datasets themselves are already split into train and
+(SE) as the entropy over the meaning-distribution, test (or validation) samples, we sample our examples from within the
+corresponding split.
+SE(x)=−∑P(c∣x)logP(c∣x)
+(3) All these datasets are free-form, rather than multiple choice, because
+c this better captures the opportunities created by LLMs to produce
+free-form sentences as answers. We refer to this default scenario as
+    our ‘sentence-length’ experiments. In Supplementary Note 7, we also
+=−∑ ∑ P(s∣x)log∑ P(s∣x)
+
+. (4)
+present results for confabulation detection in a ‘short-phrase’ scenario,
+c s∈c  s∈c 
+in which we constrain model answers on these datasets to be as concise
+There is a complication which prevents direct computation: we do as possible.
+not have access to every possible meaning-class c. Instead, we can only To make the problems more difficult and induce confabulations,
+sample c from the sequence-generating distribution induced by the we do not provide the context passages for any of the datasets. When
+model. To handle this, we estimate the expectation in equation (3) the context passages are provided, the accuracy rate is too high for
+using a Rao–Blackwellized Monte Carlo integration over the semantic these datasets for the latest generations of models to meaningfully
+equivalence classes C, study confabulations.
+∣C∣ Models. For sentence-length generations we use: Falcon39 Instruct (7B
+SE(x)≈−∑P(C i∣x)logP(C i∣x), (5)
+and 40B), LLaMA 2 Chat38 (7B, 13B and 70B) and Mistral40 Instruct (7B).
+i=1
+where P(C i∣x)=
+∑
+P
+c
+(
+P
+ci
+(
+∣
+c
+x
+∣x
+)
+)
+estimates a categorical distribution over the Baselines. In addition to reporting results for semantic entropy, dis-
+cluster meanings, that is, ∑
+i
+P(C i∣x) = 1. Without this normalization step crete semantic entropy and naive entropy, we consider two strong
+cluster ‘probabilities’ could exceed one because of length normaliza- baselines.
+tion, resulting in degeneracies. Equation (5) is the estimator giving our Embedding regression is a supervised baseline inspired by the P(IK)
+main method that we refer to as semantic entropy throughout the text. method24. In that paper, the authors fine-tune their proprietary LLM on
+For scenarios in which the sequence probabilities are not available, a dataset of questions to predict whether the model would have been
+we propose a variant of semantic entropy which we call ‘discrete’ seman- correct. This requires access to a dataset of ground-truth answers to the
+tic entropy. Discrete semantic entropy approximates P(C i∣x) directly questions. Rather than fine-tuning the entire LLM in this way, we simply
+take the final hidden units and train a logistic regression classifier to Metrics and accuracy measurements. We use three main metrics to
+make the same prediction. By contrast to their method, this is much evaluate our method: AUROC, rejection accuracy and AURAC. Each of
+simpler because it does not require fine-tuning the entire language these is grounded in an automated factuality estimation measurement
+model, as well as being more reproducible because the solution to the relative to the reference answers provided by the datasets that we use.
+logistic regression optimization problem is not as seed-dependent as AUROC, rejection accuracy and AURAC. First, we use the AUROC
+the fine-tuning procedure. As expected, this supervised approach per- curve, which measures the reliability of a classifier accounting for both
+forms well in-distribution but fails when the distribution of questions precision and recall. The AUROC can be interpreted as the probability
+is different from that on which the classifier is trained. that a randomly chosen correct answer has been assigned a higher con-
+The second baseline we consider is the P(True) method24, in which fidence score than a randomly chosen incorrect answer. For a perfect
+the model first samples M answers (identically to our semantic entropy classifier, this is 1.
+approach) and then is prompted with the list of all answers generated Second, we compute the ‘rejection accuracy at X%’, which is the
+followed by the highest probability answer and a question whether question-answering accuracy of the model on the most-confident
+this answer is “(a) True” or “(b) False”. The confidence score is then X% of the inputs as identified by the respective uncertainty method.
+taken to be the probability with which the LLM responds with ‘a’ to the If an uncertainty method works well, predictions on the confident
+multiple-choice question. The performance of this method is boosted subset should be more accurate than predictions on the excluded
+with a few-shot prompt, in which up to 20 examples from the training subset and the rejection accuracy should increase as we reject
+set are randomly chosen, filled in as above, but then provided with the more inputs.
+actual ground truth of whether the proposed answer was true or false. To summarize this statistic we compute the AURAC—the total
+In this way, the method can be considered as supervised ‘in-context’ area enclosed by the accuracies at all cut-off percentages X%. This
+because it makes use of some ground-truth training labels but can should increase towards 1 as given uncertainty method becomes
+be used without retraining the model. Because of context-size con- more accurate and better at detecting likely-inaccurate responses
+straints, this method cannot fit a full 20 few-shot examples in the but it is more sensitive to the overall accuracy of the model than the
+context when input questions are long or large numbers of genera- AUROC metric.
+tions are used. As a result, we sometimes have to reduce the number In Supplementary Note 5, we provide the unaggregated rejection
+of few-shot examples to suit the context size and we note this in the accuracies for sentence-length generations.
+Supplementary Material. Assessing accuracy. For the short-phrase-length generation setting
+presented in Supplementary Note 7, we simply assess the accuracy
+Entailment estimator. Any NLI classification system could be used for of the generations by checking if the F1 score of the commonly used
+our bidirectional entailment clustering algorithm. We consider two SQuAD metric exceeds 0.5. There are limitations to such simple scor-
+different kinds of entailment detector. ing rules63 but this method is widely used in practice and its error is
+One option is to use an instruction-tuned LLM such as LLaMA 2, GPT- comparatively small on these standard datasets.
+3.5 (Turbo 1106) or GPT-4 to predict entailment between generations. For our default scenario, the longer sentence-length generations,
+We use the following prompt: this measure fails, as the overlap between the short reference answer
+We are evaluating answers to the question {question} and our long model answer is invariably too small. For sentence-length
+Here are two possible answers: generations, we therefore automatically determine whether an answer
+Possible Answer 1: {text1} to the question is correct or incorrect by using GPT-4 to compare the
+Possible Answer 2: {text2} given answer to the reference answer. We use the template:
+Does Possible Answer 1 semantically entail Possible Answer 2? We are assessing the quality of answers to the following question:
+Respond with entailment, contradiction, or neutral. {question}
+The expected answer is: {reference answer}
+Alternatively, we consider using a language model trained for entail- The proposed answer is: {predicted answer}
+ment prediction, specifically the DeBERTa-large model56 fine-tuned on Within the context of the question, does the proposed answer mean
+the NLI dataset MNLI58. This builds on past work towards paraphrase the same as the expected answer? Respond only with yes or no.
+identification based on embedding similarity59,60 and BERT-style
+models61,62. We template more simply, checking if DeBERTa predicts We make a small modification for datasets with several reference
+entailment between the concatenation of the question and one answers: line two becomes “The following are expected answers to this
+answer and the concatenation of the question and another answer. question:” and the final line asks “does the proposed answer mean the
+Note that DeBERTa-large is a relatively lightweight model with only same as any of the expected answers?”.
+1.5B parameters which is much less powerful than most of the LLMs In Supplementary Note 6, we check the quality of our automated
+under study. ground-truth evaluations against human judgement by hand. We find
+In Supplementary Note 2, we carefully evaluate the benefits and that GPT-4 gives the best results for determining model accuracy and
+drawbacks of these methods for entailment prediction. We settle on thus use it in all our sentence-length experiments.
+using GPT-3.5 with the above prompt, as its entailment predictions
+agree well with human raters and lead to good confabulation detec- Detecting confabulations in biographies
+tion performance. In this section we describe the application of semantic entropy to
+In Supplementary Note 3, we provide a discussion of the compu- confabulation detection in longer model generations, specifically
+tational cost and choosing the number of generations for reliable paragraph-length biographies.
+clustering. We introduce a biography-generation dataset—FactualBio—
+available alongside this paper. FactualBio is a collection of biographies
+Prompting templates. We use a simple generation template for all of individuals who are notable enough to have Wikipedia pages but not
+sentence-length answer datasets: notable enough to have large amounts of detailed coverage, generated
+Answer the following question in a single brief but complete by GPT-4 (v.0613). To generate the dataset, we randomly sampled 21
+sentence. individuals from the WikiBio dataset64. For each biography, we gener-
+Question: {question} ated a list of factual claims contained in each biography using GPT-4,
+Answer: with 150 total factual claims (the total number is only coincidentally a
+Article
+round number). For each of these factual claims, we manually deter- We then compute the semantic entropy over these answers plus
+mined whether the claim was correct or incorrect. Out of 150 claims, 45 the original factual claim. Including the original fact ensures that the
+were incorrect. As before, we apply confabulation detection to detect estimator remains grounded in the original claim and helps detect
+incorrect model predictions, even though there may be model errors situations in which the question has been interpreted completely dif-
+which are not confabulations. ferently from the original context. We make a small modification to
+handle the fact that GPT-4 generations often include refusals to answer
+Prompting and generation. Given a paragraph-length piece of LLM- questions. These refusals were not something we commonly observe
+generated text, we apply the following sequence of steps: in our experiments with LLaMA 2, Falcon or Mistral models. If more
+1. Automatically decompose the paragraph into specific factual claims than half of the answers include one of the strings ‘not available’, ‘not
+using an LLM (not necessarily the same as the original). provided’, ‘unknown’ or ‘unclear’ then we treat the semantic uncertainty
+2. For each factual claim, use an LLM to automatically construct Q ques- as maximal.
+tions which might have produced that claim. We then average the semantic entropies for each question corre-
+3. For each question, prompt the original LLM to generate M answers. sponding to the factual claim to get an entropy for this factual claim.
+4. For each question, compute the semantic entropy of the answers, Despite the extra assumptions and complexity, we find that this
+including the original factual claim. method greatly outperforms the baselines.
+5. Average the semantic entropies over the questions to arrive at a score
+for the original factual claim. Entailment estimator. To compute semantic entailment between the
+original claim and regenerated answers, we rely on the DeBERTa entail-
+We pursue this slightly indirect way of generating answers because ment prediction model as we find empirically that DeBERTa predictions
+we find that simply resampling each sentence creates variation unre- result in higher train-set AUROC than other methods. Because DeBERTa
+lated to the uncertainty of the model about the factual claim, such as has slightly lower recall than GPT-3.5/4, we use a modified set-up for
+differences in paragraph structure. which we say the answers mean the same as each other if at least one
+We decompose the paragraph into factual claims using the follow- of them entails the other and neither is seen to contradict the other—
+ing prompt: a kind of ‘non-defeating’ bidirectional entailment check rather than
+true bidirectional entailment. The good performance of DeBERTa in
+Please list the specific factual propositions included in the answer this scenario is not surprising as both factual claims and regenerated
+above. Be complete and do not leave any factual claims out. Provide answers are relatively short. We refer to Supplementary Notes 2 and 3
+each claim as a separate sentence in a separate bullet point. for ablations and experiments regarding our choice of entailment
+estimator for paragraph-length generations.
+We found that we agreed with the decompositions in all cases in
+the dataset. Baselines. We implement two baselines. First, we implement a variant
+We then generate six questions for each of the facts from the decom- of the P(True) method, which is adapted to the new setting. For each
+position. We generate these questions by prompting the model twice factoid, we generate a question with answers in the same way as for
+with the following: semantic entropy. We then use the following prompt:
+Following this text: Question: {question}
+{text so far} Here are some brainstormed ideas:
+You see the sentence: {list of regenerated answers}
+{proposition} Possible answer: {original answer}
+Is the possible answer true? Respond with “yes” or “no”.
+Generate a list of three questions, that might have generated the
+sentence in the context of the preceding original text, as well as their As we cannot access the probabilities GPT-4 assigns to predicting
+answers. Please do not use specific facts that appear in the follow-up ‘yes’ and ‘no’ as the next token, we approximate this using Monte Carlo
+sentence when formulating the question. Make the questions and samples. Concretely, we execute the above prompt ten times (at tem-
+answers diverse. Avoid yes-no questions. The answers should not be a perature 1) and then take the fraction of answers which was ‘yes’ as our
+full sentence and as short as possible, e.g. only a name, place, or thing. unbiased Monte Carlo estimate of the token probability GPT-4 assigns
+Use the format “1. {question} – {answer}”. to ‘yes’.
+These questions are not necessarily well-targeted and the difficulty As a second, simpler, baseline we check if the model thinks the answer
+of this step is the main source of errors in the procedure. We gener- is true. We simply ask:
+ate three questions with each prompt, as this encourages diversity of Following this text:
+the questions, each question targeting a different aspect of the fact. {text so far}
+However, we observed that the generated questions will sometimes You see this statement:
+miss obvious aspects of the fact. Executing the above prompt twice {proposition}
+(for a total of six questions) can improve coverage. We also ask for Is it likely that the statement is true? Respond with ‘yes’ or ‘no’.
+brief answers because the current version of GPT-4 tends to give long,
+convoluted and highly hedged answers unless explicitly told not to. It is interesting that this method ought to perform very well if we think
+Then, for each question, we generate three new answers using the that the model has good ‘self-knowledge’ (that is, if “models mostly
+following prompt: know what they don’t know”24) but in fact semantic entropy is much
+better at detecting confabulations.
+We are writing an answer to the question “{user question}”. So far
+we have written:
+Data availability
+{text so far}
+The next sentence should be the answer to the following question: The data used for the short-phrase and sentence-length generations
+{question} are publicly available and the released code details how to access it. We
+Please answer this question. Do not answer in a full sentence. Answer release a public version of the FactualBio dataset as part of the code
+with as few words as possible, e.g. only a name, place, or thing. base for reproducing the paragraph-length experiments.
+61. He, R., Ravula, A., Kanagal, B. & Ainslie, J. Realformer: Transformer likes residual attention.
+Code availability In Findings of the Association for Computational Linguistics: ACL-IJCNLP 2021
+(eds Zhong, C., et al.) 929–943 (Assoc. Comp. Linguistics, 2021).
+We release all code used to produce the main experiments. The code 62. Tay, Y. et al. Charformer: fast character transformers via gradient-based subword
+for short-phrase and sentence-length experiments can be found at tokenization. In Proceedings of the International Conference on Learning Representations
+https://openreview.net/forum?id=JtBRnrlOEFN (2022).
+github.com/jlko/semantic_uncertainty and https://doi.org/10.5281/
+63. Kane, H., Kocyigit, Y., Abdalla, A., Ajanoh, P. & Coulibali, M. Towards neural similarity
+zenodo.10964366 (ref. 65). The code for paragraph-length experiments evaluators. In Workshop on Document Intelligence at the 32nd conference on Neural
+can be found at github.com/jlko/long_hallucinations and https://doi. Information Processing (2019).
+64. Lebret, R., Grangier, D. & Auli, M. Neural text generation from structured data with
+org/10.5281/zenodo.10964366 (ref. 65).
+application to the biography domain. In Proc. 2016 Conference on Empirical Methods in
+Natural Language Processing (eds Su, J. et al.) 1203–1213 (Association for Computational
+Linguistics, 2016).
+46. Der Kiureghian, A. & Ditlevsen, O. Aleatory or epistemic? Does it matter? Struct. Saf. 31, 65. Kossen, J., jlko/semantic_uncertainty: Initial release v.1.0.0. Zenodo https://doi.org/
+105–112 (2009). 10.5281/zenodo.10964366 (2024).
+47. Malinin, A. & Gales, M. Uncertainty estimation in autoregressive structured prediction.
+In Proceedings of the International Conference on Learning Representations https://
+openreview.net/forum?id=jN5y-zb5Q7m (2021). Acknowledgements We thank G. Irving, K. Perlin, J. Richens, L. Rimell and M. Turpin for their
+48. Murray, K. & Chiang, D. Correcting length bias in neural machine translation. In Proc. comments or discussion related to this work. We thank K. Handa for his help with the human
+Third Conference on Machine Translation (eds Bojar, O. et al.) 212–223 (Assoc. Comp. evaluation of our automated accuracy assessment. We thank F. Bickford Smith and L. Melo for
+Linguistics, 2018). their code review. Y.G. is supported by a Turing AI Fellowship funded by the UK government’s
+49. Holtzman, A., Buys, J., Du, L., Forbes, M. & Choi, Y. The curious case of neural text Office for AI, through UK Research and Innovation (grant reference EP/V030302/1), and
+degeneration. In Proceedings of the International Conference on Learning Representations delivered by the Alan Turing Institute.
+https://openreview.net/forum?id=rygGQyrFvH (2020).
+50. Fan, A., Lewis, M. & Dauphin, Y. Hierarchical neural story generation. In Proc. 56th Annual
+Author contributions S.F. led the work from conception to completion and proposed using
+Meeting of the Association for Computational Linguistics (eds Gurevych, I. & Miyao, Y.)
+bidirectional entailment to cluster generations as a way of computing entropy in LLMs.
+889–898 (Association for Computational Linguistics, 2018).
+He wrote the main text, most of the Methods and Supplementary Information and prepared
+51. Speaks, J. in The Stanford Encyclopedia of Philosophy (ed. Zalta, E. N.) (Metaphysics
+most of the figures. J.K. improved the mathematical formalization of semantic entropy; led
+Research Lab, Stanford Univ., 2021).
+the extension of semantic entropy to sentence- and paragraph-length generations; wrote the
+52. Culicover, P. W. Paraphrase generation and information retrieval from stored text. Mech.
+code for, and carried out, all the experiments and evaluations; wrote much of the Methods and
+Transl. Comput. Linguist. 11, 78–88 (1968).
+Supplementary Information and prepared drafts of many figures; and gave critical feedback
+53. Padó, S., Cer, D., Galley, M., Jurafsky, D. & Manning, C. D. Measuring machine translation
+on the main text. L.K. developed the initial mathematical formalization of semantic entropy;
+quality as semantic equivalence: a metric based on entailment features. Mach. Transl. 23,
+wrote code for, and carried out, the initial experiments around semantic entropy and its
+181–193 (2009).
+variants which demonstrated the promise of the idea and helped narrow down possible
+54. Androutsopoulos, I. & Malakasiotis, P. A survey of paraphrasing and textual entailment
+research avenues to explore; and gave critical feedback on the main text. Y.G. ideated the
+methods. J. Artif. Intell. Res. 38, 135–187 (2010).
+project, proposing the idea to differentiate semantic and syntactic diversity as a tool for
+55. MacCartney, B. Natural Language Inference (Stanford Univ., 2009).
+detecting hallucinations, provided high-level guidance on the research and gave critical
+56. He, P., Liu, X., Gao, J. & Chen, W. Deberta: decoding-enhanced BERT with disentangled
+feedback on the main text; he runs the research laboratory in which the work was carried out.
+attention. In International Conference on Learning Representations https://openreview.
+net/forum?id=XPZIaotutsD (2021).
+57. Brown, T. et al. Language models are few-shot learners. Adv. Neural Inf. Process. Syst. 33, Competing interests S.F. is currently employed by Google DeepMind and L.K. by OpenAI. For
+1877–1901 (2020). both, this paper was written under their University of Oxford affiliation. The remaining authors
+58. Williams, A., Nangia, N. & Bowman, S. R. A broad-coverage challenge corpus for sentence declare no competing interests.
+understanding through inference. In Proc. 2018 Conference of the North American
+Chapter of the Association for Computational Linguistics: Human Language Technologies Additional information
+(eds Walker, M. et al.) 1112–1122 (Assoc. Comp. Linguistics, 2018). Supplementary information The online version contains supplementary material available at
+59. Yu, L., Hermann, K. M., Blunsom, P. & Pulman, S. Deep learning for answer sentence https://doi.org/10.1038/s41586-024-07421-0.
+selection. Preprint at https://arxiv.org/abs/1412.1632 (2014). Correspondence and requests for materials should be addressed to Sebastian Farquhar.
+60. Socher, R., Huang, E., Pennin, J., Manning, C. D. & Ng, A. Dynamic pooling and unfolding Peer review information Nature thanks Mirella Lapata and the other, anonymous, reviewer(s)
+recursive autoencoders for paraphrase detection. In Proceedings of the 24th Conference for their contribution to the peer review of this work.
+on Neural Information Processing Systems (eds Shawe-Taylor, J. et al.) (2011) Reprints and permissions information is available at http://www.nature.com/reprints.
+Article
+Extended Data Fig. 1 | Algorithm outline for bidirectional entailment clustering. Given a set of outputs in response to a context, the bidirectional entailment
+answer returns a set of sets of outputs which have been classified as sharing a meaning.

@@ -1,0 +1,67 @@
+Level 4 token-score Semantic Entropy pilot run complete
+dataset: pubmedqa
+split: dev
+data_path: /scratch/b6u/a45645.b6u/final_project/data/pubmedqa/ori_pqal.json
+examples: 50
+generations: 250
+model_name: Qwen/Qwen2.5-7B-Instruct
+num_samples: 5
+device: cuda
+torch_dtype: float16
+local_files_only: True
+requested_clustering_method: nli
+clustering_method: nli_bidirectional_entailment
+nli_model_name: microsoft/deberta-v2-xlarge-mnli
+token_scores: True
+output_dir: /scratch/b6u/a45645.b6u/final_project/archehr_sebaseline/outputs/level4_qwen25_7b_nli_50x5
+scores:
+- 10135926: clusters=[4, 1], H_discrete=0.5004024235, H_weighted=0.4772140642, PE=0.2392140024
+- 10158597: clusters=[5], H_discrete=0.0000000000, H_weighted=0.0000000000, PE=0.2825616696
+- 10173769: clusters=[1, 1, 3], H_discrete=0.9502705392, H_weighted=0.9387244920, PE=0.3172797214
+- 10201555: clusters=[5], H_discrete=0.0000000000, H_weighted=0.0000000000, PE=0.2221648988
+- 10223070: clusters=[3, 2], H_discrete=0.6730116670, H_weighted=0.6819583890, PE=0.2111260060
+- 10331115: clusters=[5], H_discrete=0.0000000000, H_weighted=0.0000000000, PE=0.2976302107
+- 10340286: clusters=[3, 1, 1], H_discrete=0.9502705392, H_weighted=0.9543028628, PE=0.2248841647
+- 10354335: clusters=[4, 1], H_discrete=0.5004024235, H_weighted=0.4944665307, PE=0.3186529388
+- 10375486: clusters=[5], H_discrete=0.0000000000, H_weighted=0.0000000000, PE=0.2797305386
+- 10381996: clusters=[5], H_discrete=0.0000000000, H_weighted=0.0000000000, PE=0.2263109958
+- 10401824: clusters=[4, 1], H_discrete=0.5004024235, H_weighted=0.5091707894, PE=0.3159810357
+- 10411439: clusters=[1, 1, 1, 2], H_discrete=1.3321790402, H_weighted=1.3458976921, PE=0.2762680983
+- 10430303: clusters=[4, 1], H_discrete=0.5004024235, H_weighted=0.4905564905, PE=0.3025592561
+- 10456814: clusters=[4, 1], H_discrete=0.5004024235, H_weighted=0.5089455325, PE=0.1531948250
+- 10473855: clusters=[2, 2, 1], H_discrete=1.0549201680, H_weighted=1.0643426153, PE=0.3058250467
+- 10490564: clusters=[1, 2, 1, 1], H_discrete=1.3321790402, H_weighted=1.3363214754, PE=0.2483130488
+- 10548670: clusters=[4, 1], H_discrete=0.5004024235, H_weighted=0.4834160877, PE=0.2635478340
+- 10575390: clusters=[2, 3], H_discrete=0.6730116670, H_weighted=0.6780448724, PE=0.2656422754
+- 10577397: clusters=[3, 1, 1], H_discrete=0.9502705392, H_weighted=0.9355023837, PE=0.3127941323
+- 10593212: clusters=[3, 1, 1], H_discrete=0.9502705392, H_weighted=0.9330030047, PE=0.2470964875
+- 10605400: clusters=[3, 1, 1], H_discrete=0.9502705392, H_weighted=0.9171292191, PE=0.3706138049
+- 10732884: clusters=[3, 2], H_discrete=0.6730116670, H_weighted=0.6776274491, PE=0.2450744390
+- 10749257: clusters=[4, 1], H_discrete=0.5004024235, H_weighted=0.4944768682, PE=0.2030680882
+- 10757151: clusters=[1, 1, 2, 1], H_discrete=1.3321790402, H_weighted=1.3259205179, PE=0.3467007069
+- 10759659: clusters=[2, 1, 2], H_discrete=1.0549201680, H_weighted=1.0514485902, PE=0.2569311553
+- 10781708: clusters=[1, 4], H_discrete=0.5004024235, H_weighted=0.4972733052, PE=0.3608392290
+- 10783841: clusters=[5], H_discrete=0.0000000000, H_weighted=0.0000000000, PE=0.1892072480
+- 10798511: clusters=[3, 1, 1], H_discrete=0.9502705392, H_weighted=0.9173534914, PE=0.4977967763
+- 10808977: clusters=[4, 1], H_discrete=0.5004024235, H_weighted=0.5008300445, PE=0.2195783498
+- 10811329: clusters=[2, 1, 1, 1], H_discrete=1.3321790402, H_weighted=1.3269985615, PE=0.1933351499
+- 10834864: clusters=[5], H_discrete=0.0000000000, H_weighted=0.0000000000, PE=0.1602194848
+- 10877371: clusters=[5], H_discrete=0.0000000000, H_weighted=0.0000000000, PE=0.2413601014
+- 10922093: clusters=[2, 1, 1, 1], H_discrete=1.3321790402, H_weighted=1.3442103997, PE=0.2549669494
+- 10927144: clusters=[4, 1], H_discrete=0.5004024235, H_weighted=0.4767817793, PE=0.2186233865
+- 10966337: clusters=[5], H_discrete=0.0000000000, H_weighted=0.0000000000, PE=0.3088973925
+- 10966943: clusters=[5], H_discrete=0.0000000000, H_weighted=0.0000000000, PE=0.3065164469
+- 10973547: clusters=[4, 1], H_discrete=0.5004024235, H_weighted=0.4970831003, PE=0.3071626038
+- 11034241: clusters=[3, 1, 1], H_discrete=0.9502705392, H_weighted=0.9351708787, PE=0.2937169216
+- 11035130: clusters=[1, 1, 2, 1], H_discrete=1.3321790402, H_weighted=1.3398335624, PE=0.3534647570
+- 11053064: clusters=[2, 2, 1], H_discrete=1.0549201680, H_weighted=1.0603100419, PE=0.2611183591
+- 11079675: clusters=[3, 2], H_discrete=0.6730116670, H_weighted=0.6729122801, PE=0.3193285563
+- 11138995: clusters=[1, 2, 2], H_discrete=1.0549201680, H_weighted=1.0611470666, PE=0.2231379493
+- 11146778: clusters=[5], H_discrete=0.0000000000, H_weighted=0.0000000000, PE=0.3592872976
+- 11149643: clusters=[3, 1, 1], H_discrete=0.9502705392, H_weighted=0.9198093384, PE=0.2579376351
+- 11247896: clusters=[3, 1, 1], H_discrete=0.9502705392, H_weighted=0.9552850156, PE=0.4331302193
+- 11296674: clusters=[5], H_discrete=0.0000000000, H_weighted=0.0000000000, PE=0.4102854401
+- 11334578: clusters=[3, 1, 1], H_discrete=0.9502705392, H_weighted=0.9552752269, PE=0.3025388187
+- 11340218: clusters=[4, 1], H_discrete=0.5004024235, H_weighted=0.4903419109, PE=0.2743426052
+- 11380492: clusters=[3, 1, 1], H_discrete=0.9502705392, H_weighted=0.9456502222, PE=0.3129840726
+- 11411430: clusters=[4, 1], H_discrete=0.5004024235, H_weighted=0.5072442201, PE=0.2162304402

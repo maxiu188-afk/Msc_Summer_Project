@@ -1,0 +1,420 @@
+# Task Overview for Codex: Lightweight Uncertainty Quantification for Grounded Clinical QA
+
+## 0. Project Context
+
+This project investigates **lightweight uncertainty quantification (UQ) for grounded clinical question answering**, using **ArchEHR-QA** as the primary target dataset.
+
+The core research idea is:
+
+> Semantic Entropy (SE) is a strong uncertainty baseline for free-form LLM answers, but it is expensive because it requires multiple generations. Semantic Entropy Probes (SEPs) estimate semantic uncertainty from hidden states of a single generation, making them much cheaper. This project adapts SEPs to grounded clinical QA and tests whether token selection can improve their reliability.
+
+The implementation should be modular and incremental. The project should remain useful even if the later SEP/token-selection experiments do not outperform the baseline.
+
+## 1. Local Project Resources
+
+Important local paths:
+
+```text
+D:\work\FinalProject\literature
+D:\work\FinalProject\code\semantic_uncertainty
+```
+
+Use these as follows:
+
+- `D:\work\FinalProject\literature`
+  - Contains reference papers, including Semantic Entropy, Semantic Entropy Probes, ArchEHR-QA, clinical QA UQ, and token-selection/hallucination-detection papers.
+  - Do not modify papers.
+  - Use them only as reference material.
+
+- `D:\work\FinalProject\code\semantic_uncertainty`
+  - Contains reference code for semantic uncertainty / semantic entropy.
+  - Treat it as reference code, not necessarily the final project codebase.
+  - Reuse ideas, interfaces, and implementation patterns where appropriate.
+  - Do not blindly overwrite or restructure it unless explicitly requested.
+
+Recommended working directory for new code:
+
+```text
+D:\work\FinalProject\code\archehr_uq
+```
+
+If an existing project directory already exists, inspect it first and preserve its structure.
+
+## 2. Main Research Objective
+
+Build an experimental pipeline to evaluate uncertainty estimation methods for grounded clinical QA.
+
+The pipeline should support:
+
+1. Loading ArchEHR-QA-style examples.
+2. Generating grounded answers using question + provided clinical evidence.
+3. Computing baseline uncertainty scores.
+4. Computing Semantic Entropy from multiple generations.
+5. Training Semantic Entropy Probes from hidden states.
+6. Testing whether different token-selection strategies improve SEP performance.
+7. Evaluating uncertainty scores against answer correctness or proxy labels.
+
+## 3. Expected Input Format
+
+Normalize all datasets into a common schema:
+
+```python
+{
+    "dataset": str,
+    "id": str,
+    "split": str,
+    "question": str,
+    "clinician_question": str | None,
+    "context": str | None,
+    "evidence_sentences": list[str] | None,
+    "gold_answer": str | None,
+    "citations": list[int] | None,
+    "options": list[str] | None,
+    "label": str | None,
+}
+```
+
+For ArchEHR-QA, the most important fields are:
+
+- `question`
+- `clinician_question`
+- `evidence_sentences`
+- `gold_answer`
+- `citations`
+
+The project should support running with the provided/gold evidence directly. Evidence retrieval is not the main research target.
+
+## 4. Stage 1: ArchEHR-QA Pipeline and Baseline UQ
+
+### Goal
+
+Build a reliable baseline pipeline before adding SEP modifications.
+
+### Tasks
+
+1. Implement dataset loading.
+2. Implement prompt construction:
+   - Input: patient question, optional clinician rewrite, evidence sentences.
+   - Output: grounded answer with citations if feasible.
+3. Implement answer generation with an open-weight causal LLM.
+4. Implement baseline uncertainty methods:
+   - Average token log probability.
+   - Token entropy.
+   - Sequence negative log likelihood or normalized log likelihood.
+   - Verbalized confidence, if feasible.
+   - Sample consistency / answer frequency, if feasible.
+5. Implement Semantic Entropy:
+   - Generate multiple answers for the same input.
+   - Cluster semantically equivalent answers.
+   - Compute entropy over semantic clusters.
+6. Implement evaluation:
+   - AUROC for detecting incorrect answers.
+   - AURAC or selective prediction/rejection curve if feasible.
+   - ECE/Brier score only if uncertainty scores can be interpreted as calibrated confidence.
+   - Store all raw outputs and scores for later analysis.
+
+### Deliverables
+
+- Dataset loader.
+- Prompt templates.
+- Generation script.
+- Baseline UQ script.
+- Semantic Entropy script.
+- Evaluation script.
+- Saved outputs in JSONL/CSV.
+
+## 5. Stage 2: Adapt Semantic Entropy Probes to Clinical QA
+
+### Goal
+
+Train probes to approximate Semantic Entropy from hidden states of a single generation.
+
+### Rationale
+
+SE is expensive at test time because it needs multiple generations. SEP uses SE as a training target but only needs one generation at inference time.
+
+### Tasks
+
+1. For each training example:
+   - Run greedy generation once.
+   - Save hidden states from selected layers and token positions.
+   - Run multi-sample generation to compute SE target.
+2. Convert raw SE values into labels:
+   - Binary high-SE / low-SE label using a threshold.
+   - Prefer the regression-tree-style split used in the SEP paper.
+   - Optionally also support direct regression to raw SE.
+3. Train lightweight probes:
+   - Start with logistic regression or ridge regression.
+   - Input: hidden state vector.
+   - Target: binarized SE label or raw SE.
+4. Evaluate SEP:
+   - How well SEP predicts high/low SE.
+   - How well SEP detects incorrect answers.
+   - Compare against SE, token log probability, token entropy, and verbalized confidence.
+5. Test generalization:
+   - Train on auxiliary QA data if ArchEHR-QA is too small.
+   - Validate/test on ArchEHR-QA.
+   - Keep dataset splits explicit and reproducible.
+
+### Deliverables
+
+- Hidden-state extraction script.
+- SE target generation script.
+- SEP training script.
+- SEP inference script.
+- SEP evaluation report/table.
+
+## 6. Stage 3: Token Selection for SEP
+
+### Goal
+
+Investigate whether choosing better token positions improves SEP performance on longer grounded clinical answers.
+
+### Motivation
+
+The original SEP paper mainly uses fixed token positions such as:
+
+- TBG: token before generation.
+- SLT: second-last token / last generated content token.
+
+However, in longer clinical answers, uncertainty-relevant information may be concentrated in only a few tokens. Token selection may therefore improve probe reliability.
+
+### Candidate Token Selection Strategies
+
+Implement simple strategies first:
+
+1. **Fixed-token baselines**
+   - TBG.
+   - SLT.
+   - First generated token.
+   - Last generated token.
+
+2. **Token uncertainty selection**
+   - Select top-k generated tokens by token entropy.
+   - Select top-k generated tokens by low token probability.
+   - Aggregate their hidden states by mean or max pooling.
+
+3. **Citation/evidence-aware selection**
+   - Select tokens near cited sentence markers if citations are generated.
+   - Select tokens overlapping with medical entities or evidence terms if easy to implement.
+   - Keep this optional; do not let it block the main experiment.
+
+4. **Multi-token pooling**
+   - Mean pooling over all generated tokens.
+   - Mean pooling over top-k uncertain tokens.
+   - Max pooling over top-k uncertain tokens.
+   - Concatenate fixed token representation with pooled top-k representation if dimension is manageable.
+
+### Important Constraint
+
+Do not implement a large complex model unless the simpler probe pipeline is already stable.
+
+Start with lightweight and interpretable methods:
+
+- Logistic regression.
+- Ridge regression.
+- Small MLP only if necessary.
+
+### Deliverables
+
+- Token-selection module.
+- Configurable SEP feature extractor.
+- Comparison table:
+  - fixed token vs top-k uncertainty tokens vs pooled tokens.
+- Analysis of whether token selection helps, hurts, or has no clear effect.
+
+## 7. Suggested Experiment Structure
+
+Recommended scripts:
+
+```text
+scripts/
+  prepare_data.py
+  run_generation.py
+  compute_baseline_uq.py
+  compute_semantic_entropy.py
+  extract_hidden_states.py
+  train_sep.py
+  evaluate_uq.py
+  run_experiment.py
+```
+
+Recommended package layout:
+
+```text
+src/
+  data/
+    archehr_loader.py
+    common_schema.py
+  prompts/
+    archehr_prompts.py
+  generation/
+    model_loader.py
+    generate.py
+  uq/
+    token_scores.py
+    semantic_entropy.py
+    verbalized_confidence.py
+  probes/
+    hidden_states.py
+    sep_train.py
+    token_selection.py
+  evaluation/
+    correctness.py
+    metrics.py
+    plots.py
+  utils/
+    io.py
+    seed.py
+    logging.py
+```
+
+Recommended output layout:
+
+```text
+outputs/
+  generations/
+  semantic_entropy/
+  hidden_states/
+  probes/
+  metrics/
+  logs/
+```
+
+## 8. Reproducibility Requirements
+
+All experiments should be controlled by config files or command-line arguments.
+
+At minimum, record:
+
+- Dataset name and split.
+- Model name.
+- Prompt template version.
+- Decoding parameters.
+- Random seed.
+- Number of sampled generations for SE.
+- Token-selection method.
+- Layer index.
+- Token position.
+- Probe type.
+- Train/validation/test split.
+- Output file paths.
+
+Use JSONL for raw generation outputs and CSV/JSON for metrics.
+
+## 9. Model and Compute Notes
+
+The implementation should support small smoke tests first.
+
+Recommended development order:
+
+1. Run with a tiny model or very small subset.
+2. Verify data loading and output formats.
+3. Verify token probabilities and hidden states are being saved.
+4. Verify SE computation on 2-5 examples.
+5. Scale up only after the pipeline is stable.
+
+Do not assume GPU is always available. The code should fail gracefully if CUDA is unavailable.
+
+Use `local_files_only` or offline mode if the model has already been downloaded locally.
+
+## 10. Restricted Dataset Rules
+
+Do not automatically download restricted clinical datasets.
+
+For PhysioNet/MIMIC/i2b2-based datasets:
+
+- Assume the user manually downloads the data.
+- Never ask for or store usernames, passwords, API keys, or credentials.
+- Never hard-code private paths except through config files.
+- Implement loaders that read from local paths such as:
+
+```text
+data/raw/archehr_qa/
+```
+
+Public datasets may have optional download scripts, but this is not the priority.
+
+## 11. Evaluation Target
+
+The central evaluation question is:
+
+> Does an uncertainty score successfully identify model answers that are likely to be incorrect, unsupported, or unreliable?
+
+Possible correctness targets:
+
+1. Exact/semantic match against gold answer.
+2. LLM-as-judge correctness evaluation.
+3. Citation/evidence support score.
+4. Existing ArchEHR relevance/factuality metrics, if available.
+5. Human/manual inspection for a small subset.
+
+Keep correctness/evaluation logic modular because this is a known difficulty for ArchEHR-QA.
+
+## 12. Minimal Viable Project
+
+If time or compute is limited, the minimum useful project is:
+
+1. ArchEHR-QA loader.
+2. Grounded answer generation using provided evidence.
+3. Baseline UQ:
+   - token log probability,
+   - token entropy,
+   - Semantic Entropy.
+4. SEP trained to predict SE from one hidden state.
+5. Evaluation against answer correctness/proxy labels.
+6. Small token-selection comparison:
+   - SLT vs TBG vs top-k uncertain token pooling.
+
+## 13. Stretch Goals
+
+Only attempt these after the minimal pipeline works:
+
+- Train SEP on auxiliary datasets and validate on ArchEHR-QA.
+- Compare different clinical/open QA datasets.
+- Add citation-aware token selection.
+- Add layer-wise SEP analysis.
+- Add calibration plots and ECE/Brier score.
+- Add conformal prediction or abstention curves.
+- Add automatic report generation.
+
+## 14. Coding Style
+
+Please prioritize:
+
+- Simple, readable Python.
+- Clear function boundaries.
+- Minimal hidden side effects.
+- Configurable paths.
+- Reproducible outputs.
+- Small smoke-test commands.
+- JSONL/CSV output formats.
+- Useful logging.
+
+Avoid:
+
+- Large rewrites of reference code.
+- Hard-coded absolute paths inside core modules.
+- Downloading restricted datasets.
+- Complex neural architectures before baselines work.
+- Over-optimizing before the pipeline is correct.
+
+## 15. First Concrete Task for Codex
+
+Start by inspecting the existing directories:
+
+```text
+D:\work\FinalProject\literature
+D:\work\FinalProject\code\semantic_uncertainty
+D:\work\FinalProject\code
+```
+
+Then create or update a project skeleton for the ArchEHR-QA UQ pipeline.
+
+First implementation milestone:
+
+1. Create a clean package structure.
+2. Implement a common example schema.
+3. Implement an ArchEHR-QA local loader.
+4. Add a tiny smoke-test script that loads 2 examples and prints the normalized fields.
+5. Add a README section explaining where to place restricted data locally.

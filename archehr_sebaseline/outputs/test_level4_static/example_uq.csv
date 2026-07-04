@@ -1,0 +1,3 @@
+example_id,dataset,split,num_generations,mean_num_generated_tokens,mean_sequence_logprob,mean_token_logprob,mean_sequence_nll,mean_normalized_nll,mean_token_entropy,max_token_entropy,sample_consistency_exact
+fake_001,fake_archehr,dev,3,2.0000000000,-1.0000000000,-0.5000000000,1.0000000000,0.5000000000,0.2500000000,0.2500000000,0.6666666667
+fake_002,fake_archehr,dev,3,2.0000000000,-1.0000000000,-0.5000000000,1.0000000000,0.5000000000,0.2500000000,0.2500000000,0.6666666667

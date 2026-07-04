@@ -1,0 +1,2 @@
+{"dataset": "pubmedqa", "id": "ex1", "label": "yes", "question": "Q1?", "split": "test"}
+{"dataset": "pubmedqa", "id": "ex2", "label": "no", "question": "Q2?", "split": "test"}

@@ -1,0 +1,5 @@
+example_id,dataset,split,sample_id,gold_label,predicted_label,sample_correct,majority_label,majority_correct,majority_count,known_vote_count,total_vote_count,is_tie,clean_answer
+ex1,pubmedqa,test,0,yes,yes,true,yes,true,2,2,2,false,The answer is: yes.
+ex1,pubmedqa,test,1,yes,yes,true,yes,true,2,2,2,false,"Therefore, yes."
+ex2,pubmedqa,test,0,no,yes,false,unknown,false,1,2,2,true,The answer is: yes.
+ex2,pubmedqa,test,1,no,no,true,unknown,false,1,2,2,true,"No, not supported."

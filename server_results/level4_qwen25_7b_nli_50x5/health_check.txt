@@ -1,0 +1,45 @@
+Level 4 output health check: PASS
+output_dir: /scratch/b6u/a45645.b6u/final_project/archehr_sebaseline/outputs/level4_qwen25_7b_nli_50x5
+counts:
+- cleaned_generations.jsonl: 250
+- clusters.jsonl: 50
+- example_uq.csv: 50
+- examples.jsonl: 50
+- generation_uq.csv: 250
+- generations.jsonl: 250
+- prompts.jsonl: 50
+- se_scores.csv: 50
+summary:
+- clustering_method: nli_bidirectional_entailment
+- data_path: /scratch/b6u/a45645.b6u/final_project/data/pubmedqa/ori_pqal.json
+- dataset: pubmedqa
+- device: cuda
+- examples: 50
+- generations: 250
+- local_files_only: True
+- model_name: Qwen/Qwen2.5-7B-Instruct
+- nli_model_name: microsoft/deberta-v2-xlarge-mnli
+- num_samples: 5
+- output_dir: /scratch/b6u/a45645.b6u/final_project/archehr_sebaseline/outputs/level4_qwen25_7b_nli_50x5
+- requested_clustering_method: nli
+- split: dev
+- token_scores: True
+- torch_dtype: float16
+checks:
+- OK: all required Level 4 files are present
+- OK: examples.jsonl count is 50
+- OK: prompts.jsonl count is 50
+- OK: clusters.jsonl count is 50
+- OK: se_scores.csv count is 50
+- OK: example_uq.csv count is 50
+- OK: generations.jsonl count is 250
+- OK: cleaned_generations.jsonl count is 250
+- OK: generation_uq.csv count is 250
+- OK: summary examples count is 50
+- OK: summary generations count is 250
+- OK: summary reports CUDA
+- OK: summary reports NLI bidirectional-entailment clustering
+- OK: generation_uq token score fields are populated
+- OK: no NaN or Infinity text markers found
+- OK: cluster rows have consistent semantic_ids and cluster_sizes
+- OK: SE score rows have valid counts and entropy ranges

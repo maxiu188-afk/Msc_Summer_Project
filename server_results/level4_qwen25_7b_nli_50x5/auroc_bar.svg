@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="430" viewBox="0 0 760 430">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="76" y="30" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#202124">AUROC for Detecting Incorrect Majority Answers</text>
+<text x="76" y="50" font-family="Arial, sans-serif" font-size="12" fill="#5f6368">Higher is better; 0.5 is random ranking.</text>
+<line x1="76" y1="54" x2="76" y2="324" stroke="#5f6368" stroke-width="1"/>
+<line x1="76" y1="324" x2="696" y2="324" stroke="#5f6368" stroke-width="1"/>
+<line x1="76" y1="189.00" x2="696" y2="189.00" stroke="#b3261e" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="704" y="193.00" font-family="Arial, sans-serif" font-size="11" fill="#b3261e">0.50</text>
+<text x="64" y="328.00" text-anchor="end" font-family="Arial, sans-serif" font-size="11" fill="#5f6368">0.00</text>
+<line x1="72" y1="324.00" x2="76" y2="324.00" stroke="#5f6368" stroke-width="1"/>
+<text x="64" y="260.50" text-anchor="end" font-family="Arial, sans-serif" font-size="11" fill="#5f6368">0.25</text>
+<line x1="72" y1="256.50" x2="76" y2="256.50" stroke="#5f6368" stroke-width="1"/>
+<text x="64" y="193.00" text-anchor="end" font-family="Arial, sans-serif" font-size="11" fill="#5f6368">0.50</text>
+<line x1="72" y1="189.00" x2="76" y2="189.00" stroke="#5f6368" stroke-width="1"/>
+<text x="64" y="125.50" text-anchor="end" font-family="Arial, sans-serif" font-size="11" fill="#5f6368">0.75</text>
+<line x1="72" y1="121.50" x2="76" y2="121.50" stroke="#5f6368" stroke-width="1"/>
+<text x="64" y="58.00" text-anchor="end" font-family="Arial, sans-serif" font-size="11" fill="#5f6368">1.00</text>
+<line x1="72" y1="54.00" x2="76" y2="54.00" stroke="#5f6368" stroke-width="1"/>
+<rect x="76.00" y="176.29" width="106.40" height="147.71" fill="#2f6f9f"/>
+<text x="129.20" y="168.29" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#202124">0.547</text>
+<text x="129.20" y="348" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#202124">Discrete SE</text>
+<rect x="204.40" y="175.19" width="106.40" height="148.81" fill="#6f4aa8"/>
+<text x="257.60" y="167.19" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#202124">0.551</text>
+<text x="257.60" y="348" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#202124">Weighted SE</text>
+<rect x="332.80" y="170.15" width="106.40" height="153.85" fill="#c45a2f"/>
+<text x="386.00" y="162.15" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#202124">0.570</text>
+<text x="386.00" y="348" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#202124">Predictive Ent.</text>
+<rect x="461.20" y="170.15" width="106.40" height="153.85" fill="#2c8a63"/>
+<text x="514.40" y="162.15" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#202124">0.570</text>
+<text x="514.40" y="348" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#202124">Norm. NLL</text>
+<rect x="589.60" y="173.66" width="106.40" height="150.34" fill="#9b6b1f"/>
+<text x="642.80" y="165.66" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#202124">0.557</text>
+<text x="642.80" y="348" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#202124">Token Ent.</text>
+</svg>

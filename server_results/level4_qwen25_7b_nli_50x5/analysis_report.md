@@ -1,0 +1,126 @@
+# Level 4 Qwen2.5-7B PubMedQA 50x5 Analysis
+
+## Run
+- Model: Qwen/Qwen2.5-7B-Instruct
+- Dataset: PubMedQA PQA-L
+- Examples: 50
+- Samples per example: 5
+- Clustering: NLI bidirectional entailment
+- Health check: PASS
+
+## Score Summary
+- discrete_semantic_entropy: min=0.0000, q25=0.5004, median=0.5004, q75=0.9503, max=1.3322, mean=0.6373
+- normalized_discrete_semantic_entropy: min=0.0000, q25=0.3109, median=0.3109, q75=0.5904, max=0.8277, mean=0.3960
+- likelihood_weighted_semantic_entropy: min=0.0000, q25=0.4768, median=0.5092, q75=0.9457, max=1.3459, mean=0.6340
+- normalized_likelihood_weighted_semantic_entropy: min=0.0000, q25=0.2962, median=0.3164, q75=0.5876, max=0.8363, mean=0.3940
+- predictive_entropy: min=0.1532, q25=0.2263, median=0.2743, q75=0.3128, max=0.4978, mean=0.2802
+- mean_token_logprob: min=-0.4978, q25=-0.3130, median=-0.2763, q75=-0.2392, max=-0.1532, mean=-0.2802
+- mean_normalized_nll: min=0.1532, q25=0.2263, median=0.2743, q75=0.3128, max=0.4978, mean=0.2802
+- mean_token_entropy: min=0.1485, q25=0.2331, median=0.2695, q75=0.3096, max=0.4474, mean=0.2763
+
+## Cluster Distribution
+- 1 clusters: 12/50 examples
+- 2 clusters: 17/50 examples
+- 3 clusters: 15/50 examples
+- 4 clusters: 6/50 examples
+
+## Gold Label Distribution
+- maybe: 7
+- no: 18
+- yes: 25
+
+## Sample Consistency
+- exact clean-answer consistency: min=0.2000, median=0.2000, max=0.2000, mean=0.2000
+
+## Simple Correlations
+- corr(norm_discrete_SE, normalized_likelihood_weighted_semantic_entropy) = 1.000
+- corr(norm_discrete_SE, predictive_entropy) = 0.134
+- corr(norm_discrete_SE, mean_normalized_nll) = 0.134
+- corr(norm_discrete_SE, mean_token_entropy) = 0.155
+
+## Lowest Uncertainty Examples
+### low SE: 10158597
+- label=yes, gold=The introduction of a discharge coordinator improved the quality of discharge planning, but at additional cost.
+- clusters=[5], H_norm=0.0000, H_weighted_norm=0.0000, PE=0.2826, consistency=0.20
+- question: Does a dedicated discharge coordinator improve the quality of hospital discharge?
+  - sample 0: Based on the evidence provided, a dedicated discharge coordinator can improve the quality of hospital discharge as indicated by reduced problems experienced by patients after discharge and a lower perceived need for m...
+  - sample 1: Based on the evidence provided, a dedicated discharge coordinator does improve the quality of hospital discharge . This improvement includes better discharge planning processes and reduced post-discharge problems expe...
+  - sample 2: [maybe] would indicate uncertainty based on the evidence. Answer: Yes, suggests that a dedicated discharge coordinator can improve the quality of hospital discharge. Specifically, the introduction of a discharge coord...
+
+### low SE: 10201555
+- label=yes, gold=This s the first report from a population-based study to indicate that there is an association between serum chloride level and the incidence of total, CVD a...
+- clusters=[5], H_norm=0.0000, H_weighted_norm=0.0000, PE=0.2222, consistency=0.20
+- question: Is low serum chloride level a risk factor for cardiovascular mortality?
+  - sample 0: Based on the provided evidence , , a low serum chloride level is indeed a risk factor for cardiovascular mortality. In the study population, individuals with a serum chloride level ≤100 mmol/L had an increased risk of...
+  - sample 1: The answer is: Yes, based on the evidence provided, a low serum chloride level is a risk factor for cardiovascular mortality . Specifically, the study found an adjusted risk ratio of 1.65 for men and 2.16 for women wi...
+  - sample 2: provides evidence that a low serum chloride level is associated with an increased risk of cardiovascular mortality. Specifically, the study found an adjusted risk ratio for CVD death for subjects with a serum chloride...
+
+### low SE: 10331115
+- label=yes, gold=PET data show that amoxapine's profile is very similar to that of the established atypical antipsychotics. These data, together with amoxapine's in vitro pha...
+- clusters=[5], H_norm=0.0000, H_weighted_norm=0.0000, PE=0.2976, consistency=0.20
+- question: Is amoxapine an atypical antipsychotic?
+  - sample 0: Based on the provided evidence, amoxapine does not conform to the typical profile of an atypical antipsychotic. Specifically: - indicates that the D2 receptor occupancies never exceeded 80%, which is a key characteris...
+  - sample 1: The answer is: no . According to the evidence, amoxapine does not conform to the profile of typical atypical antipsychotics as it does not have a higher incidence of extrapyramidal side effects when its D2 occupancy e...
+  - sample 2: provides the key information to determine if amoxapine conforms to the profile of atypical antipsychotics. According to , all currently available atypical antipsychotics have certain characteristics, including a highe...
+
+### low SE: 10375486
+- label=no, gold=use of CEA varies widely, depending on area of residence. Variation is not a consequence of differences in need, but reflects clinical practice and supply of...
+- clusters=[5], H_norm=0.0000, H_weighted_norm=0.0000, PE=0.2797, consistency=0.20
+- question: Are variations in the use of carotid endarterectomy explained by population Need?
+  - sample 0: Based on the provided evidence, variations in the use of carotid endarterectomy (CEA) are not primarily explained by population need . The study found that there was no significant association between CEA utilization ...
+  - sample 1: The answer is: No, variations in the use of carotid endarterectomy (CEA) are not primarily explained by population need based on the evidence provided. indicates that there was no significant association between utili...
+  - sample 2: provides evidence that there is a strong relationship between the location of carotid endarterectomy services and utilization rates, indicating that population need, specifically the proximity to services, significant...
+
+### low SE: 10381996
+- label=no, gold=ACS is common in patients with SCD who present with fever and was grossly underestimated by evaluating physicians. History and physical examination appear to...
+- clusters=[5], H_norm=0.0000, H_weighted_norm=0.0000, PE=0.2263, consistency=0.20
+- question: Clinician assessment for acute chest syndrome in febrile patients with sickle cell disease: is it accurate enough?
+  - sample 0: Based on the provided evidence , , and , the clinician assessment for acute chest syndrome (ACS) in febrile patients with sickle cell disease (SCD) appears to be insufficiently accurate. Only 39% of ACS cases were cli...
+  - sample 1: The answer is: No, the clinician assessment for acute chest syndrome (ACS) in febrile patients with sickle cell disease (SCD) is not accurate enough based on the provided evidence . The sensitivity of physicians in pr...
+  - sample 2: [no] Clinician assessment for acute chest syndrome (ACS) in febrile patients with sickle cell disease (SCD) is not accurate enough. The study found that 61% of ACS cases were not clinically suspected by the evaluating...
+
+## Highest Uncertainty Examples
+### high SE: 11035130
+- label=yes, gold=It is important to continue FA supplementation over the long term in patients on methotrexate and FA in order to prevent them discontinuing treatment because...
+- clusters=[1, 1, 2, 1], H_norm=0.8277, H_weighted_norm=0.8325, PE=0.3535, consistency=0.20
+- question: Do patients with rheumatoid arthritis established on methotrexate and folic acid 5 mg daily need to continue folic acid supplements long term?
+  - sample 0: Based on the evidence from and , it does not appear that patients with rheumatoid arthritis established on methotrexate and folic acid 5 mg daily need to continue folic acid supplements long term. While stopping folic...
+  - sample 1: Based on the evidence provided and , it seems that stopping folic acid supplementation did not lead to significant increases in methotrexate toxicity or loss of efficacy. In fact, the study found that patients who sto...
+  - sample 2: and describe a study that aimed to examine the effects of stopping folic acid (FA) supplementation in patients already on methotrexate for rheumatoid arthritis (RA). provides the outcome of the study: of the 75 patien...
+
+### high SE: 10922093
+- label=yes, gold=Patients undergoing open access procedures are less likely to be properly informed about their endoscopic procedure. Our results indicate that with open acce...
+- clusters=[2, 1, 1, 1], H_norm=0.8277, H_weighted_norm=0.8352, PE=0.2550, consistency=0.20
+- question: Does open access endoscopy close the door to an adequately informed patient?
+  - sample 0: Based on the provided evidence, there is evidence that open access endoscopy may close the door to an adequately informed patient. Specifically, indicates that open access patients reported receiving significantly les...
+  - sample 1: Based on the evidence provided, there is a concern that open access endoscopy may lead to inadequately informed patients compared to those referred from a gastrointestinal (GI) subspecialty clinic. Specifically, the o...
+  - sample 2: suggests that open access endoscopy may lead to patients receiving less information about the procedures compared to those referred from a subspecialty clinic. Specifically, indicates that "the open access patients re...
+
+### high SE: 10811329
+- label=yes, gold=Our results suggest that 99mTc-WBC is useful as an initial screening modality to exclude IBD, and is more sensitive than UGI-SBFT studies.
+- clusters=[2, 1, 1, 1], H_norm=0.8277, H_weighted_norm=0.8245, PE=0.1933, consistency=0.20
+- question: Are 99mTc leukocyte scintigraphy and SBFT studies useful in children suspected of having inflammatory bowel disease?
+  - sample 0: suggests that 99mTc leukocyte scintigraphy and upper gastrointestinal small bowel follow-through (SBFT) studies can be useful in children suspected of having inflammatory bowel disease (IBD). indicates that the 99mTc-...
+  - sample 1: suggests that 99mTc leukocyte scintigraphy and upper gastrointestinal small bowel follow-through (SBFT) studies can be useful in ruling out inflammation in children suspected of having inflammatory bowel disease (IBD)...
+  - sample 3: The goal of this retrospective study was to assess whether 99mTc-white blood cell (WBC) scintigraphy and upper gastrointestinal small bowel follow-through (UGI-SBFT) could exclude inflammation in children suspected of...
+
+### high SE: 10757151
+- label=no, gold=The preconditioning effect (infarct size reduction) appears not to depend on intermittent reperfusion. Thus, the protective mechanism of IP develops during t...
+- clusters=[1, 1, 2, 1], H_norm=0.8277, H_weighted_norm=0.8238, PE=0.3467, consistency=0.20
+- question: Does ischemic preconditioning require reperfusion before index ischemia?
+  - sample 0: Based on the provided evidence , ischemic preconditioning (IP) does require reperfusion before the index ischemia. In the experiment described , the conventional ischemic preconditioning (CIP) involved multiple short ...
+  - sample 1: The answer is: No, ischemic preconditioning does not strictly require reperfusion before the index ischemia. This can be inferred from the experimental setup described in , where the control group undergoes a period o...
+  - sample 2: states that ischemic preconditioning (IP) is initiated through one or several short bouts of ischemia and reperfusion which precede a prolonged ischemia. This definition directly supports the answer to the patient's q...
+
+### high SE: 10490564
+- label=yes, gold=In patients with ischaemic heart disease and hypotension, symptomatic and silent ischaemia occurred in a temporally causal relation with hypotension, particu...
+- clusters=[1, 2, 1, 1], H_norm=0.8277, H_weighted_norm=0.8303, PE=0.2483, consistency=0.20
+- question: Hypotension in patients with coronary disease: can profound hypotensive events cause myocardial ischaemic events?
+  - sample 0: Based on the provided evidence , , , and , profound hypotensive events can indeed cause myocardial ischemic events in patients with coronary disease. Specifically, the study documented that out of 107 hypotensive even...
+  - sample 1: The answer is: Yes, based on the evidence from and , profound hypotensive events can cause myocardial ischaemic events in patients with coronary disease. In the study, 40 ST segment ischaemia events occurred, with 14 ...
+  - sample 2: provides evidence that profound hypotensive events can indeed cause myocardial ischaemic events in patients with coronary disease. In the study, 40 ST segment ischaemia events were observed, with 14 of these being def...
+
+## Notes
+- With 5 samples, discrete entropy takes a small set of values; N=10 would give smoother SE estimates.
+- Weighted SE closely tracks discrete SE in this run, suggesting sequence likelihood weighting did not radically reorder semantic uncertainty.
+- Predictive entropy/token uncertainty is not strongly aligned with semantic entropy, which is useful: SE is measuring answer-level variation rather than only token-level softness.

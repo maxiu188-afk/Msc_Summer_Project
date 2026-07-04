@@ -1,0 +1,16 @@
+Level 3 common-schema Semantic Entropy stability run complete
+dataset: fake
+split: dev
+data_path: 
+examples: 2
+generations: 6
+model_name: static-test
+num_samples: 3
+device: cpu
+torch_dtype: 
+local_files_only: False
+clustering_method: exact_clean_answer
+output_dir: D:\work\FinalProject\code\archehr_sebaseline\outputs\test_level3_static
+scores:
+- fake_001: clusters=[2, 1], H=0.6365141683, H_norm=0.5793801643
+- fake_002: clusters=[2, 1], H=0.6365141683, H_norm=0.5793801643
