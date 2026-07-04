@@ -24,3 +24,7 @@ Thumbs.db
 
 .agents/
 .codex/
+
+archehr_sebaseline/outputs/
+archehr_sebaseline_server_*.zip
+archehr_sebaseline_clean_level4.tar.gz

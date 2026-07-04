@@ -30,7 +30,7 @@ def make_common_example(
     context: str | None = None,
     evidence_sentences: list[str] | None = None,
     gold_answer: str | None = None,
-    citations: list[int] | None = None,
+    citations: list[int | str] | None = None,
     options: list[str] | None = None,
     label: str | None = None,
 ) -> dict[str, Any]:
@@ -55,7 +55,7 @@ def make_common_example(
         "context": str(normalized_context) if normalized_context else None,
         "evidence_sentences": normalized_evidence or None,
         "gold_answer": str(gold_answer) if gold_answer else None,
-        "citations": [int(citation) for citation in citations] if citations else None,
+        "citations": [str(citation) for citation in citations] if citations else None,
         "options": [str(option) for option in options] if options else None,
         "label": str(label) if label else None,
     }

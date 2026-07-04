@@ -131,5 +131,43 @@ After the baseline evaluation is stable:
 
 ## Current Next Step
 
-Review the Level 5 evaluation outputs, then decide between a larger `N=10`
-baseline run and the first SEP target/hidden-state extraction milestone.
+The main research path now shifts away from PubMedQA and toward an ArchEHR-QA
+Semantic Entropy baseline. PubMedQA remains useful only for engineering smoke
+tests and should not be used as a main SEP or SE target.
+
+Current next step:
+
+```text
+Build a simple ArchEHR-QA SE baseline using provided evidence sentences,
+structured cited answers, answer-level SE, and citation-set uncertainty.
+```
+
+See:
+
+```text
+archehr_sebaseline/docs/archehr_se_baseline_plan.md
+```
+
+SEP and hidden-state probe work is intentionally deferred until the ArchEHR-QA
+SE baseline is stable.
+
+Status: initial ArchEHR-QA SE baseline implementation complete.
+
+Implemented outputs:
+
+```text
+examples.jsonl
+prompts.jsonl
+generations.jsonl
+parsed_generations.jsonl
+cleaned_generations.jsonl
+answer_clusters.jsonl
+answer_se_scores.csv
+generation_uq.csv
+citation_uq.csv
+analysis_report.md
+summary.txt
+```
+
+Next practical step is to run this pipeline on a user-provided sanitized or
+server-side ArchEHR-QA data path with `num_samples=10` and NLI clustering.

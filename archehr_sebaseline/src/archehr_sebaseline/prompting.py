@@ -73,3 +73,69 @@ def build_prompt_records(examples: list[dict[str, Any]]) -> list[dict[str, Any]]
             }
         )
     return prompt_records
+
+
+ARCHEHR_SYSTEM_INSTRUCTION = (
+    "You are a clinical assistant answering a patient question using only the "
+    "provided electronic health record note sentences."
+)
+
+
+def _archehr_evidence_items(example: dict[str, Any]) -> list[dict[str, str]]:
+    sentence_texts = example.get("evidence_sentences") or []
+    sentence_ids = example.get("evidence_sentence_ids") or []
+    evidence = []
+    for index, text in enumerate(sentence_texts, start=1):
+        sentence_id = str(sentence_ids[index - 1]) if index - 1 < len(sentence_ids) else f"S{index}"
+        evidence.append({"sentence_id": sentence_id, "text": str(text)})
+    if not evidence and example.get("context"):
+        evidence.append({"sentence_id": "S1", "text": str(example["context"])})
+    return evidence
+
+
+def build_archehr_prompt(example: dict[str, Any]) -> str:
+    """Build the simple structured ArchEHR-QA SE baseline prompt."""
+
+    patient_question = str(example.get("question") or "").strip()
+    clinician_question = str(example.get("clinician_question") or "").strip()
+    evidence = _archehr_evidence_items(example)
+
+    prompt_parts = [
+        f"System instruction: {ARCHEHR_SYSTEM_INSTRUCTION}",
+        "",
+        f"Patient question: {patient_question}",
+    ]
+    if clinician_question:
+        prompt_parts.append(f"Clinician question: {clinician_question}")
+    prompt_parts.extend(
+        [
+            "",
+            "Evidence sentences:",
+            format_evidence(evidence),
+            "",
+            "Task:",
+            "Answer the clinician question if provided; otherwise answer the patient question.",
+            "Use only the evidence sentences above.",
+            "If the evidence is insufficient, say that the evidence is insufficient.",
+            "Return a JSON list. Each item must have exactly these keys:",
+            '- "statement": one concise answer statement',
+            '- "citation": the sentence ID that supports the statement',
+            "Do not include unsupported statements.",
+        ]
+    )
+    return "\n".join(prompt_parts)
+
+
+def build_archehr_prompt_records(examples: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    prompt_records = []
+    for example in examples:
+        prompt_records.append(
+            {
+                "example_id": example["id"],
+                "dataset": example.get("dataset"),
+                "split": example.get("split"),
+                "prompt": build_archehr_prompt(example),
+                "prompt_version": "archehr_structured_citations_v1",
+            }
+        )
+    return prompt_records

@@ -1,0 +1,592 @@
+Overview of the ArchEHR-QA 2025 Shared Task on Grounded Question
+Answering from Electronic Health Records
+SarveshSoni,SoumyaGayen,DinaDemner-Fushman
+DivisionofIntramuralResearch
+NationalLibraryofMedicine,NationalInstitutesofHealth,Bethesda,MD,USA
+sarvesh.soni@nih.gov, ddemner@mail.nih.gov
+Abstract triage(Renetal.,2023;Liuetal.,2024c)oronhelp-
+ing patients formulate their questions (Liu et al.,
+This paper presents an overview of the
+2024b). Effortstoautomaticallygenerateanswers
+ArchEHR-QA 2025 shared task, which was
+topatientquestionsrarelyincorporaterelevantin-
+organizedwiththe24thBioNLPWorkshopat
+ACL2025. Thegoalofthissharedtaskisto formation from the patient’s medical record (Liu
+developautomatedresponsestopatients’ques- et al., 2024a; Chen et al., 2024). Among the few
+tionsbygeneratinganswersthataregrounded that do, none evaluate how effectively the gener-
+in key clinical evidence from patients’ elec- atedresponsesleveragethatevidence(Smalletal.,
+tronic health records (EHRs). A total of 29
+2024;Garciaetal.,2024).
+teamsparticipatedinthetask,collectivelysub-
+Groundingananswerinevidenceistheprocess
+mitting 75 systems, with 24 teams providing
+of citing or referencing specific segments of the
+theirsystemdescriptions. Thesubmittedsys-
+input evidence to support the generated response
+tems encompassed diverse architectures (in-
+cludingapproachesthatselectthemostrelevant (Chandu et al., 2021). This practice is especially
+evidencepriortoanswergeneration),leverag- critical in medicine, where accuracy and trace-
+ingbothproprietaryandopen-weightlargelan- ability are paramount–particularly when the tar-
+guage models, as well as employing various
+getusersarenotproficientinmedicalknowledge
+tuningstrategiessuchasfine-tuningandfew-
+(HaugandDrazen,2023). Althoughgroundinghas
+shot learning. In this paper, we describe the
+been extensively studied in open-domain (Wang
+tasksetup,thedatasetused,theevaluationcri-
+etal.,2025;Sungetal.,2025),itsapplicationinthe
+teria, andthebaselinesystems. Furthermore,
+wesummarizethemethodologiesadoptedby clinicaldomainremainsrelativelyunderexplored.
+participatingteamsandpresentacomprehen- To foster research in these underexplored ar-
+sive evaluation and analysis of the submitted easofclinicalnaturallanguageprocessing(NLP),
+systems. we introduced the ArchEHR-QA (pronounced
+“Archer”) shared task1. The goal of the task is to
+1 Introduction
+developautomatedsystemsthatgenerateanswers
+Thevolumeofmessagesreceivedthroughpatient topatients’questions,groundedinkeyclinicalevi-
+portalsisontherise,whichincludesrequestsfrom dencefromtheirelectronichealthrecords(EHRs).
+patientsformedicalinformation(Holmgrenetal., Participantswereprovidedwithpatient-posedques-
+2023;Martinezetal.,2024). Thisisoneofthemain tions,theirclinician-interpretedversions,andcor-
+contributors to increasing clinician burden. One respondingclinicalnotes. Systemswereexpected
+promising strategy to address this challenge is to toproduceanswersaccompaniedbysentence-level
+assistcliniciansinformulatingresponsestopatient citations to the relevant sentences of the clinical
+inquiries. Tothisend,automaticallygeneratingan- note.
+swerstoquestionsfrompatientsconsideringtheir
+medicalrecordsisimportant. 2 ArchEHR-QA2025TaskDescription
+Whilethereisextensiveworkonansweringgen-
+Given a patient-posed natural language question,
+eralhealth-relatedqueriesfrompatients(Welivita
+the corresponding clinician-interpreted question,
+andPu,2023),relativelylittlefocusesonaddress-
+andthepatient’sclinicalnoteexcerpt,thetaskisto
+ingpatientquestionsspecificallyabouttheirown
+generateanaturallanguageanswerwithsentence-
+medicalrecords. Withintheworkonpatientportal
+messages,mostresearchhasfocusedonmessage 1archehr-qa.github.io
+396
+Proceedingsofthe24thWorkshoponBiomedicalLanguageProcessing(BioNLP2025),pages396–405
+August1,2025©2025AssociationforComputationalLinguistics
+PatientQuestion Ihadsevereabdomenpainandwashospitalisedfor15daysinICU,diagnosedwithCBDsludge
+thereafteronudiliv. DoctoradvisedforERCP.Myquestionisifthesludgewastheredoesnotthe
+medicationhelpinflushingitout?WhetherERCPwastheonlycure?
+ClinicianQuestion WhywasERCPrecommendedtohimovercontinuingamedication-basedtreatment?
+ClinicalNote 1:DuringtheERCPapancreaticstentwasrequiredtofacilitateaccesstothebiliarysystem(removed
+Excerpt at the end of the procedure), and a common bile duct stent was placed to allow drainage of the
+biliaryobstructioncausedbystonesandsludge. 2:However,duetothepatient’selevatedINR,no
+sphincterotomyorstoneremovalwasperformed. 3: Frankpuswasnotedtobedrainingfromthe
+commonbileduct,andpost-ERCPitwasrecommendedthatthepatientremainonIVZosynforat
+leastaweek. 4:TheVancomycinwasdiscontinued.
+5:Onhospitalday4(post-procedureday3)thepatientreturnedtoERCPforre-evaluationofherbiliary
+stentasherLFTsandbilirubincontinuedanupwardtrend. 6:OnERCPthepreviousbiliarystentwas
+notedtobeacutelyobstructedbybiliarysludgeandstones. 7:Asthepatient’sINRwasnormalized
+to1.2,asphincterotomywassafelyperformed,withremovalofseveralbiliarystonesinadditionto
+thecommonbileductstent. 8: Attheconclusionoftheprocedure,retrogradecholangiogramwas
+negativeforfillingdefects.
+ClinicianAnswer Anendoscopicretrogradecholangiopancreatography,ERCP,wasrecommendedtoplaceacommon
+bileductstent[1].Thisstentwasplacedtoallowdrainageofthebiliaryobstructionwhichwascaused
+bystonesandsludge[1].Duetonoimprovementinliverfunction,thepatientneededarepeatERCP
+[5].TherepeatERCPshowedthatthebiliarystentplacedinthefirstERCPwasobstructedbystones
+andsludge[6].Thestonesandstentweresuccessfullyremovedduringthisprocedurebyperforminga
+sphincterotomy[7].
+SampleSystem ERCPwasrecommendedasmedicationalonemaynoteffectivelyclearthebiliaryobstructioncaused
+Answer bystonesandsludge[1]. Theprocedureallowedfordirectvisualization,stenting,andsubsequent
+removalofbiliarystonesandsludge[1,7,8].Medication,suchasIVZosyn,wasusedadjunctivelyto
+manageinfectionbutwasnotsufficienttoflushoutthesludgeandstonesonitsown[3].
+Table1: ExampleannotatedpatientcasefromtheArchEHR-QAdataset. Focusareasinthepatientquestionare
+underlined, whicharetakenintoaccountwhencreatingtheclinicianquestion. Intheclinicalnoteexcerpt, the
+sentenceswithidentifiers[1,5,6,7]areessential,[2,8]aresupplementary,and[3,4]arenot-relevant.
+level citations to the specific clinical note sen- pleaserefertothedatasetpaper(SoniandDemner-
+tences. Fushman,2025).
+Atotalof20patientcaseswereprovidedtothe
+3 DataDescription participants with sentence relevance keys for the
+development and validation of systems. The re-
+We used a subset of 120 patient cases from the
+maining100patientcaseswereusedfortestingthe
+ArchEHR-QAdataset(SoniandDemner-Fushman,
+participantsystemsandreleasedtotheparticipants
+2025). Each patient case in the dataset com-
+closertothefinalsubmissiondatewithoutthesen-
+prises a hand-curated, realistic patient question
+tencerelevancelabels. Tables2and3providethe
+(reflective of patient portal messages), relevant
+datasetstatistics.
+focus areas identified within the question (as de-
+terminedbyaclinician),correspondingclinician-
+4 Evaluation
+rewrittenversion(craftedtoaidinformulatingre-
+sponses),andnoteexcerptprovidingessentialclin- 4.1 Metrics
+ical context (Table 1). The dataset was curated
+Submissions were evaluated based on their use
+byaligningrealpatientquestionspostedtopublic
+ofclinicalevidenceforgrounding(“Factuality”)
+healthforumswithclinicalnotesfrompubliclyac-
+andtherelevanceofthegeneratedanswers(“Rel-
+cessibleEHRdatabases, namely, MIMIC-IIIand
+evance”). The scoring script is available on
+MIMIC-IV(Johnsonetal.,2016,2023). Eachsen- GitHub2.
+tence in the note excerpt is manually annotated
+FactualityisassessedbycalculatingPrecision,
+tomarkitsimportanceinansweringthequestion
+Recall, and F1 Scores between the cited evi-
+as “essential” (must be cited in the answer),
+dencesentencesinthegeneratedanswers(i.e.,pre-
+“supplementary” (may be cited to provide sup-
+dicted as “essential”) and the manually anno-
+port), or “not-relevant” (should not be cited).
+Formoredetailsaboutthedatasetcurationprocess, 2github.com/soni-sarvesh/archehr-qa
+397
+PatientQuestion ClinicianQuestion NoteExcerpt ClinicianAnswer
+Dev Test Dev Test Dev Test Dev Test
+Mean 85.2 92.3 10.8 10.6 320.8 380.4 73.6 72.4
+Median 81.0 74.5 10.0 10.0 320.5 345.0 74.0 73.0
+S.D. 35.1 62.4 2.8 3.9 174.6 213.3 2.3 3.6
+Min 40.0 33.0 7.0 3.0 109.0 76.0 66.0 55.0
+Max 170.0 440.0 17.0 21.0 678.0 1028.0 78.0 76.0
+Table2: Wordcountstatisticsbydatasetsplit. Dev: development;S.D.: standarddeviation.
+lowtherequiredformattingorcitationguidelines,
+Sentences
+we iteratively prompted the model with specific
+Relevance Dev Test feedback from the previous attempt (e.g., an in-
+all 21.4(100%) 26.0(100%) validcitation)uptofivetimes.
+essential 6.0(28.3%) 6.6(25.3%)
+5 Participation
+supplementary 1.3(6.1%) 5.5(21.3%)
+not-relevant 14.1(65.7%) 13.9(53.4%) 5.1 ParticipatingTeams
+We used the Codabench platform3 to facilitate
+Table 3: Average sentence counts by relevance and sharedtasksubmissionprocess(Xuetal.,2022). In
+datasetsplit. Dev: development. total,29teamsparticipatedinthetaskandsubmit-
+tedatotalof75systems. Ofthese,24teamspro-
+videdadescriptionoftheirsubmittedsystem. We
+tatedgroundtruthsentencerelevancelabels. Two
+reporttheevaluationscoresexclusivelyforthose
+variationsofCitationF1Scoresarecalculated. In
+submissionsaccompaniedbyasystemdescription.
+the “strict” variation, only essential sentences
+are considered as answers. In the “lenient” vari-
+5.2 Results
+ation, both essential and supplementary sen-
+Participantswereprovidedwithapreliminaryver-
+tencesareconsideredasanswers.
+sion of sentence relevance keys during the devel-
+Relevanceisevaluatedbycomparingthegener-
+opmentphase,wherenoteexcerptsandquestions
+atedanswertextwiththegroundtruthanswer. Two
+wereusedtocomputetherelevancescores. Table
+variations of ground truth answers were used for
+4 presents the submission results on the test set
+relevancecomputations: clinician-authoredanswer
+(withhiddenkeys)usingthissetup. Inthissetting,
+andaconcatenationofessentialnotesentences
+DMISLab(Hwangetal.,2025)achievedthehigh-
+withpatientandclinicianquestions. Asuiteoftext
+est overall score of 53.7% with a strict micro F1
+and semantics based relevance metrics are used
+scoreof58.6%andanaveragerelevancescoreof
+to compare the predicted and ground truth text:
+48.8%. ThiswasfollowedbyNeural(Bogireddy
+BLEU(Papinenietal.,2002),ROUGE-LSum(Lin,
+etal.,2025)andLAILab(Leetal.,2025),which
+2004),SARI(Xuetal.,2016),BERTScore(Zhang
+attained overall scores of 51.5% and 51.0%, re-
+et al., 2019), AlignScore (Zha et al., 2023), and
+spectively. Notably,ArgHiTZ(Cortesetal.,2025)
+MEDCON(Yimetal.,2023).
+obtainedthehigheststrictmicroF1scoreof60.5%.
+4.2 Baseline Upon completion of the annotation reconcilia-
+tionprocess,werecalculatedtheevaluationmetrics
+Asasimpleyetstrongbaseline,wepromptedthe
+usingrevisedsentencerelevancekeysandclinician-
+LLaMa3.370Bmodel(Grattafiorietal.,2024)ina
+authored reference answers. These results are re-
+zero-shotsettingtogenerateananswerusingboth
+ported in Table 5. While the overall score range
+thepatientandclinicianquestions,alongwiththe
+remained relatively stable, there were substantial
+note excerpt as input. We provided the note sen-
+changesintherankingofindividualsystems,and
+tence identifiers to the model and instructed it to
+weobservedageneraldropintheoverallscoresfor
+citethespecificsentenceIDswithinitsgenerated
+answer. Ininstanceswherethemodelfailedtofol- 3codabench.org/competitions/5302
+398
+Factuality Relevance
+Rank Team
+Lenient Strict Text Semantics
+O F R ID P R F1 P R F1 BL RG SA BS AS MD Avg OS
+1 4 1 DMISLab 61.2 59.2 60.2 57.9 59.3 58.6 14.3 46.5 36.7 53.9 92.4 49.3 48.8 53.7
+2 3 2 Neural 58.4 63.7 60.9 55.4 63.8 59.3 8.5 34.1 73.1 39.1 67.3 40.0 43.7 51.5
+3 2 4 LAILab 59.7 66.0 62.7 56.0 65.5 60.4 6.5 32.7 69.2 37.4 65.3 38.4 41.6 51.0
+4 6 5 LAMAR 64.0 53.5 58.3 60.6 53.6 56.9 6.0 32.1 65.8 36.4 64.3 43.6 41.4 49.1
+5 14 3 ssagarwal 71.7 35.6 47.6 68.8 36.2 47.5 4.7 31.1 70.0 36.9 74.9 38.0 42.6 45.0
+6 7 8 LIMICS 63.6 49.6 55.8 59.9 49.4 54.2 3.0 26.2 61.2 31.2 52.3 39.4 35.5 44.9
+7 10 7 cuni-a 60.2 48.1 53.5 56.9 48.1 52.1 5.1 26.5 63.2 32.0 58.2 37.7 37.1 44.6
+8 1 22 ArgHiTZ 58.9 65.8 62.1 55.8 65.9 60.5 0.9 21.1 48.1 22.1 42.3 30.9 27.6 44.0
+9 5 16 Loyola 51.1 70.5 59.3 48.3 70.5 57.3 2.9 25.5 54.4 26.1 42.4 30.8 30.4 43.9
+10 8 11 unibuc-sd 66.5 47.2 55.2 62.7 47.0 53.8 1.4 22.2 53.3 27.5 53.4 38.2 32.7 43.2
+11 15 6 SzegedAI 69.7 37.0 48.4 65.6 36.9 47.2 3.2 27.8 63.6 32.9 64.2 37.8 38.2 42.7
+12 11 12 KRLabs 50.7 56.6 53.5 48.1 56.8 52.1 2.0 21.4 57.9 26.3 49.0 35.2 31.9 42.0
+13 12 10 FK 70.0 37.9 49.2 66.7 38.2 48.6 2.0 25.4 54.4 28.2 55.8 36.8 33.8 41.2
+14 9 20 UTSA-NLP 47.0 68.4 55.7 43.7 67.2 53.0 0.7 17.8 56.6 22.7 40.4 29.4 27.9 40.4
+15 17 13 UIC 70.4 35.2 46.9 67.3 35.6 46.5 0.7 19.4 55.6 24.6 57.7 31.4 31.6 39.0
+16 13 21 utsamuel 55.1 45.3 49.7 51.4 44.7 47.8 0.6 20.0 56.7 24.2 35.4 29.6 27.8 37.8
+17 16 23 aehrc 55.5 42.0 47.8 52.9 42.4 47.1 0.6 19.0 48.4 22.5 41.9 30.3 27.1 37.1
+18 18 19 unibuc-sb 61.7 35.9 45.4 58.7 36.1 44.7 0.6 19.9 49.0 23.9 43.0 32.4 28.1 36.4
+19 20 17 HurLab 52.9 34.8 41.9 49.3 34.3 40.4 1.8 24.0 47.3 24.9 48.1 34.5 30.1 35.2
+20 19 18 JUNLP 57.5 32.4 41.4 54.2 32.3 40.5 1.5 22.8 49.3 24.4 49.1 30.9 29.6 35.1
+21 21 9 WisPerMed 59.1 27.1 37.1 55.4 26.9 36.2 2.0 22.6 61.0 29.5 62.3 25.9 33.9 35.0
+22 22 15 DKIT 59.9 23.1 33.4 56.5 23.1 32.7 1.7 23.6 49.8 26.2 47.8 33.9 30.5 31.6
+23 23 14 heiDS 71.2 16.0 26.2 67.7 16.1 26.0 0.7 18.1 53.6 22.2 61.0 29.9 30.9 28.5
+24 24 24 razreshili 39.7 8.4 13.9 36.8 8.2 13.5 0.4 16.8 45.8 19.9 43.9 24.5 25.2 19.3
+- - - baseline 77.0 22.3 34.6 71.6 21.9 33.6 0.1 15.2 47.8 20.5 57.7 25.6 27.8 30.7
+Table4: Submissionscoresusingthepreliminaryversionofanswerkeys,withnoteexcerptsandquestionsusedfor
+evaluatingrelevance. Factualityscoresarereportedatthemicrolevel. O,F,R: RankusingOverall,Factuality
+(StrictF1),andtheaverageRelevancescore. ID:Teamidentifier;P:Precision;R:Recall;F1: F1Score;BL:BLEU;
+RG:ROUGE;SA:SARI;BS:BERTScore;AS:AlignScore;MD:MEDCON;Avg: OverallRelevanceScore;OS:
+OverallScore. Allscoresarepercentages.
+most submissions. Under this revised evaluation, Allparticipatingteamsutilizedlanguagemodels
+LAMAR(Yoadsanitetal.,2025)achievedthehigh- as part of their systems. Over half of the teams
+estoverallscoreandstrictmicroF1scoreof46.9% (14[58.3%])employedproprietarymodels,suchas
+and 58.8%, respectively. FK and unibuc-sd (Gh- OpenAI’sGPT,while11teams(45.8%)usedopen-
+ineaandRîncu,2025)followedclosely, securing weightlargelanguagemodels(LLMs),e.g.,Meta’s
+thesecondandthirdpositionswithoverallscores LLaMA.Additionally,9teams(37.5%)integrated
+of46.6%and45.6%,respectively. smalllanguagemodels(SLMs),suchasBERT,into
+theirsystems. Modeltuningstrategiesvaried,with
+5.3 Approaches fine-tuning being the most common (6 [25.0%]),
+followedbyfew-shotlearning(5[20.8%]),theuse
+Table6summarizesthekeycharacteristicsofthe
+ofsyntheticdata(3[12.5%]),andhyperparameter
+systemssubmittedtothesharedtask. Themajority
+tuning (2 [8.3%]). Postprocessing steps to refine
+ofteams(20[83.3%])adoptedatwo-stagepipeline
+the generated answers were also reported, with
+inwhichrelevantevidencewasfirstidentifiedfrom
+some teams leveraging the language model itself
+thenoteexcerpts,followedbyanswergenerationin
+forediting(5[20.8%])andsomeapplyingheuristic-
+asubsequentstage. Severalteamsalsoincorporated
+basedapproaches(4[16.7%]).
+additional post-generation steps, such as citation
+assignment(5[20.8%])oranswerreformulation(8 Among the top-scoring systems, answer refor-
+[33.3%])withanaimtofurtherenhancethequality mulationemergedasacommoncomponent,sodid
+ofresponses. theuseofproprietaryLLMs. Notably,theleading
+399
+Factuality Relevance
+Rank Team
+Lenient Strict Text Semantics
+O F R ID P R F1 P R F1 BL RG SA BS AS MD Avg OS
+1 1 2 LAMAR 72.9 57.4 64.2 49.6 72.0 58.8 8.4 24.8 55.9 40.8 36.9 43.2 35.0 46.9
+2 3 1 FK 78.8 40.3 53.3 59.1 55.6 57.3 7.4 24.6 53.9 40.2 47.9 41.6 35.9 46.6
+3 2 6 unibuc-sd 75.4 50.4 60.4 53.0 65.2 58.4 4.2 21.3 53.0 41.0 34.6 41.9 32.7 45.6
+4 5 5 ssagarwal 79.0 37.0 50.4 58.3 50.3 54.0 8.1 24.1 54.3 36.8 33.7 39.3 32.7 43.4
+5 10 3 UIC 77.6 36.6 49.7 55.5 48.2 51.6 4.5 22.8 54.5 41.7 40.5 38.9 33.8 42.7
+6 9 4 SzegedAI 78.4 39.3 52.3 54.4 50.2 52.2 7.1 23.4 54.1 39.3 35.0 39.1 33.0 42.6
+7 6 10 LIMICS 71.2 52.3 60.3 46.9 63.5 54.0 5.5 22.2 54.3 38.6 25.7 39.3 30.9 42.5
+8 4 18 Neural 67.5 69.3 68.4 42.8 81.0 56.0 6.3 20.7 53.1 30.6 25.9 33.3 28.3 42.2
+9 7 13 LAILab 65.7 68.4 67.0 40.6 77.8 53.3 7.4 22.0 53.3 33.9 26.8 34.4 29.6 41.5
+10 13 7 JUNLP 64.9 34.5 45.0 49.5 48.5 49.0 5.2 21.7 51.6 38.7 39.9 37.8 32.5 40.8
+11 11 16 cuni-a 65.7 49.4 56.4 43.3 60.0 50.3 4.4 19.1 52.3 31.6 30.7 34.8 28.8 39.6
+12 14 12 utsamuel 62.8 48.7 54.9 41.6 59.4 49.0 4.3 23.2 53.4 39.5 23.3 34.5 29.7 39.3
+13 16 8 unibuc-sb 66.9 36.6 47.3 45.6 46.0 45.8 5.1 22.9 53.5 40.8 31.2 39.8 32.2 39.0
+14 12 21 ArgHiTZ 64.7 68.1 66.3 38.0 73.6 50.1 2.9 18.4 48.5 34.9 25.8 32.8 27.2 38.6
+15 17 9 KRLabs 57.6 60.6 59.1 34.3 66.4 45.2 5.5 23.4 53.8 38.2 27.8 42.8 31.9 38.6
+16 15 19 Loyola 54.6 70.9 61.7 32.8 78.4 46.2 6.2 21.8 50.6 31.5 24.3 34.3 28.1 37.2
+17 19 15 aehrc 57.7 41.2 48.1 37.5 49.2 42.5 2.8 20.6 51.3 38.5 28.5 33.4 29.2 35.9
+18 18 22 UTSA-NLP 53.2 72.9 61.5 30.4 76.7 43.6 2.5 17.5 51.5 33.9 22.7 30.9 26.5 35.0
+19 8 24 DMISLab 68.3 62.3 65.2 42.1 70.7 52.8 0.6 12.7 34.8 19.1 9.2 16.2 15.4 34.1
+20 20 17 HurLab 56.2 34.8 43.0 36.5 41.6 38.9 4.6 21.0 48.6 37.3 26.5 33.2 28.5 33.7
+21 22 11 heiDS 79.0 16.7 27.6 63.0 24.6 35.4 4.4 18.7 51.5 36.1 37.4 33.6 30.3 32.8
+22 21 14 DKIT 64.6 23.5 34.5 44.2 29.6 35.5 5.1 21.3 49.8 37.2 27.9 35.1 29.4 32.4
+23 23 23 WisPerMed 63.7 27.5 38.4 40.0 31.8 35.4 4.2 18.8 51.7 29.3 24.7 26.0 25.8 30.6
+24 24 20 razreshili 40.5 8.1 13.5 30.2 11.1 16.2 2.9 19.4 48.7 32.7 29.4 31.9 27.5 21.9
+- - - baseline 83.7 22.9 35.9 65.3 32.8 43.7 2.4 21.0 49.2 39.3 47.0 36.7 32.6 38.1
+Table5: Submissionscoresusingthereconciledanswerkeys,withclinician-authoredanswersusedforevaluating
+relevance. Factualityscoresarereportedatthemicrolevel. O,F,R: RankusingOverall,Factuality(StrictF1),and
+theaverageRelevancescore. ID:Teamidentifier;P:Precision;R:Recall;F1: F1Score;BL:BLEU;RG:ROUGE;
+SA:SARI;BS:BERTScore;AS:AlignScore;MD:MEDCON;Avg: OverallRelevanceScore;OS:OverallScore.
+Allscoresarepercentages.
+systems favored few-shot learning paradigms or teams submitting a total of 75 systems and 24
+the incorporation of synthetic data generated by teams providing their system descriptions. Our
+LLMsovertraditionalfine-tuningsetup. Forexam- analysisindicatedthatsystemsleveragingpropri-
+ple,LAMAR(Yoadsanitetal.,2025)createdsyn- etarylanguagemodelsachievedhigheroverallper-
+theticexamplesusinganLLMtofacilitatefew-shot formance,andthattop-performingapproachesfa-
+prompting with a separate LLM, which was em- voredfew-shotlearningstrategiesovertraditional
+ployedtoidentifyrelevantnotesentences. These fine-tuning. Additionally,systemarchitecturesin-
+sentencesweresubsequentlyleveragedtogenerate corporatingananswerreformulationstepdemon-
+the final answer text. In contrast, some systems strated notable improvements in answer quality.
+optedtoutilizepre-trainedmodelsdirectlywithout The strong interest and competitive submissions
+substantialmodifications(e.g.,FK). underscore the growing momentum in this field.
+Webelievethattheinsightsandresourcesprovided
+6 Conclusion by the ArchEHR-QA Shared Task will promote
+furtheradvancementsinthedevelopmentandeval-
+We presented an overview of the ArchEHR-QA
+uationofEHR-basedquestionansweringsystems
+Shared Task organized at the BioNLP Workshop
+forpatient-centeredapplications.
+in ACL 2025. We discussed the proposed task,
+thedatasetused,theevaluationmetrics,andasum-
+maryofthebaselineandparticipants’systems. The
+shared task attracted significant interest, with 29
+400
+Rank Team Components Model Adaptation Postprocess
+O F R ID ES→ AG→ CA→ AR Pty O-LLM O-SLM FT FS SD HT Mod Heur
+1 1 2 LAMAR ✓ ✓ ✓ ✓ ✓
+2 3 1 FK ✓ ✓
+3 2 6 unibuc-sd ✓ ✓ ✓ ✓ ✓
+4 5 5 ssagarwal ✓ ✓ ✓ ✓ ✓ ✓
+5 10 3 UIC ✓ ✓ ✓ ✓ ✓
+6 9 4 SzegedAI ✓ ✓ ✓ ✓ ✓ ✓
+7 6 10 LIMICS ✓ ✓ ✓ ✓ ✓
+8 4 18 Neural ✓ ✓ ✓
+9 7 13 LAILab ✓ ✓ ✓ ✓ ✓
+10 13 7 JUNLP ✓ ✓ ✓
+11 11 16 cuni-a ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓
+12 14 12 utsamuel ✓ ✓ ✓
+13 16 8 unibuc-sb ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓
+14 12 21 ArgHiTZ ✓ ✓ ✓ ✓ ✓ ✓
+15 17 9 KRLabs ✓ ✓ ✓ ✓ ✓
+16 15 19 Loyola ✓ ✓ ✓ ✓ ✓ ✓
+17 19 15 aehrc ✓ ✓ ✓
+18 18 22 UTSA-NLP ✓ ✓ ✓ ✓
+19 8 24 DMISLab ✓ ✓ ✓
+20 20 17 HurLab ✓ ✓ ✓ ✓ ✓
+21 22 11 heiDS ✓ ✓ ✓
+22 21 14 DKIT ✓ ✓ ✓ ✓ ✓
+23 23 23 WisPerMed ✓ ✓ ✓ ✓ ✓ ✓ ✓
+24 24 20 razreshili ✓ ✓ ✓ ✓ ✓
+Table6: Characteristicsofthesubmittedsystemswiththeirrankingsbasedonreconciledkeysandhumananswers.
+O,F,R: RankusingOverall,Factuality(StrictF1),andRelevancescore. ID:Teamidentifier. Broadcategoriesof
+systemcomponentscompriseEvidenceSelection(ES),AnswerGeneration(AG),CitationAssignment(CA),and
+AnswerReformulation(AR).DifferenttypesofmodelsemployedcanbecategorizedintoProprietarymodel(Pty),
+Open-weightlargelanguagemodel(O-LLM),andOpen-weightsmalllanguagemodel(O-SML).Adaptationor
+learningmethodsemployedwere: FineTuning(FT),Few-shotLearning(FS),UseofSyntheticData(SD),and
+HyperparameterTuning(HT).PostprocessingwasperformedusingtheModelitself(Mod)orusingHeuristics
+(Heur).
+Limitations fromeachparticipatingteam,focusingonthreekey
+criteria: (i)whetherthesystemresponseadequately
+Theprimaryevaluationofsystemsubmissionsin answersthequestion,(ii)whetheritleveragesrel-
+thissharedtaskreliedonautomatedmetrics,which evant clinical evidence, and (iii) whether it uses
+serveaspracticalproxiesforsystemperformance. general knowledge. We anticipate that this forth-
+Whilesuchmetricsofferscalabilityandefficiency, cominganalysiswillprovidedeeperinsightsinto
+theymaynotfullycapturethenuancesofanswer systemperformanceandhelpinformandacceler-
+quality,especiallyintheclinicaldomain. Human ate future development of patient-centered EHR
+evaluationthatassessessystem-generatedanswers questionansweringsystems.
+consideringtheinputquestionandthecorrespond-
+ingclinicalnoteremainsthegoldstandardfordeter-
+mininganswerrelevance,accuracy,andevidence Acknowledgments
+grounding. However,duetotheintensivetimeand
+resourcerequirements,aswellasthelimitedwin- This research was supported by the Division of
+dowbetweenthesubmissiondeadlineandthepro- IntramuralResearch(DIR)oftheNationalLibrary
+ceedingsrelease,comprehensivemanualevaluation ofMedicine(NLM),NationalInstitutesofHealth,
+wasnotfeasiblewithinthescopeofthesharedtask. andutilizedthecomputationalresourcesoftheNIH
+To address this limitation, we plan to conduct a HPCBiowulfcluster(http://hpc.nih.gov).
+thoroughmanualassessmentofthetopsubmissions
+401
+References A.JayHolmgren, MariaE.Byron, CarrieK.Grouse,
+andJuliaAdler-Milstein.2023. AssociationBetween
+Sai Prasanna Teja Reddy Bogireddy, Abrar Majeedi,
+Billing Patient Portal Messages as e-Visits and Pa-
+ViswanathReddyGajjala,ZhuoyanXu,SiddhantRai,
+tientMessagingVolume. JAMA,329(4):339–342.
+andVaishnavPotlapalli.2025. Neuralatarchehr-qa
+2025: Agentic prompt optimization for evidence- HyeonHwang,HyeongsoonHwang,JongMyungJung,
+groundedclinicalquestionanswering. InThe24th Jaehoon Yun, Minju Song, Yein Park, Dain Kim,
+WorkshoponBiomedicalNaturalLanguageProcess- TaewhooLee,JiwoongSohn,ChanwoongYoon,Si-
+ingandBioNLPSharedTasks,Vienna,Austria.As- hyeonPark,JiwooLee,HeechulYang,andJaewoo
+sociationforComputationalLinguistics. Kang.2025. Dmislabatarchehr-qa2025: Evidence-
+grounded answer generation for ehr-based qa via
+KhyathiRaghaviChandu,YonatanBisk,andAlanW
+a multi-agent framework. In The 24th Workshop
+Black. 2021. Grounding ‘Grounding’ in NLP. In
+on Biomedical Natural Language Processing and
+FindingsoftheAssociationforComputationalLin-
+BioNLPSharedTasks,Vienna,Austria.Association
+guistics: ACL-IJCNLP2021,pages4283–4305,On-
+forComputationalLinguistics.
+line.AssociationforComputationalLinguistics.
+AlistairE.W.Johnson,LucasBulgarelli,LuShen,Alvin
+Shan Chen, Marco Guevara, Shalini Moningi, Frank
+Gayles,AyadShammout,StevenHorng,TomJ.Pol-
+Hoebers, Hesham Elhalawani, Benjamin H. Kann,
+lard,SichengHao,BenjaminMoody,BrianGow,Li-
+FallonE.Chipidza,JonathanLeeman,HugoJ.W.L.
+wei H. Lehman, Leo A. Celi, and Roger G. Mark.
+Aerts, Timothy Miller, Guergana K. Savova, Jack
+2023. MIMIC-IV, a freely accessible electronic
+Gallifant,LeoA.Celi,RaymondH.Mak,Maryam
+healthrecorddataset. ScientificData,10(1):1.
+Lustberg,MajidAfshar,andDanielleS.Bitterman.
+2024. The effect of using a large language model Alistair E. W. Johnson, Tom J. Pollard, Lu Shen, Li-
+torespondtopatientmessages. TheLancetDigital weiH.Lehman,MenglingFeng,MohammadGhas-
+Health,0(0). semi, Benjamin Moody, Peter Szolovits, Leo An-
+thonyCeli,andRogerG.Mark.2016. MIMIC-III,
+AdrianCuadronCortes,AimarSagasti,MaitaneUrru-
+afreelyaccessiblecriticalcaredatabase. Scientific
+ela,IkerDelaIglesia,AneGarcíaDomingo-Aldama,
+Data,3(1):160035.
+AitziberAtutxaSalazar,JosuGoikoetxea,andAnder
+Barrena.2025. Arghitzatarchehr-qa2025: Atwo- TuanDungLe,ThanhDuong,ShohrehHaddadan,Be-
+stepdivideandconquerapproachtopatientquestion hzad Jazayeri, Brandon Manley, and Thanh Thieu.
+answeringfortopfactuality. InThe24thWorkshop 2025. Lailabatarchehr-qa2025: Test-timescaling
+on Biomedical Natural Language Processing and forevidenceselectioningroundedquestionanswer-
+BioNLPSharedTasks,Vienna,Austria.Association ingfromelectronichealthrecords. InThe24thWork-
+forComputationalLinguistics. shop on Biomedical Natural Language Processing
+andBioNLPSharedTasks,Vienna,Austria.Associa-
+Patricia Garcia, Stephen P. Ma, Shreya Shah, Mar-
+tionforComputationalLinguistics.
+garetSmith,YejinJeong,AnnaDevon-Sand,Ming
+Tai-Seale,KevinTakazawa,DanyelleClutter,Kyle Chin-Yew Lin. 2004. ROUGE: A Package for Auto-
+Vogt, Carlene Lugtu, Matthew Rojo, Steven Lin, maticEvaluationofSummaries. InTextSummariza-
+TaitShanafelt,MichaelA.Pfeffer,andChristopher tionBranchesOut,pages74–81,Barcelona,Spain.
+Sharp.2024. ArtificialIntelligence–GeneratedDraft AssociationforComputationalLinguistics.
+RepliestoPatientInboxMessages. JAMANetwork
+Open,7(3):e243201. SiruLiu,AllisonBMcCoy,AileenPWright,Babatunde
+Carew,JulianZGenkins,SeanSHuang,JoshFPeter-
+Dragos Dumitru Ghinea and Stefania Rîncu. 2025. son,BryanSteitz,andAdamWright.2024a. Lever-
+,
+Unibuc-sdatarchehr-qa2025: Promptingourway aginglargelanguagemodelsforgeneratingresponses
+toclinicalqawithmulti-modelensembling. InThe topatientmessages—asubjectiveanalysis. Journal
+24thWorkshoponBiomedicalNaturalLanguagePro- of the American Medical Informatics Association,
+cessingandBioNLPSharedTasks,Vienna,Austria. pageocae052.
+AssociationforComputationalLinguistics.
+Siru Liu, Aileen P Wright, Allison B Mccoy, Sean S
+AaronGrattafiori,AbhimanyuDubey,AbhinavJauhri, Huang, Julian Z Genkins, Josh F Peterson, Yaa A
+Abhinav Pandey, Abhishek Kadian, Ahmad Al- Kumah-Crystal,WilliamMartinez,BabatundeCarew,
+Dahle, Aiesha Letman, Akhil Mathur, Alan Schel- DaraMize,BryanSteitz,andAdamWright.2024b.
+ten,AlexVaughan,AmyYang,AngelaFan,Anirudh Usinglargelanguagemodeltoguidepatientstocre-
+Goyal, Anthony Hartshorn, Aobo Yang, Archi Mi- ateefficientandcomprehensiveclinicalcaremessage.
+tra, Archie Sravankumar, Artem Korenev, Arthur JournaloftheAmericanMedicalInformaticsAssoci-
+Hinsvark,and542others.2024. TheLlama3Herd ation,31(8):1665–1670.
+ofModels. Preprint,arXiv:2407.21783.
+VincentXLiu,PamelaKaercher,JenniferManickam,
+CharlotteJ.HaugandJeffreyM.Drazen.2023. Arti- EricSmallberg,KanishkaBhutani,MichelleMancha,
+ficialIntelligenceandMachineLearninginClinical and Kristine Lee. 2024c. Content of Patient Elec-
+Medicine,2023. NewEnglandJournalofMedicine, tronicMessagestoPhysiciansinaLargeIntegrated
+388(13):1201–1208. System. JAMANetworkOpen,7(4):e244867.
+402
+Kathryn A. Martinez, Rebecca Schulte, Michael B. Wen-wai Yim, Yujuan Fu, Asma Ben Abacha, Neal
+Rothberg,MariaCharmaineTang,andElizabethR. Snider, Thomas Lin, and Meliha Yetisgen. 2023.
+Pfoh.2024. PatientPortalMessageVolumeandTime Aci-bench: ANovelAmbientClinicalIntelligence
+SpentontheEHR:AnObservationalStudyofPri- DatasetforBenchmarkingAutomaticVisitNoteGen-
+maryCareClinicians. JournalofGeneralInternal eration. ScientificData,10(1):586.
+Medicine,39(4):566–572.
+Seksan Yoadsanit, Nopporn Lekuthai, Watcharitpol
+KishorePapineni,SalimRoukos,ToddWard,andWei- Sermsrisuwan, and Titipat Achakulvisut. 2025.
+Jing Zhu. 2002. BLEU: A method for automatic Lamar at archehr-qa 2025: Clinically aligned llm-
+evaluationofmachinetranslation. InProceedingsof generated few-shot learning for ehr-grounded pa-
+the40thAnnualMeetingonAssociationforCompu- tient question answering. In The 24th Workshop
+tationalLinguistics,pages311–318.Associationfor on Biomedical Natural Language Processing and
+ComputationalLinguistics. BioNLPSharedTasks,Vienna,Austria.Association
+forComputationalLinguistics.
+Yang Ren, Dezhi Wu, Aditya Khurana, George Mas-
+torakos, Sunyang Fu, Nansu Zong, Jungwei Fan, YuhengZha,YichiYang,RuichenLi,andZhitingHu.
+HongfangLiu, andMingHuang.2023. Classifica- 2023. AlignScore: EvaluatingFactualConsistency
+tion of Patient Portal Messages with BERT-based withAUnifiedAlignmentFunction. InProceedings
+LanguageModels. In2023IEEE11thInternational of the 61st Annual Meeting of the Association for
+ConferenceonHealthcareInformatics(ICHI),pages ComputationalLinguistics(Volume1: LongPapers),
+176–182. pages11328–11348,Toronto,Canada.Association
+forComputationalLinguistics.
+WilliamR.Small,BatiaWiesenfeld,BeatrixBrandfield-
+Harvey,ZoeJonassen,SoumikMandal,ElizabethR. Tianyi Zhang, Varsha Kishore, Felix Wu, Kilian Q.
+Stevens, Vincent J. Major, Erin Lostraglio, Adam Weinberger, and Yoav Artzi. 2019. BERTScore:
+Szerencsy,SimonJones,YindalonAphinyanaphongs, Evaluating Text Generation with BERT. In Inter-
+Stephen B. Johnson, Oded Nov, and Devin Mann. nationalConferenceonLearningRepresentations.
+2024. LargeLanguageModel–BasedResponsesto
+Patients’In-BasketMessages. JAMANetworkOpen, A Appendix
+7(7):e2422399.
+Tables7and8providethefactualityscoresbothat
+Sarvesh Soni and Dina Demner-Fushman. 2025.
+themacrolevel(averagingper-caseF1scores)and
+A Dataset for Addressing Patient’s Information
+NeedsrelatedtoClinicalCourseofHospitalization. the micro level (aggregating true positives, false
+Preprint,arXiv:2506.04156. positives,andfalsenegativesacrossallcases).
+MujeenSung,SongFeng,JamesGung,RaphaelShu,
+YiZhang,andSaabMansour.2025. StructuredList-
+GroundedQuestionAnswering. InProceedingsof
+the31stInternationalConferenceonComputational
+Linguistics,pages8347–8359,AbuDhabi,UAE.As-
+sociationforComputationalLinguistics.
+Jui-IWang,Hen-HsenHuang,andHsin-HsiChen.2025.
+MESAQA:ADatasetforMulti-SpanContextualand
+Evidence-Grounded Question Answering. In Pro-
+ceedings of the 31st International Conference on
+ComputationalLinguistics,pages10891–10901,Abu
+Dhabi,UAE.AssociationforComputationalLinguis-
+tics.
+Anuradha Welivita and Pearl Pu. 2023. A survey of
+consumer health question answering systems. AI
+Magazine,44(4):482–507.
+WeiXu,CourtneyNapoles,ElliePavlick,QuanzeChen,
+and Chris Callison-Burch. 2016. Optimizing Sta-
+tisticalMachineTranslationforTextSimplification.
+TransactionsoftheAssociationforComputational
+Linguistics,4:401–415.
+Zhen Xu, Sergio Escalera, Adrien Pavão, Magali
+Richard, Wei-WeiTu, QuanmingYao, HuanZhao,
+and Isabelle Guyon. 2022. Codabench: Flexible,
+easy-to-use,andreproduciblemeta-benchmarkplat-
+form. Patterns,3(7):100543.
+403
+Micro Macro
+Rank Team
+Lenient Strict Lenient Strict
+O ID P R F1 P R F1 P R F1 P R F1
+1 DMISLab 61.2 59.2 60.2 57.9 59.3 58.6 66.6 67.1 63.2 62.1 69.0 61.2
+2 Neural 58.4 63.7 60.9 55.4 63.8 59.3 68.1 69.8 64.8 62.7 71.3 62.6
+3 LAILab 59.7 66.0 62.7 56.0 65.5 60.4 67.2 72.1 64.6 62.1 72.8 61.5
+4 LAMAR 64.0 53.5 58.3 60.6 53.6 56.9 70.0 62.2 61.8 65.4 64.0 60.2
+5 ssagarwal 71.7 35.6 47.6 68.8 36.2 47.5 77.8 44.9 52.1 72.9 46.5 51.4
+6 LIMICS 63.6 49.6 55.8 59.9 49.4 54.2 71.0 58.2 59.4 66.6 59.8 57.4
+7 cuni-a 60.2 48.1 53.5 56.9 48.1 52.1 66.0 54.2 55.6 61.1 56.0 53.6
+8 ArgHiTZ 58.9 65.8 62.1 55.8 65.9 60.5 62.4 69.1 61.9 57.0 69.5 58.5
+9 Loyola 51.1 70.5 59.3 48.3 70.5 57.3 56.2 72.9 60.4 52.1 74.0 57.6
+10 unibuc-sd 66.5 47.2 55.2 62.7 47.0 53.8 70.8 55.7 58.4 65.7 56.5 56.2
+11 SzegedAI 69.7 37.0 48.4 65.6 36.9 47.2 73.6 46.1 53.1 68.3 47.1 51.4
+12 KRLabs 50.7 56.6 53.5 48.1 56.8 52.1 60.4 60.6 56.2 55.8 62.3 54.3
+13 FK 70.0 37.9 49.2 66.7 38.2 48.6 74.9 49.8 54.5 70.8 51.3 53.4
+14 UTSA-NLP 47.0 68.4 55.7 43.7 67.2 53.0 49.6 77.4 56.7 45.1 77.3 52.6
+15 UIC 70.4 35.2 46.9 67.3 35.6 46.5 79.1 42.1 51.2 74.7 44.1 51.4
+16 utsamuel 55.1 45.3 49.7 51.4 44.7 47.8 57.0 55.4 51.8 52.2 56.0 49.0
+17 aehrc 55.5 42.0 47.8 52.9 42.4 47.1 65.4 48.0 50.4 61.4 49.5 49.1
+18 unibuc-sb 61.7 35.9 45.4 58.7 36.1 44.7 68.5 41.4 47.8 63.6 42.7 46.4
+19 HurLab 52.9 34.8 41.9 49.3 34.3 40.4 61.2 42.0 44.8 56.7 43.0 42.7
+20 JUNLP 57.5 32.4 41.4 54.2 32.3 40.5 62.4 43.6 46.9 58.4 45.0 45.8
+21 WisPerMed 59.1 27.1 37.1 55.4 26.9 36.2 59.5 33.9 39.9 54.0 34.0 37.7
+22 DKIT 59.9 23.1 33.4 56.5 23.1 32.7 63.4 31.1 36.5 60.0 32.4 35.9
+23 heiDS 71.2 16.0 26.2 67.7 16.1 26.0 73.9 22.5 30.7 69.7 24.0 30.7
+24 razreshili 39.7 8.4 13.9 36.8 8.2 13.5 53.8 13.6 19.1 49.6 14.5 19.0
+- baseline 77.0 22.3 34.6 71.6 21.9 33.6 83.0 30.8 39.9 77.4 31.5 39.0
+Table7:Factualityscoresusingthepreliminaryversionofanswerkeys,withbothmicroandmacrolevelcalculations.
+O: RankusingOverallscore. ID:Teamidentifier;P:Precision;R:Recall;F1: F1Score. Allscoresarepercentages.
+404
+Micro Macro
+Rank Team
+Lenient Strict Lenient Strict
+O ID P R F1 P R F1 P R F1 P R F1
+1 LAMAR 72.9 57.4 64.2 49.6 72.0 58.8 78.3 67.2 68.4 56.7 75.5 61.9
+2 FK 78.8 40.3 53.3 59.1 55.6 57.3 81.8 52.5 58.7 64.3 60.8 59.8
+3 unibuc-sd 75.4 50.4 60.4 53.0 65.2 58.4 80.2 59.8 65.2 60.7 69.1 62.3
+4 ssagarwal 79.0 37.0 50.4 58.3 50.3 54.0 84.6 47.5 55.9 67.0 55.2 56.8
+5 UIC 77.6 36.6 49.7 55.5 48.2 51.6 86.8 43.7 54.1 68.7 51.1 54.5
+6 SzegedAI 78.4 39.3 52.3 54.4 50.2 52.2 80.7 47.9 56.2 58.5 53.8 53.4
+7 LIMICS 71.2 52.3 60.3 46.9 63.5 54.0 78.6 61.5 64.4 55.5 67.2 57.5
+8 Neural 67.5 69.3 68.4 42.8 81.0 56.0 76.5 75.6 72.3 54.6 82.8 62.1
+9 LAILab 65.7 68.4 67.0 40.6 77.8 53.3 73.3 74.3 68.9 51.9 79.9 57.8
+10 JUNLP 64.9 34.5 45.0 49.5 48.5 49.0 68.9 46.5 51.0 53.6 54.4 52.0
+11 cuni-a 65.7 49.4 56.4 43.3 60.0 50.3 72.5 56.6 59.3 54.5 64.3 54.8
+12 utsamuel 62.8 48.7 54.9 41.6 59.4 49.0 63.8 58.0 56.6 45.1 63.8 50.6
+13 unibuc-sb 66.9 36.6 47.3 45.6 46.0 45.8 72.5 43.2 49.5 54.1 48.9 48.4
+14 ArgHiTZ 64.7 68.1 66.3 38.0 73.6 50.1 68.4 71.1 65.6 45.8 74.4 52.8
+15 KRLabs 57.6 60.6 59.1 34.3 66.4 45.2 67.4 64.9 62.0 48.0 69.0 51.9
+16 Loyola 54.6 70.9 61.7 32.8 78.4 46.2 59.0 73.9 62.4 40.1 78.4 49.9
+17 aehrc 57.7 41.2 48.1 37.5 49.2 42.5 68.7 47.6 51.4 51.5 52.7 47.8
+18 UTSA-NLP 53.2 72.9 61.5 30.4 76.7 43.6 56.4 80.3 61.7 35.5 79.8 46.2
+19 DMISLab 68.3 62.3 65.2 42.1 70.7 52.8 73.9 70.3 68.6 50.5 74.7 57.2
+20 HurLab 56.2 34.8 43.0 36.5 41.6 38.9 63.9 41.3 45.4 45.6 44.5 41.1
+21 heiDS 79.0 16.7 27.6 63.0 24.6 35.4 82.4 24.5 32.9 66.3 28.5 36.7
+22 DKIT 64.6 23.5 34.5 44.2 29.6 35.5 68.1 32.3 38.3 51.1 34.6 37.6
+23 WisPerMed 63.7 27.5 38.4 40.0 31.8 35.4 62.9 34.8 40.8 39.7 35.1 35.3
+24 razreshili 40.5 8.1 13.5 30.2 11.1 16.2 57.8 13.4 18.3 47.4 14.6 20.2
+- baseline 83.7 22.9 35.9 65.3 32.8 43.7 89.2 32.4 42.2 74.2 38.6 47.3
+Table8: Factualityscoresusingthereconciledanswerkeys,withbothmicroandmacrolevelcalculations. O: Rank
+usingOverallscore. ID:Teamidentifier;P:Precision;R:Recall;F1: F1Score. Allscoresarepercentages.
+405

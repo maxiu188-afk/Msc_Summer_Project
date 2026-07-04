@@ -11,7 +11,9 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from archehr_sebaseline.dataset_adapters import (
+    load_archehr_common_examples,
     load_pubmedqa_common_examples,
+    archehr_records_to_common,
     pubmedqa_records_to_common,
 )
 
@@ -55,6 +57,80 @@ class DatasetAdapterTests(unittest.TestCase):
         examples = load_pubmedqa_common_examples(path, limit=1)
         self.assertEqual(len(examples), 1)
         self.assertEqual(examples[0]["id"], "1")
+
+    def test_archehr_records_to_common_preserves_sentence_ids(self) -> None:
+        examples = archehr_records_to_common(
+            [
+                {
+                    "id": "case-1",
+                    "patient_question": "Why was the medication changed?",
+                    "clinician_question": "Why was therapy switched?",
+                    "evidence": [
+                        {"sentence_id": "S1", "text": "The patient had nausea."},
+                        {"sentence_id": "S2", "text": "The medication was changed."},
+                    ],
+                    "gold_answer": "Therapy was switched because of nausea.",
+                    "gold_relevant_sentence_ids": ["S1", "S2"],
+                }
+            ]
+        )
+        self.assertEqual(len(examples), 1)
+        example = examples[0]
+        self.assertEqual(example["dataset"], "archehr_qa")
+        self.assertEqual(example["id"], "case-1")
+        self.assertEqual(example["evidence_sentence_ids"], ["S1", "S2"])
+        self.assertEqual(example["gold_relevant_sentence_ids"], ["S1", "S2"])
+
+    def test_load_archehr_common_examples_jsonl(self) -> None:
+        output_dir = Path(__file__).resolve().parents[1] / "outputs" / "test_fixtures"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        path = output_dir / "archehr_test.jsonl"
+        path.write_text(
+            "\n".join(
+                [
+                    json.dumps(
+                        {
+                            "id": "case-2",
+                            "question": "What happened?",
+                            "sentences": ["Sentence one.", "Sentence two."],
+                        }
+                    )
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        examples = load_archehr_common_examples(path)
+        self.assertEqual(len(examples), 1)
+        self.assertEqual(examples[0]["id"], "case-2")
+        self.assertEqual(examples[0]["evidence_sentence_ids"], ["S1", "S2"])
+
+    def test_load_archehr_common_examples_xml(self) -> None:
+        output_dir = Path(__file__).resolve().parents[1] / "outputs" / "test_fixtures"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        path = output_dir / "archehr_test.xml"
+        path.write_text(
+            """<?xml version="1.0" encoding="UTF-8"?>
+<annotations>
+  <case id="case-xml">
+    <clinical_specialty>medicine</clinical_specialty>
+    <patient_question>Why was the test ordered?</patient_question>
+    <clinician_question>Why was imaging recommended?</clinician_question>
+    <note_excerpt_sentences>
+      <sentence id="S1" paragraph_id="p1" start_char_index="0" length="10">The patient had pain.</sentence>
+      <sentence id="S2" paragraph_id="p1" start_char_index="11" length="10">Imaging was recommended.</sentence>
+    </note_excerpt_sentences>
+  </case>
+</annotations>
+""",
+            encoding="utf-8",
+        )
+        examples = load_archehr_common_examples(path)
+        self.assertEqual(len(examples), 1)
+        self.assertEqual(examples[0]["id"], "case-xml")
+        self.assertEqual(examples[0]["question"], "Why was the test ordered?")
+        self.assertEqual(examples[0]["clinician_question"], "Why was imaging recommended?")
+        self.assertEqual(examples[0]["evidence_sentence_ids"], ["S1", "S2"])
 
 
 if __name__ == "__main__":
