@@ -132,6 +132,32 @@ class DatasetAdapterTests(unittest.TestCase):
         self.assertEqual(examples[0]["clinician_question"], "Why was imaging recommended?")
         self.assertEqual(examples[0]["evidence_sentence_ids"], ["S1", "S2"])
 
+    def test_load_archehr_common_examples_xml_nested_questions(self) -> None:
+        output_dir = Path(__file__).resolve().parents[1] / "outputs" / "test_fixtures"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        path = output_dir / "archehr_nested_test.xml"
+        path.write_text(
+            """<?xml version="1.0" encoding="UTF-8"?>
+<annotations>
+  <case id="1">
+    <questions>
+      <question role="patient">Why did I need antibiotics?</question>
+      <question role="clinician">Why were antibiotics prescribed?</question>
+    </questions>
+    <note_excerpt_sentences>
+      <sentence id="S1">The patient had a suspected infection.</sentence>
+    </note_excerpt_sentences>
+  </case>
+</annotations>
+""",
+            encoding="utf-8",
+        )
+        examples = load_archehr_common_examples(path)
+        self.assertEqual(len(examples), 1)
+        self.assertEqual(examples[0]["id"], "1")
+        self.assertEqual(examples[0]["question"], "Why did I need antibiotics?")
+        self.assertEqual(examples[0]["clinician_question"], "Why were antibiotics prescribed?")
+
 
 if __name__ == "__main__":
     unittest.main()

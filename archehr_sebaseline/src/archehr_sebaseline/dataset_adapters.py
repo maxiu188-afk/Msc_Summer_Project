@@ -151,12 +151,48 @@ def _load_json_or_jsonl(path: str | Path) -> Any:
     return _load_json(input_path)
 
 
+def _local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1].lower().replace("-", "_")
+
+
 def _element_text(parent: ET.Element, tag: str) -> str | None:
-    child = parent.find(tag)
-    if child is None or child.text is None:
-        return None
-    text = child.text.strip()
-    return text or None
+    wanted = tag.lower().replace("-", "_")
+    for child in parent.iter():
+        if child is parent:
+            continue
+        if _local_name(child.tag) != wanted:
+            continue
+        text = " ".join(child.itertext()).strip()
+        return text or None
+    return None
+
+
+def _question_text(case: ET.Element, role: str) -> str | None:
+    role = role.lower()
+    for child in case.iter():
+        if child is case:
+            continue
+        name = _local_name(child.tag)
+        attrs = {str(key).lower(): str(value).lower() for key, value in child.attrib.items()}
+        attr_text = " ".join(attrs.values())
+        if role in name and "question" in name:
+            text = " ".join(child.itertext()).strip()
+            if text:
+                return text
+        if name == "question" and role in attr_text:
+            text = " ".join(child.itertext()).strip()
+            if text:
+                return text
+    return None
+
+
+def _case_sentence_elements(case: ET.Element) -> list[ET.Element]:
+    sentence_elements = []
+    for child in case.iter():
+        name = _local_name(child.tag)
+        if name in {"sentence", "note_sentence", "excerpt_sentence"}:
+            sentence_elements.append(child)
+    return sentence_elements
 
 
 def _load_archehr_xml_records(path: str | Path) -> list[dict[str, Any]]:
@@ -170,8 +206,8 @@ def _load_archehr_xml_records(path: str | Path) -> list[dict[str, Any]]:
         if not case_id:
             continue
         sentences = []
-        for index, sentence in enumerate(case.findall(".//note_excerpt_sentences/sentence"), start=1):
-            text = (sentence.text or "").strip()
+        for index, sentence in enumerate(_case_sentence_elements(case), start=1):
+            text = " ".join(sentence.itertext()).strip()
             if not text:
                 continue
             sentences.append(
@@ -183,8 +219,15 @@ def _load_archehr_xml_records(path: str | Path) -> list[dict[str, Any]]:
         records.append(
             {
                 "id": case_id,
-                "patient_question": _element_text(case, "patient_question") or "",
-                "clinician_question": _element_text(case, "clinician_question"),
+                "patient_question": _question_text(case, "patient")
+                or _element_text(case, "patient_question")
+                or _element_text(case, "patientQuestion")
+                or _element_text(case, "consumer_question")
+                or "",
+                "clinician_question": _question_text(case, "clinician")
+                or _element_text(case, "clinician_question")
+                or _element_text(case, "clinicianQuestion")
+                or _element_text(case, "clinical_question"),
                 "clinical_specialty": _element_text(case, "clinical_specialty"),
                 "evidence": sentences,
             }
@@ -294,6 +337,8 @@ def archehr_records_to_common(
             or record.get("clinicianQuestion")
             or record.get("clinical_question")
         )
+        if not patient_question and clinician_question:
+            patient_question = clinician_question
         example = make_common_example(
             dataset="archehr_qa",
             example_id=example_id,
