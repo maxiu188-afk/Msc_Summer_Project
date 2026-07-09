@@ -114,12 +114,13 @@ def build_archehr_prompt(example: dict[str, Any]) -> str:
             format_evidence(evidence),
             "",
             "Task:",
-            "Answer the clinician question if provided; otherwise answer the patient question.",
+            f"Question to answer: {clinician_question or patient_question}",
             "Use only the evidence sentences above.",
             "If the evidence is insufficient, say that the evidence is insufficient.",
-            "Return a JSON list. Each item must have exactly these keys:",
+            "Do not copy the evidence sentences into the answer.",
+            "Return only a valid JSON list. Each item must have exactly these keys:",
             '- "statement": one concise answer statement',
-            '- "citation": the sentence ID that supports the statement',
+            '- "citation": the sentence ID or IDs that support the statement, such as "3" or "3, 4"',
             "Do not include unsupported statements.",
         ]
     )

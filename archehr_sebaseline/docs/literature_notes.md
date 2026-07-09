@@ -25,6 +25,12 @@ Implementation implications:
 
 ## Current Baseline Implications
 
-- Level 4 uses PubMedQA as an approved public pilot dataset before restricted ArchEHR-QA work.
-- Qwen2.5-7B-Instruct plus NLI clustering now produces complete 50x5 pilot artifacts.
-- The next implementation step is a maintained evaluation script for PubMedQA yes/no/maybe correctness proxies, followed by AUROC and selective-prediction analysis.
+- PubMedQA remains useful as an approved public engineering smoke test, but its
+  short yes/no/maybe labels do not match the final long-form clinical QA target.
+- ArchEHR-QA is useful for grounded long-form generation and citation-UQ
+  diagnostics, but the available test key lacks gold evidence/quality labels.
+- Gemma 3 12B plus NLI clustering now produces complete ArchEHR-QA 100x10 test
+  artifacts with clean JSON parsing.
+- The next implementation step is not more ArchEHR-QA answer optimization. It is
+  dataset replacement: choose a dataset with usable answer-quality/correctness
+  labels, then reuse the implemented SE/UQ infrastructure.

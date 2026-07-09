@@ -27,10 +27,27 @@ class ArchEHRSETests(unittest.TestCase):
         self.assertEqual(parsed["answer_text"], "The medication was changed.")
 
     def test_parse_grounded_answer_fallback_citations(self) -> None:
-        self.assertEqual(extract_citation_ids("Supported by [S1, S3] and S2."), ["S1", "S2", "S3"])
+        self.assertEqual(extract_citation_ids("Supported by [S1, S3] and S2."), ["S1", "S3"])
         parsed = parse_grounded_answer("The evidence is insufficient [S4].")
         self.assertEqual(parsed["parse_status"], "fallback")
         self.assertEqual(parsed["citation_ids"], ["S4"])
+
+    def test_parse_grounded_answer_json_fence(self) -> None:
+        parsed = parse_grounded_answer(
+            """Here is the answer:
+```json
+[
+  {"statement": "Medication alone was insufficient.", "citation": "3, 4"}
+]
+```"""
+        )
+        self.assertEqual(parsed["parse_status"], "json")
+        self.assertEqual(parsed["citation_ids"], ["3", "4"])
+        self.assertEqual(parsed["answer_text"], "Medication alone was insufficient.")
+
+    def test_fallback_does_not_extract_bare_numbers(self) -> None:
+        parsed = parse_grounded_answer("Use 220 mcg and follow up in 6 weeks, supported by [3].")
+        self.assertEqual(parsed["citation_ids"], ["3"])
 
     def test_citation_uq_rows(self) -> None:
         rows = citation_uq_rows(
@@ -71,7 +88,7 @@ class ArchEHRSETests(unittest.TestCase):
             config=GenerationConfig(model_name="static", num_samples=3),
             generator=StaticGenerator(
                 [
-                    '[{"statement": "The medication was discontinued because of rash.", "citation": "S1"}]',
+                    '[{"statement": "The medication was discontinued because of rash.", "citation": "S1, 220"}]',
                     '[{"statement": "The medication was discontinued.", "citation": "S2"}]',
                     '[{"statement": "The medication was discontinued because of rash.", "citation": "S1"}]',
                 ]
@@ -93,6 +110,14 @@ class ArchEHRSETests(unittest.TestCase):
         with (output_dir / "citation_uq.csv").open("r", encoding="utf-8", newline="") as infile:
             rows = list(csv.DictReader(infile))
         self.assertEqual(rows[0]["num_unique_citation_sets"], "2")
+
+        parsed_rows = [
+            json.loads(line)
+            for line in (output_dir / "parsed_generations.jsonl").read_text(encoding="utf-8").splitlines()
+        ]
+        self.assertEqual(parsed_rows[0]["raw_citation_ids"], ["S1", "220"])
+        self.assertEqual(parsed_rows[0]["citation_ids"], ["S1"])
+        self.assertEqual(parsed_rows[0]["invalid_citation_ids"], ["220"])
 
 
 if __name__ == "__main__":

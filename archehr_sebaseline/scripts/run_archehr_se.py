@@ -22,17 +22,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--data_path", type=Path, required=True)
     parser.add_argument("--split", default="dev")
     parser.add_argument("--output_dir", type=Path, default=None)
-    parser.add_argument("--model_name", default="sshleifer/tiny-gpt2")
+    parser.add_argument("--model_name", default="google/gemma-3-12b-it")
     parser.add_argument("--num_samples", type=int, default=10)
     parser.add_argument("--max_examples", type=int, default=None)
     parser.add_argument("--max_new_tokens", type=int, default=256)
     parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--top_p", type=float, default=0.9)
     parser.add_argument("--seed", type=int, default=13)
-    parser.add_argument("--device", default="cpu")
-    parser.add_argument("--max_input_tokens", type=int, default=1024)
+    parser.add_argument("--device", default="cuda")
+    parser.add_argument("--max_input_tokens", type=int, default=4096)
     parser.add_argument("--local_files_only", action="store_true")
-    parser.add_argument("--torch_dtype", default=None)
+    parser.add_argument("--torch_dtype", default="bfloat16")
     parser.add_argument("--trust_remote_code", action="store_true")
     parser.add_argument("--clustering_method", choices=["exact", "nli"], default="nli")
     parser.add_argument("--nli_model_name", default="microsoft/deberta-v2-xlarge-mnli")
@@ -85,4 +85,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

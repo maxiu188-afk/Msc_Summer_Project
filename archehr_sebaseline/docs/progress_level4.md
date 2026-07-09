@@ -1,6 +1,20 @@
 ﻿# Level 4 Progress
 
-Last updated: 2026-07-03
+Last updated: 2026-07-09
+
+## Current Note
+
+This file records the historical PubMedQA Level 4 pilot. It is no longer the
+active research path. The later ArchEHR-QA SE baseline has also been completed
+as an engineering milestone, but ArchEHR-QA is now paused as a final benchmark
+because its test split lacks gold evidence/quality labels.
+
+Current active planning is in:
+
+```text
+docs/dataset_pivot_status.md
+SE_BASELINE_LEVEL_PLAN.md
+```
 
 ## Completed Pilot
 
@@ -47,7 +61,9 @@ label_heuristic_eval.md
 
 ## Next Work
 
-1. Add a maintained evaluation script for PubMedQA yes/no/maybe extraction.
-2. Compute AUROC/rejection curves for detecting incorrect majority answers.
-3. Decide whether to increase sampling to `N=10` for smoother SE values.
-4. Add the next dataset adapter or begin SEP target generation from the Level 4 artifacts.
+Historical next work has been completed or superseded:
+
+1. PubMedQA label evaluation was implemented.
+2. AUROC/rejection curves were implemented.
+3. ArchEHR-QA `N=10` runs were completed.
+4. SEP target generation is deferred until a replacement dataset is chosen.

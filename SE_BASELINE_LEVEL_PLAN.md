@@ -1,5 +1,17 @@
 ﻿# ArchEHR-QA Semantic Entropy Baseline Plan
 
+Last updated: 2026-07-09
+
+## Current Decision
+
+ArchEHR-QA is no longer the planned final evaluation or SEP training dataset.
+The ArchEHR-QA pipeline is implemented and useful as an engineering baseline,
+but the available test key has no gold evidence labels or answer-quality labels.
+
+The project should now pivot to a replacement dataset with usable answer-quality
+or correctness supervision. The existing ArchEHR-QA code should be retained as a
+grounded long-form SE smoke/diagnostic pipeline.
+
 This document records the active plan after the Level 4 pilot cleanup. Earlier local smoke stages are complete and have been removed from the maintained code path. The active project now starts from the common-schema Level 3 pipeline and the Level 4 token-score/NLI baseline.
 
 ## Data Boundary
@@ -131,25 +143,27 @@ After the baseline evaluation is stable:
 
 ## Current Next Step
 
-The main research path now shifts away from PubMedQA and toward an ArchEHR-QA
-Semantic Entropy baseline. PubMedQA remains useful only for engineering smoke
-tests and should not be used as a main SEP or SE target.
+The main research path now shifts away from ArchEHR-QA as a final benchmark and
+toward selecting a replacement dataset with usable gold supervision. PubMedQA
+and ArchEHR-QA remain useful for engineering smoke tests and method diagnostics,
+but neither should be used as the main SEP target in the current project state.
 
 Current next step:
 
 ```text
-Build a simple ArchEHR-QA SE baseline using provided evidence sentences,
-structured cited answers, answer-level SE, and citation-set uncertainty.
+Choose a replacement dataset with answer-quality/correctness labels, then reuse
+the existing SE generation, clustering, token-UQ, and evaluation infrastructure.
 ```
 
 See:
 
 ```text
 archehr_sebaseline/docs/archehr_se_baseline_plan.md
+archehr_sebaseline/docs/dataset_pivot_status.md
 ```
 
-SEP and hidden-state probe work is intentionally deferred until the ArchEHR-QA
-SE baseline is stable.
+SEP and hidden-state probe work is intentionally deferred until the replacement
+dataset and quality target are stable.
 
 Status: initial ArchEHR-QA SE baseline implementation complete.
 
@@ -169,5 +183,11 @@ analysis_report.md
 summary.txt
 ```
 
-Next practical step is to run this pipeline on a user-provided sanitized or
-server-side ArchEHR-QA data path with `num_samples=10` and NLI clustering.
+Latest practical status:
+
+- ArchEHR-QA dev/test runs completed with Gemma 3 12B and NLI clustering.
+- Test generation parsed cleanly: 1000/1000 generations were valid JSON.
+- Test key lacks gold evidence labels, so evaluation falls back to reference-only
+  diagnostics.
+- This makes ArchEHR-QA unsuitable as the final AUROC/ECE benchmark for this
+  project without additional labels.

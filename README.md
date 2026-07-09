@@ -3,23 +3,28 @@
 This folder contains the code-side workspace for the lightweight uncertainty
 quantification project on grounded clinical question answering.
 
-The current active research path is:
+Current status:
 
 ```text
-ArchEHR-QA-style grounded long-form QA
--> multi-sample answer generation
--> Semantic Entropy over generated answers
--> citation-set uncertainty
+ArchEHR-QA SE baseline: implemented and tested as an engineering baseline
+ArchEHR-QA final evaluation/training target: paused because no usable gold labels
+Next research step: choose a replacement dataset with answer-quality labels
 ```
 
+ArchEHR-QA remains useful for testing grounded long-form generation, citation
+parsing, answer Semantic Entropy, and citation uncertainty. It should not be the
+main SEP training or final SE-evaluation dataset unless additional gold
+answer-quality/evidence labels become available.
+
 PubMedQA remains available only as an engineering smoke-test and historical
-baseline path. It is no longer the main research target.
+baseline path. It is not the preferred main research target because its short
+yes/no/maybe labels do not match open long-form clinical generation.
 
 ## Folder Structure
 
 ```text
 code/
-  archehr_sebaseline/        Active project code for the ArchEHR-QA SE baseline
+  archehr_sebaseline/        Active maintained SE/UQ package and dataset adapters
   semantic_uncertainty/      Reference implementation from the Semantic Entropy work
   server_results/            Downloaded or copied server outputs and analysis artifacts
   .agents/                   Local Codex/agent state
@@ -33,15 +38,14 @@ These root-level files are intentionally kept at the workspace level:
 ```text
 codex_task_overview_archehr_uq.txt
 SE_BASELINE_LEVEL_PLAN.md
-HANDOFF_LEVEL4_BASELINE.md
 ```
 
 Their roles are:
 
 - `codex_task_overview_archehr_uq.txt`: original project overview and broad
   requirements.
-- `SE_BASELINE_LEVEL_PLAN.md`: active stage plan and current direction.
-- `HANDOFF_LEVEL4_BASELINE.md`: historical handoff for the Level 4 baseline.
+- `SE_BASELINE_LEVEL_PLAN.md`: active stage plan, current status, and dataset
+  pivot notes.
 
 ## Active Project
 
@@ -58,6 +62,13 @@ archehr_sebaseline/README.md
 ```
 
 for code layout, script entry points, tests, and server run commands.
+
+The package-level docs under `archehr_sebaseline/docs/` now separate:
+
+- implemented ArchEHR-QA engineering baseline,
+- current dataset limitation,
+- evaluation method notes,
+- handoff and next-step guidance.
 
 ## Reference Code
 
@@ -97,9 +108,8 @@ Server upload archives may appear at the root, for example:
 
 ```text
 archehr_sebaseline_server_*.zip
-archehr_sebaseline_clean_level4.tar.gz
+archehr_sebaseline_server_*.tar.gz
 ```
 
 These are transport artifacts, not source code. Regenerate them from
 `archehr_sebaseline/` when the code changes.
-

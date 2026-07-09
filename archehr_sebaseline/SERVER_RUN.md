@@ -1,6 +1,10 @@
 ﻿# Server Run Guide
 
-This guide covers the maintained server workflow for Level 3/4 runs on Isambard. Use Slurm for model inference; do not run generation on login nodes.
+This guide covers the maintained server workflow for SE/UQ runs on Isambard. Use Slurm for model inference; do not run generation on login nodes.
+
+Current status: the ArchEHR-QA server workflow is kept as an engineering
+baseline and diagnostic run. It is not the final project benchmark because the
+available ArchEHR-QA test key has no gold evidence or answer-quality labels.
 
 ## Upload And Environment
 
@@ -30,6 +34,34 @@ TORCHINDUCTOR_CACHE_DIR=$SCRATCHDIR/final_project/torch_cache
 ```
 
 Use `LOCAL_FILES_ONLY=0` for first-time downloads. Switch to `LOCAL_FILES_ONLY=1` once the model is cached for reproducible reruns.
+
+## ArchEHR-QA Gemma 3 12B SE Run
+
+Use this for the maintained ArchEHR-QA SE diagnostic baseline. Gemma 3 requires
+`transformers>=4.50.0` and Hugging Face access to `google/gemma-3-12b-it`.
+
+```bash
+cd $SCRATCHDIR/final_project/archehr_sebaseline
+
+export DATA_PATH=$SCRATCHDIR/final_project/data/archehr_qa/dev/archehr-qa.xml
+export OUTPUT_DIR=$SCRATCHDIR/final_project/archehr_sebaseline/outputs/archehr_se_gemma3_12b_dev20x10
+export MODEL_NAME=google/gemma-3-12b-it
+export NUM_SAMPLES=10
+export MAX_NEW_TOKENS=256
+export MAX_INPUT_TOKENS=4096
+export DEVICE=cuda
+export TORCH_DTYPE=bfloat16
+export LOCAL_FILES_ONLY=1
+export CLUSTERING_METHOD=nli
+export NLI_MODEL_NAME=microsoft/deberta-v2-xlarge-mnli
+export NLI_LOCAL_FILES_ONLY=1
+unset MAX_EXAMPLES
+
+sbatch \
+  --time=04:00:00 \
+  --export=ALL \
+  scripts/run_archehr_se.sbatch
+```
 
 ## Level 4 Qwen2.5-7B NLI Run
 
