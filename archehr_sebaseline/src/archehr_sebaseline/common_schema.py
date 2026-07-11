@@ -65,9 +65,17 @@ def common_to_prompt_example(example: dict[str, Any]) -> dict[str, Any]:
     """Convert a common-schema example to the prompt builder's legacy shape."""
 
     evidence_sentences = example.get("evidence_sentences")
+    evidence_sentence_ids = example.get("evidence_sentence_ids") or []
     if evidence_sentences:
         evidence = [
-            {"sentence_id": f"S{idx}", "text": str(sentence)}
+            {
+                "sentence_id": (
+                    str(evidence_sentence_ids[idx - 1])
+                    if idx - 1 < len(evidence_sentence_ids)
+                    else f"S{idx}"
+                ),
+                "text": str(sentence),
+            }
             for idx, sentence in enumerate(evidence_sentences, start=1)
         ]
     elif example.get("context"):

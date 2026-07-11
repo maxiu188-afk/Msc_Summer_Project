@@ -13,6 +13,12 @@ SYSTEM_INSTRUCTION = (
 )
 
 
+BIOASQ_SYSTEM_INSTRUCTION = (
+    "You are answering a BioASQ biomedical question using only the provided "
+    "PubMed evidence snippets."
+)
+
+
 def format_evidence(evidence: list[dict[str, Any]]) -> str:
     lines = []
     for sentence in evidence:
@@ -23,6 +29,9 @@ def format_evidence(evidence: list[dict[str, Any]]) -> str:
 
 
 def build_prompt(example: dict[str, Any]) -> str:
+    if str(example.get("dataset") or "").lower() == "bioasq":
+        return build_bioasq_prompt(example)
+
     if is_common_example(example):
         example = common_to_prompt_example(example)
 
@@ -57,6 +66,41 @@ def build_prompt(example: dict[str, Any]) -> str:
             + ", ".join(str(option) for option in options)
             + "."
         )
+    return "\n".join(prompt_parts)
+
+
+def build_bioasq_prompt(example: dict[str, Any]) -> str:
+    """Build a grounded biomedical prompt for BioASQ Task B examples."""
+
+    if is_common_example(example):
+        prompt_example = common_to_prompt_example(example)
+    else:
+        prompt_example = example
+
+    question = str(prompt_example.get("patient_question") or "").strip()
+    bioasq_type = str(example.get("bioasq_type") or "").lower()
+    type_instruction = {
+        "summary": "Write a concise paragraph answer.",
+        "factoid": "Give the exact entity or short phrase first, then one brief supporting sentence.",
+        "list": "Give a comma-separated list first, then one brief supporting sentence.",
+        "yesno": "Start with exactly 'yes' or 'no', then add one brief supporting sentence.",
+    }.get(bioasq_type, "Write a concise biomedical answer.")
+
+    prompt_parts = [
+        f"System instruction: {BIOASQ_SYSTEM_INSTRUCTION}",
+        "",
+        f"Question type: {bioasq_type or 'unknown'}",
+        f"Question: {question}",
+        "",
+        "Evidence snippets:",
+        format_evidence(prompt_example["evidence"]),
+        "",
+        "Task:",
+        type_instruction,
+        "Use only the evidence snippets above.",
+        "Cite every factual claim with snippet IDs like [S1].",
+        "If the evidence is insufficient, say that the evidence is insufficient.",
+    ]
     return "\n".join(prompt_parts)
 
 

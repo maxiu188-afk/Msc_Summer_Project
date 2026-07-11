@@ -10,7 +10,16 @@ import xml.etree.ElementTree as ET
 from .common_schema import make_common_example
 
 
-SUPPORTED_DATASETS = ["fake", "pubmedqa", "archehr_qa"]
+SUPPORTED_DATASETS = [
+    "fake",
+    "pubmedqa",
+    "bioasq",
+    "bioasq_summary",
+    "bioasq_factoid",
+    "bioasq_list",
+    "bioasq_yesno",
+    "archehr_qa",
+]
 
 
 FAKE_COMMON_FIXTURES = [
@@ -129,6 +138,137 @@ def load_pubmedqa_common_examples(
     if not isinstance(loaded, dict):
         raise ValueError("PubMedQA adapter expects the official JSON dict format.")
     examples = pubmedqa_records_to_common(loaded, split=split)
+    return examples[:limit] if limit is not None else examples
+
+
+def _as_list(value: Any) -> list[Any]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    return [value]
+
+
+def _flatten_exact_answers(value: Any) -> list[str]:
+    answers: list[str] = []
+
+    def visit(item: Any) -> None:
+        if item is None:
+            return
+        if isinstance(item, list):
+            for child in item:
+                visit(child)
+            return
+        text = str(item).strip()
+        if text:
+            answers.append(text)
+
+    visit(value)
+    return answers
+
+
+def _load_bioasq_questions(path: str | Path) -> list[dict[str, Any]]:
+    input_path = Path(path)
+    paths = sorted(input_path.glob("*.json")) if input_path.is_dir() else [input_path]
+    questions: list[dict[str, Any]] = []
+    for json_path in paths:
+        loaded = _load_json(json_path)
+        records = loaded.get("questions") if isinstance(loaded, dict) else None
+        if not isinstance(records, list):
+            raise ValueError(f"BioASQ adapter expects a JSON object with questions: {json_path}")
+        for record in records:
+            if not isinstance(record, dict):
+                raise ValueError(f"BioASQ question records must be objects: {json_path}")
+            questions.append({**record, "_source_file": json_path.name})
+    return questions
+
+
+def bioasq_records_to_common(
+    records: list[dict[str, Any]],
+    *,
+    split: str = "train",
+    question_type: str | None = None,
+) -> list[dict[str, Any]]:
+    """Normalize BioASQ Task B records to the project common schema."""
+
+    wanted_type = question_type.lower() if question_type else None
+    common_examples = []
+    for index, record in enumerate(records, start=1):
+        bioasq_type = str(record.get("type") or "").lower()
+        if wanted_type and bioasq_type != wanted_type:
+            continue
+
+        snippets = record.get("snippets") or []
+        if not isinstance(snippets, list):
+            snippets = []
+        evidence_sentences = []
+        evidence_sentence_ids = []
+        snippet_documents = []
+        for snippet_index, snippet in enumerate(snippets, start=1):
+            if isinstance(snippet, dict):
+                text = str(snippet.get("text") or "").strip()
+                document = snippet.get("document")
+            else:
+                text = str(snippet).strip()
+                document = None
+            if not text:
+                continue
+            evidence_sentences.append(text)
+            evidence_sentence_ids.append(f"S{snippet_index}")
+            snippet_documents.append(str(document) if document else "")
+
+        ideal_answers = [
+            str(answer).strip()
+            for answer in _as_list(record.get("ideal_answer"))
+            if str(answer).strip()
+        ]
+        exact_answers = _flatten_exact_answers(record.get("exact_answer"))
+        label = None
+        options = None
+        if bioasq_type == "yesno":
+            normalized_exact = [answer.lower() for answer in exact_answers]
+            if "yes" in normalized_exact:
+                label = "yes"
+            elif "no" in normalized_exact:
+                label = "no"
+            options = ["yes", "no"]
+
+        example = make_common_example(
+            dataset="bioasq",
+            example_id=str(record.get("id") or index),
+            split=split,
+            question=str(record.get("body") or ""),
+            context="\n".join(evidence_sentences),
+            evidence_sentences=evidence_sentences,
+            gold_answer=ideal_answers[0] if ideal_answers else None,
+            citations=evidence_sentence_ids if evidence_sentence_ids else None,
+            options=options,
+            label=label,
+        )
+        example["bioasq_type"] = bioasq_type
+        example["source_file"] = record.get("_source_file")
+        example["documents"] = [str(document) for document in record.get("documents") or []]
+        example["concepts"] = [str(concept) for concept in record.get("concepts") or []]
+        example["ideal_answers"] = ideal_answers
+        example["exact_answers"] = exact_answers
+        example["evidence_sentence_ids"] = evidence_sentence_ids
+        example["snippet_documents"] = snippet_documents
+        common_examples.append(example)
+    return common_examples
+
+
+def load_bioasq_common_examples(
+    data_path: str | Path,
+    *,
+    split: str = "train",
+    limit: int | None = None,
+    question_type: str | None = None,
+) -> list[dict[str, Any]]:
+    examples = bioasq_records_to_common(
+        _load_bioasq_questions(data_path),
+        split=split,
+        question_type=question_type,
+    )
     return examples[:limit] if limit is not None else examples
 
 
@@ -386,6 +526,18 @@ def load_common_examples(
         if data_path is None:
             raise ValueError("--data_path is required for dataset=pubmedqa.")
         return load_pubmedqa_common_examples(data_path, split=split, limit=limit)
+    if dataset_name == "bioasq" or dataset_name.startswith("bioasq_"):
+        if data_path is None:
+            raise ValueError("--data_path is required for dataset=bioasq.")
+        question_type = None
+        if dataset_name.startswith("bioasq_"):
+            question_type = dataset_name.removeprefix("bioasq_")
+        return load_bioasq_common_examples(
+            data_path,
+            split=split,
+            limit=limit,
+            question_type=question_type,
+        )
     if dataset_name in {"archehr_qa", "archehr", "archehrqa"}:
         if data_path is None:
             raise ValueError("--data_path is required for dataset=archehr_qa.")

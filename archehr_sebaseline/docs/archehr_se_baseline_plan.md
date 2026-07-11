@@ -390,6 +390,6 @@ Current local validation:
 
 ```text
 python -m unittest discover archehr_sebaseline\tests
-Ran 39 tests
+Ran 43 tests
 OK
 ```

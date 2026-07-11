@@ -66,4 +66,5 @@ Historical next work has been completed or superseded:
 1. PubMedQA label evaluation was implemented.
 2. AUROC/rejection curves were implemented.
 3. ArchEHR-QA `N=10` runs were completed.
-4. SEP target generation is deferred until a replacement dataset is chosen.
+4. SEP target generation is deferred until the BioASQ pilot and its evaluation
+   target are stable; candidate-dataset comparison continues in parallel.

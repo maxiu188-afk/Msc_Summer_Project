@@ -8,7 +8,10 @@ Current status:
 ```text
 ArchEHR-QA SE baseline: implemented and tested as an engineering baseline
 ArchEHR-QA final evaluation/training target: paused because no usable gold labels
-Next research step: choose a replacement dataset with answer-quality labels
+Current main dataset direction: test BioASQ Task B
+Parallel research advice: continue comparing credible replacement datasets
+Evaluation experiment: compare deterministic metrics with an LLM-based judge
+Following stage: SEP after the dataset and evaluation target are stable
 ```
 
 ArchEHR-QA remains useful for testing grounded long-form generation, citation
@@ -19,6 +22,19 @@ answer-quality/evidence labels become available.
 PubMedQA remains available only as an engineering smoke-test and historical
 baseline path. It is not the preferred main research target because its short
 yes/no/maybe labels do not match open long-form clinical generation.
+
+BioASQ Task B is the current main experimental direction. The immediate work is
+to test its summary, factoid, list, and yes/no paths using the existing
+generation and uncertainty pipeline. Simpson's recommendation to continue
+exploring candidate datasets is retained as a parallel validation activity, not
+as a reversal of the BioASQ direction.
+
+The current answer-quality evaluators are also treated as provisional. Their
+dataset-specific thresholds, heuristic parsing, and manually weighted scores
+should be adapted and validated for any replacement dataset. An LLM-as-a-judge
+path is planned as a flexible comparison for long-form answer evaluation, with
+fixed prompts/configuration and validation against labels or manual review where
+possible.
 
 ## Folder Structure
 

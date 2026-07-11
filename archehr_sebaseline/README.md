@@ -1,6 +1,20 @@
 ﻿# ArchEHR-QA Semantic Entropy Baseline
 
-This is the active project package for grounded clinical QA uncertainty baselines.
+This is the active project package for grounded biomedical/clinical QA
+uncertainty baselines.
+
+The current main replacement dataset path is BioASQ Task B:
+
+```text
+BioASQ questions + PubMed snippets
+-> grounded biomedical prompt
+-> multi-sample answer generation
+-> answer-level Semantic Entropy
+-> token-level UQ
+-> dataset-specific quality evaluation
+```
+
+ArchEHR-QA remains implemented as an engineering diagnostic baseline.
 
 The implemented ArchEHR-QA path is:
 
@@ -33,7 +47,9 @@ It does not contain sentence relevance labels, citation labels, or answer-qualit
 - Test can only be evaluated in reference-only mode.
 - ArchEHR-QA should not be used as the main SEP training target or final AUROC/ECE benchmark unless stronger gold labels are added.
 
-The next research step is to choose a replacement dataset with usable answer-quality labels while reusing this package's generation, clustering, UQ, and evaluation infrastructure.
+The replacement dataset direction is now BioASQ. PubMedQA remains available as
+a short-answer engineering smoke path, but it is not the preferred main SE
+dataset.
 
 ## Package Layout
 
@@ -102,6 +118,8 @@ src/archehr_sebaseline/pipeline_level3.py
 src/archehr_sebaseline/pipeline_level4.py
 ```
 
+The Level 4 path now also supports BioASQ through the common-schema adapter.
+
 ## Entry Points
 
 Main ArchEHR-QA SE baseline:
@@ -123,6 +141,69 @@ scripts/check_level4_outputs.py
 scripts/evaluate_pubmedqa_labels.py
 ```
 
+## BioASQ SE Baseline
+
+BioASQ is loaded through the common Level 4 pipeline. The adapter accepts either
+a single BioASQ JSON file or a directory of JSON files such as the golden
+enriched batches.
+
+Supported dataset aliases:
+
+```text
+bioasq
+bioasq_summary
+bioasq_factoid
+bioasq_list
+bioasq_yesno
+```
+
+Recommended first main run is `bioasq_summary`, because summary answers are
+long enough for answer-level SE to be meaningful:
+
+```bash
+python scripts/run_level4.py \
+  --dataset bioasq_summary \
+  --data_path $SCRATCHDIR/final_project/data/BioASQ-training13b/training13b.json \
+  --split train13b \
+  --output_dir $SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_summary_gemma3_12b_100x10 \
+  --model_name google/gemma-3-12b-it \
+  --num_samples 10 \
+  --max_examples 100 \
+  --max_new_tokens 192 \
+  --device cuda \
+  --max_input_tokens 4096 \
+  --torch_dtype bfloat16 \
+  --local_files_only \
+  --clustering_method nli \
+  --nli_model_name microsoft/deberta-v2-xlarge-mnli \
+  --nli_local_files_only \
+  --overwrite
+```
+
+The golden enriched batches can be passed as a directory:
+
+```bash
+python scripts/run_level4.py \
+  --dataset bioasq_summary \
+  --data_path $SCRATCHDIR/final_project/data/Task13BGoldenEnriched \
+  --split golden13b \
+  --output_dir $SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_golden_summary_gemma3_12b \
+  --model_name google/gemma-3-12b-it \
+  --num_samples 10 \
+  --max_new_tokens 192 \
+  --device cuda \
+  --max_input_tokens 4096 \
+  --torch_dtype bfloat16 \
+  --local_files_only \
+  --clustering_method nli \
+  --nli_model_name microsoft/deberta-v2-xlarge-mnli \
+  --nli_local_files_only \
+  --overwrite
+```
+
+For stricter correctness supervision, use `bioasq_factoid` or `bioasq_list`;
+their normalized examples preserve `exact_answers` for a follow-up evaluator.
+
 ## Local Tests
 
 From `D:\work\FinalProject\code`:
@@ -134,7 +215,7 @@ python -m unittest discover archehr_sebaseline\tests
 Current expected result:
 
 ```text
-Ran 39 tests
+Ran 43 tests
 OK
 ```
 

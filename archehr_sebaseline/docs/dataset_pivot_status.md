@@ -1,8 +1,13 @@
 # Dataset Pivot Status
 
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 
 ## Decision
+
+BioASQ Task B is the current main replacement-dataset direction. Immediate work
+should test its supported summary, factoid, list, and yes/no paths. Continued
+candidate-dataset exploration remains a supervisor recommendation and should be
+treated as parallel due diligence rather than a pause in BioASQ testing.
 
 ArchEHR-QA should no longer be treated as the final evaluation or SEP training
 dataset for this project.
@@ -19,6 +24,26 @@ The ArchEHR-QA SE baseline is still valuable as an engineering milestone:
 
 However, the released ArchEHR-QA test key does not provide the gold supervision
 needed for final uncertainty evaluation.
+
+## Update After Meeting With Simpson (2026-07-10)
+
+The dataset pivot now includes an evaluation-method pivot as well:
+
+- Test BioASQ as the main direction while continuing to compare several
+  candidate datasets before fixing the final target permanently.
+- Rework answer-quality evaluation for the chosen dataset.
+- Do not carry over the current fixed thresholds, heuristic parsing rules, and
+  manually weighted quality formula without validation.
+- Trial an LLM-based answer evaluator as a more flexible option for judging
+  correctness, relevance, factual support, and evidence use.
+- Move to SEP experiments after the dataset and evaluation method are stable.
+
+An LLM evaluator may be particularly useful for long-form answers where exact
+match and lexical-overlap metrics are too brittle. The first implementation
+should retain the current deterministic metrics as baselines and save the full
+judge prompt, rubric, model/configuration, score, rationale, and raw response.
+The LLM judge should be validated against gold labels where available, or a
+small manually reviewed sample, before its scores are used as SEP supervision.
 
 ## Label Availability
 
@@ -138,7 +163,9 @@ Adapt or replace:
 - dataset adapter,
 - prompt template if the new dataset format differs,
 - answer-quality evaluator,
-- gold-label loading logic.
+- gold-label loading logic,
+- fixed thresholds and manually weighted quality parameters,
+- optional LLM-as-a-judge rubric and parsing logic.
 
 ## Next Dataset Requirements
 
@@ -165,7 +192,17 @@ question/context/reference answer/evidence labels/factuality or correctness labe
 
 ## Current Next Step
 
-Choose a replacement dataset, then add a new adapter under:
+Run a small BioASQ pilot first. In parallel, explore replacement datasets and
+record, for each candidate:
+
+- access and licensing constraints,
+- task and answer format,
+- available correctness/factuality/evidence supervision,
+- dataset size and split quality,
+- suitability for multi-sample Semantic Entropy,
+- suitability for later SEP training and evaluation.
+
+After selecting the dataset, add a new adapter under:
 
 ```text
 src/archehr_sebaseline/dataset_adapters.py
@@ -177,5 +214,16 @@ and a dataset-specific evaluator under:
 src/archehr_sebaseline/evaluation/
 ```
 
+The evaluation stage should compare, where feasible:
+
+1. direct gold-label or exact task metrics,
+2. lightweight deterministic/rule-based baselines,
+3. an LLM-based evaluator with a fixed, versioned rubric.
+
 The existing ArchEHR-QA pipeline should remain available as a smoke/diagnostic
 baseline, but the plan should no longer depend on ArchEHR-QA gold labels.
+
+Once this evaluation setup is stable, the project should proceed to the SEP
+stage: save single-generation hidden states, use multi-sample SE as the target,
+train lightweight probes, and compare fixed-token with uncertainty-aware token
+selection/pooling.

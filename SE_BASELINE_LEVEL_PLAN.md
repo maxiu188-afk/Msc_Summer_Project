@@ -1,6 +1,6 @@
 ﻿# ArchEHR-QA Semantic Entropy Baseline Plan
 
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 
 ## Current Decision
 
@@ -8,9 +8,30 @@ ArchEHR-QA is no longer the planned final evaluation or SEP training dataset.
 The ArchEHR-QA pipeline is implemented and useful as an engineering baseline,
 but the available test key has no gold evidence labels or answer-quality labels.
 
-The project should now pivot to a replacement dataset with usable answer-quality
-or correctness supervision. The existing ArchEHR-QA code should be retained as a
-grounded long-form SE smoke/diagnostic pipeline.
+The current main replacement-dataset direction is BioASQ Task B, which should be
+tested first using its summary, factoid, list, and yes/no supervision. The
+existing ArchEHR-QA code should be retained as a grounded long-form SE
+smoke/diagnostic pipeline.
+
+## Supervisor Meeting Update (2026-07-10)
+
+Following the discussion with Simpson, the next stages are:
+
+1. Test BioASQ as the current main direction while continuing to document and
+   compare credible candidate datasets as a parallel research check.
+2. Redesign the answer-quality evaluation for the selected dataset. The current
+   evaluators rely on relatively rigid, dataset-specific rules, thresholds, and
+   hand-set weights, so they should not be transferred unchanged.
+3. Prototype an LLM-based evaluator for generated answers. This can provide a
+   more flexible assessment of correctness, relevance, factual support, and
+   evidence use when exact labels or lexical overlap are insufficient.
+4. Once the dataset and evaluation target are stable, proceed to the SEP stage.
+
+The LLM evaluator should initially be treated as an experimental comparison,
+not an unquestioned gold standard. Its prompt/rubric, model version, decoding
+settings, and raw judgments should be saved for reproducibility. Where possible,
+its scores should be checked against available gold labels or a small manually
+reviewed subset.
 
 This document records the active plan after the Level 4 pilot cleanup. Earlier local smoke stages are complete and have been removed from the maintained code path. The active project now starts from the common-schema Level 3 pipeline and the Level 4 token-score/NLI baseline.
 
@@ -129,12 +150,17 @@ majority accuracy is lower but more reproducible.
 Remaining Level 5 follow-ups:
 
 - Optional `N=10` run for smoother SE estimates.
-- Additional public dataset adapters if useful.
-- Preparation for SEP target generation from Level 4 artifacts.
+- Explore multiple public candidate datasets and document their supervision,
+  answer format, scale, and compatibility with free-form generation.
+- Adapt the evaluation method to the selected dataset rather than reusing the
+  current hard-coded parameters unchanged.
+- Add an optional LLM-as-a-judge evaluation path and compare it with available
+  label-based or rule-based evaluation.
+- Prepare SEP targets only after the dataset and evaluator are stable.
 
 ## SEP Direction
 
-After the baseline evaluation is stable:
+After the replacement dataset and its baseline evaluation are stable:
 
 1. Save single-generation hidden states from selected layers and token positions.
 2. Use Level 4 multi-sample SE as the target.
@@ -144,15 +170,18 @@ After the baseline evaluation is stable:
 ## Current Next Step
 
 The main research path now shifts away from ArchEHR-QA as a final benchmark and
-toward selecting a replacement dataset with usable gold supervision. PubMedQA
-and ArchEHR-QA remain useful for engineering smoke tests and method diagnostics,
-but neither should be used as the main SEP target in the current project state.
+toward testing BioASQ Task B as the primary replacement dataset. PubMedQA and
+ArchEHR-QA remain useful for engineering smoke tests and method diagnostics.
+Other candidate datasets should still be compared as advised by Simpson, but
+that comparison does not block the immediate BioASQ test.
 
 Current next step:
 
 ```text
-Choose a replacement dataset with answer-quality/correctness labels, then reuse
-the existing SE generation, clustering, token-UQ, and evaluation infrastructure.
+Test BioASQ on a small public subset; validate its dataset-specific evaluation;
+and trial an LLM-based evaluator alongside available label/rule-based checks.
+Continue candidate-dataset comparison in parallel, then scale the BioASQ SE run
+if the pilot supports it.
 ```
 
 See:
@@ -162,8 +191,8 @@ archehr_sebaseline/docs/archehr_se_baseline_plan.md
 archehr_sebaseline/docs/dataset_pivot_status.md
 ```
 
-SEP and hidden-state probe work is intentionally deferred until the replacement
-dataset and quality target are stable.
+SEP and hidden-state probe work is the next major stage after the replacement
+dataset and evaluation target are stable.
 
 Status: initial ArchEHR-QA SE baseline implementation complete.
 

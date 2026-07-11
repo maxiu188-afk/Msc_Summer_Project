@@ -11,10 +11,11 @@ The active project is `archehr_sebaseline`. The package now contains:
 - lightweight uncertainty/evaluation utilities,
 - documentation for the current dataset pivot.
 
-Current research direction: choose a replacement dataset with usable answer-quality
-or correctness labels. ArchEHR-QA remains useful as an engineering diagnostic,
-but it is not the final evaluation or SEP training dataset because its test key
-does not include gold evidence labels or answer-quality labels.
+Current research direction: test BioASQ Task B as the main replacement dataset
+while continuing to compare credible candidates as Simpson advised. ArchEHR-QA
+remains useful as an engineering diagnostic, but it is not the final evaluation
+or SEP training dataset because its test key does not include gold evidence
+labels or answer-quality labels.
 
 See:
 
@@ -128,9 +129,10 @@ label_heuristic_eval.md
 
 ## Next Work
 
-1. Choose a replacement dataset with usable answer-quality or correctness labels.
-2. Add a dataset adapter while preserving the common artifact layout.
-3. Add or adapt a dataset-specific quality evaluator.
-4. Re-run SE with `num_samples=10` on the replacement dataset.
-5. Use the replacement dataset's quality labels for AUROC/ECE/rejection curves.
+1. Test the implemented BioASQ adapter on a small public subset.
+2. Validate or add BioASQ-specific quality evaluation while preserving the
+   common artifact layout.
+3. Compare deterministic metrics with an LLM-based judge on a reviewed subset.
+4. Re-run SE with `num_samples=10` after the BioASQ pilot is stable.
+5. Use BioASQ labels for AUROC/ECE/rejection curves where appropriate.
 6. Defer SEP hidden-state probes until the new target is stable.
