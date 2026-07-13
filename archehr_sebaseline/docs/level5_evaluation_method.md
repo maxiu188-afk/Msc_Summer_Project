@@ -1,16 +1,30 @@
-# Level 5 PubMedQA Evaluation Method
+# Level 5 Evaluation Method
 
-Last updated: 2026-07-04
+Last updated: 2026-07-09
 
 ## Purpose
 
 Level 5 evaluates whether the uncertainty scores produced by the Level 4
 Semantic Entropy baseline can identify answers that are likely to be wrong.
 
-The current implementation is a lightweight PubMedQA proxy evaluation. It uses
+The first maintained implementation was a lightweight PubMedQA proxy evaluation. It uses
 PubMedQA's `final_decision` label (`yes`, `no`, or `maybe`) as the answer-quality
 target. It does not yet evaluate full clinical factuality, evidence support, or
 citation correctness.
+
+The ArchEHR-QA evaluator is now also implemented, but it is diagnostic rather
+than final: ArchEHR-QA test has clinician reference answers only and no gold
+evidence/quality labels. The project should therefore pivot to a replacement
+dataset before treating Level 5 metrics as final.
+
+## Current Dataset Status
+
+```text
+PubMedQA: useful public engineering smoke test with yes/no/maybe labels.
+ArchEHR-QA dev: useful diagnostic split with sentence relevance labels.
+ArchEHR-QA test: reference-only, no evidence/quality labels.
+Next dataset: required for final SE/SEP evaluation.
+```
 
 ## Input Artifacts
 
@@ -300,3 +314,51 @@ Answer: ...
 4. Add an automatic case-analysis report for low-SE wrong examples, high-SE
    wrong examples, and examples dominated by `unknown` label extraction.
 
+## ArchEHR-QA Evaluation Addendum
+
+Implemented files:
+
+```text
+src/archehr_sebaseline/evaluation/archehr_answer_quality.py
+src/archehr_sebaseline/evaluation/uncertainty_metrics.py
+scripts/evaluate_archehr_se.py
+tests/test_archehr_answer_quality_eval.py
+```
+
+When evidence labels are available, answer quality is computed from:
+
+```text
+citation_score = max(strict citation F1, lenient citation F1)
+answer_coverage = 0.5 * token recall + 0.5 * ROUGE-L recall
+lexical_similarity = 0.5 * token F1 + 0.5 * ROUGE-L F1
+relevance_score = 0.75 * answer_coverage + 0.25 * lexical_similarity
+quality_score = 0.75 * citation_score + 0.25 * relevance_score
+```
+
+When evidence labels are not available, the evaluator switches to reference-only
+mode:
+
+```text
+quality_score = relevance_score
+reference_only_threshold = 0.2
+```
+
+This mode is only diagnostic. It cannot measure factuality or citation support.
+
+Latest ArchEHR-QA test observation:
+
+```text
+examples: 100
+generations: 1000
+parse_status: json for 1000/1000
+test key: clinician_answer only
+```
+
+The most important methodological finding is that many weak answers are stable:
+
+```text
+low-quality examples with answer SE = 0: 40/48
+```
+
+This is a useful SE limitation case, but not enough for a final benchmark
+because the low-quality target is reference-only.

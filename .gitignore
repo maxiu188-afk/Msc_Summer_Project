@@ -28,3 +28,15 @@ Thumbs.db
 archehr_sebaseline/outputs/
 archehr_sebaseline_server_*.zip
 archehr_sebaseline_clean_level4.tar.gz
+
+# Local transport packages, staging areas, and generated server artifacts.
+archehr_sebaseline_*.zip
+archehr_sebaseline_*.tar.gz
+upload_staging_*/
+server_results/*
+!server_results/level4_qwen25_7b_nli_50x5/
+
+# Document conversion and other temporary working directories.
+tmp/
+soffice_convert_*/
+soffice_profile_*/

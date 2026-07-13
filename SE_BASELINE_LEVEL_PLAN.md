@@ -1,5 +1,43 @@
 ﻿# ArchEHR-QA Semantic Entropy Baseline Plan
 
+Last updated: 2026-07-13
+
+## Current Decision
+
+ArchEHR-QA is no longer the planned final evaluation or SEP training dataset.
+The ArchEHR-QA pipeline is implemented and useful as an engineering baseline,
+but the available test key has no gold evidence labels or answer-quality labels.
+
+The current main replacement-dataset direction is BioASQ Task B. Its first
+grounded Gemma 3 12B / NLI batch is complete: Golden summary (80 questions),
+Golden factoid (50), Golden list (50), and a training-summary repeat (50), all
+with ten samples per question. The existing ArchEHR-QA code should be retained
+as a grounded long-form SE smoke/diagnostic pipeline.
+
+The temporary Runpod recovery path is complete. Future long-running work should
+return to Isambard; Runpod documents and scripts remain only as reproducibility
+records for this completed batch.
+
+## Supervisor Meeting Update (2026-07-10)
+
+Following the discussion with Simpson, the next stages are:
+
+1. Keep BioASQ as the current main direction while continuing to document and
+   compare credible candidate datasets as a parallel research check.
+2. Redesign the answer-quality evaluation for the selected dataset. The current
+   evaluators rely on relatively rigid, dataset-specific rules, thresholds, and
+   hand-set weights, so they should not be transferred unchanged.
+3. Prototype an LLM-based evaluator for generated answers. This can provide a
+   more flexible assessment of correctness, relevance, factual support, and
+   evidence use when exact labels or lexical overlap are insufficient.
+4. Once the dataset and evaluation target are stable, proceed to the SEP stage.
+
+The LLM evaluator should initially be treated as an experimental comparison,
+not an unquestioned gold standard. Its prompt/rubric, model version, decoding
+settings, and raw judgments should be saved for reproducibility. Where possible,
+its scores should be checked against available gold labels or a small manually
+reviewed subset.
+
 This document records the active plan after the Level 4 pilot cleanup. Earlier local smoke stages are complete and have been removed from the maintained code path. The active project now starts from the common-schema Level 3 pipeline and the Level 4 token-score/NLI baseline.
 
 ## Data Boundary
@@ -117,12 +155,17 @@ majority accuracy is lower but more reproducible.
 Remaining Level 5 follow-ups:
 
 - Optional `N=10` run for smoother SE estimates.
-- Additional public dataset adapters if useful.
-- Preparation for SEP target generation from Level 4 artifacts.
+- Explore multiple public candidate datasets and document their supervision,
+  answer format, scale, and compatibility with free-form generation.
+- Adapt the evaluation method to the selected dataset rather than reusing the
+  current hard-coded parameters unchanged.
+- Add an optional LLM-as-a-judge evaluation path and compare it with available
+  label-based or rule-based evaluation.
+- Prepare SEP targets only after the dataset and evaluator are stable.
 
 ## SEP Direction
 
-After the baseline evaluation is stable:
+After the replacement dataset and its baseline evaluation are stable:
 
 1. Save single-generation hidden states from selected layers and token positions.
 2. Use Level 4 multi-sample SE as the target.
@@ -131,25 +174,46 @@ After the baseline evaluation is stable:
 
 ## Current Next Step
 
-The main research path now shifts away from PubMedQA and toward an ArchEHR-QA
-Semantic Entropy baseline. PubMedQA remains useful only for engineering smoke
-tests and should not be used as a main SEP or SE target.
+The main research path now shifts away from ArchEHR-QA as a final benchmark and
+toward testing BioASQ Task B as the primary replacement dataset. PubMedQA and
+ArchEHR-QA remain useful for engineering smoke tests and method diagnostics.
+Other candidate datasets should still be compared as advised by Simpson, but
+that comparison does not block the immediate BioASQ test.
+
+## BioASQ Batch Update (2026-07-13)
+
+All four required runs passed the Level 4 structural check with CUDA generation,
+bidirectional-entailment NLI clustering, populated token scores, and finite
+entropy values. The archive is
+`server_results/bioasq_se_runpod_required_results_20260713.tar.gz`; the
+earlier 100-question training-summary run remains extracted under
+`server_results/runpod_bioasq_summary_gemma3_12b_100x10/`.
+
+The lightweight evaluator gives different signals by task/source: Golden
+summary discrete SE AUROC is 0.471 (10 low-quality examples), while Golden
+factoid and list are 0.676 and 0.606; the 50-example training-summary repeat
+is 0.624. These are small, differently distributed samples and use a local
+approximation of BioASQ metric families, not official BioASQ scores. They are
+evidence to validate the quality target, not a stable model ranking.
 
 Current next step:
 
 ```text
-Build a simple ArchEHR-QA SE baseline using provided evidence sentences,
-structured cited answers, answer-level SE, and citation-set uncertainty.
+On Isambard, keep the existing gold-snippet grounded prompt unchanged; compare
+the deterministic evaluator against a fixed LLM judge or reviewed subset, then
+run seed repeats of the most informative BioASQ subsets. Proceed to SEP only
+after that quality target is defensible.
 ```
 
 See:
 
 ```text
 archehr_sebaseline/docs/archehr_se_baseline_plan.md
+archehr_sebaseline/docs/dataset_pivot_status.md
 ```
 
-SEP and hidden-state probe work is intentionally deferred until the ArchEHR-QA
-SE baseline is stable.
+SEP and hidden-state probe work is the next major stage after the replacement
+dataset and evaluation target are stable.
 
 Status: initial ArchEHR-QA SE baseline implementation complete.
 
@@ -169,5 +233,11 @@ analysis_report.md
 summary.txt
 ```
 
-Next practical step is to run this pipeline on a user-provided sanitized or
-server-side ArchEHR-QA data path with `num_samples=10` and NLI clustering.
+Latest practical status:
+
+- ArchEHR-QA dev/test runs completed with Gemma 3 12B and NLI clustering.
+- Test generation parsed cleanly: 1000/1000 generations were valid JSON.
+- Test key lacks gold evidence labels, so evaluation falls back to reference-only
+  diagnostics.
+- This makes ArchEHR-QA unsuitable as the final AUROC/ECE benchmark for this
+  project without additional labels.

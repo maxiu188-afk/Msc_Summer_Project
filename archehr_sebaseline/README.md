@@ -1,8 +1,22 @@
 ﻿# ArchEHR-QA Semantic Entropy Baseline
 
-This is the active project package for the grounded clinical QA uncertainty baseline.
+This is the active project package for grounded biomedical/clinical QA
+uncertainty baselines.
 
-The current maintained research path is a simple ArchEHR-QA Semantic Entropy baseline:
+The current main replacement dataset path is BioASQ Task B:
+
+```text
+BioASQ questions + PubMed snippets
+-> grounded biomedical prompt
+-> multi-sample answer generation
+-> answer-level Semantic Entropy
+-> token-level UQ
+-> dataset-specific quality evaluation
+```
+
+ArchEHR-QA remains implemented as an engineering diagnostic baseline.
+
+The implemented ArchEHR-QA path is:
 
 ```text
 ArchEHR-QA XML/JSON/JSONL
@@ -10,10 +24,50 @@ ArchEHR-QA XML/JSON/JSONL
 -> multi-sample cited answer generation
 -> answer-level Semantic Entropy
 -> citation-set uncertainty
+-> lightweight answer-quality evaluation
 -> lightweight analysis report
 ```
 
-The goal is to evaluate uncertainty in LLM answers, not to build a complex answer-improvement or leaderboard-optimized ArchEHR-QA system.
+The goal is to evaluate uncertainty in LLM answers, not to build a complex answer-improvement or leaderboard-optimized QA system.
+
+## Current Research Status
+
+ArchEHR-QA is no longer the planned final evaluation/training dataset for this project. The pipeline is implemented and useful as an engineering baseline, but the available test key contains only clinician reference answers:
+
+```text
+case_id
+clinician_answer
+```
+
+It does not contain sentence relevance labels, citation labels, or answer-quality labels. This means:
+
+- SE can be computed on ArchEHR-QA.
+- Generation, parsing, NLI clustering, answer SE, citation entropy, and token UQ can be inspected.
+- Dev can be evaluated when sentence relevance labels are available.
+- Test can only be evaluated in reference-only mode.
+- ArchEHR-QA should not be used as the main SEP training target or final AUROC/ECE benchmark unless stronger gold labels are added.
+
+The replacement dataset direction is now BioASQ. PubMedQA remains available as
+a short-answer engineering smoke path, but it is not the preferred main SE
+dataset.
+
+### Latest BioASQ baseline evidence
+
+The first full grounded BioASQ batch is complete with Gemma 3 12B, ten samples
+per question, token scores, and bidirectional-entailment NLI clustering. The
+Golden summary/factoid/list and training-summary repeat all passed structural
+health checks. Their local quality/SE results vary by task, so they do not yet
+justify a general ranking of uncertainty methods. The prompt is deliberately
+unchanged: the observed low-quality rates (12.5%--36%) already provide the
+quality variation needed to test filtering rather than answer optimization.
+
+The raw required-batch archive and a cautious result table are documented in
+`docs/bioasq_runpod_results_20260713.md`. Future experiments run on Isambard;
+`RUNPOD.md` is retained only as a reproducibility record for this batch.
+
+New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
+`archehr` prefixes. This does not rename the package, Python imports, or
+historical ArchEHR-QA files. See `docs/naming_policy.md`.
 
 ## Package Layout
 
@@ -67,13 +121,23 @@ src/archehr_sebaseline/pipeline_archehr_se.py
 src/archehr_sebaseline/citation_uq.py
 ```
 
+Evaluation:
+
+```text
+src/archehr_sebaseline/evaluation/archehr_answer_quality.py
+src/archehr_sebaseline/evaluation/bioasq_quality.py
+src/archehr_sebaseline/evaluation/uncertainty_metrics.py
+src/archehr_sebaseline/evaluation/pubmedqa_labels.py
+```
+
 Historical PubMedQA/Level 4 path:
 
 ```text
 src/archehr_sebaseline/pipeline_level3.py
 src/archehr_sebaseline/pipeline_level4.py
-src/archehr_sebaseline/evaluation/pubmedqa_labels.py
 ```
+
+The Level 4 path now also supports BioASQ through the common-schema adapter.
 
 ## Entry Points
 
@@ -82,6 +146,7 @@ Main ArchEHR-QA SE baseline:
 ```text
 scripts/run_archehr_se.py
 scripts/run_archehr_se.sbatch
+scripts/evaluate_archehr_se.py
 ```
 
 Historical Level 3/4 scripts:
@@ -93,7 +158,90 @@ scripts/run_level4.py
 scripts/run_level4.sbatch
 scripts/check_level4_outputs.py
 scripts/evaluate_pubmedqa_labels.py
+scripts/evaluate_bioasq_quality.py
+scripts/runpod_remaining_experiments.sh
 ```
+
+## BioASQ SE Baseline
+
+BioASQ is loaded through the common Level 4 pipeline. The adapter accepts either
+a single BioASQ JSON file or a directory of JSON files such as the golden
+enriched batches.
+
+Supported dataset aliases:
+
+```text
+bioasq
+bioasq_summary
+bioasq_factoid
+bioasq_list
+bioasq_yesno
+```
+
+Recommended first main run is `bioasq_summary`, because summary answers are
+long enough for answer-level SE to be meaningful:
+
+```bash
+python scripts/run_level4.py \
+  --dataset bioasq_summary \
+  --data_path $SCRATCHDIR/final_project/data/BioASQ-training13b/training13b.json \
+  --split train13b \
+  --output_dir $SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_summary_gemma3_12b_100x10 \
+  --model_name google/gemma-3-12b-it \
+  --num_samples 10 \
+  --max_examples 100 \
+  --max_new_tokens 192 \
+  --device cuda \
+  --max_input_tokens 4096 \
+  --torch_dtype bfloat16 \
+  --local_files_only \
+  --clustering_method nli \
+  --nli_model_name microsoft/deberta-v2-xlarge-mnli \
+  --nli_local_files_only \
+  --overwrite
+```
+
+The golden enriched batches can be passed as a directory:
+
+```bash
+python scripts/run_level4.py \
+  --dataset bioasq_summary \
+  --data_path $SCRATCHDIR/final_project/data/Task13BGoldenEnriched \
+  --split golden13b \
+  --output_dir $SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_golden_summary_gemma3_12b \
+  --model_name google/gemma-3-12b-it \
+  --num_samples 10 \
+  --max_new_tokens 192 \
+  --device cuda \
+  --max_input_tokens 4096 \
+  --torch_dtype bfloat16 \
+  --local_files_only \
+  --clustering_method nli \
+  --nli_model_name microsoft/deberta-v2-xlarge-mnli \
+  --nli_local_files_only \
+  --overwrite
+```
+
+For stricter correctness supervision, use `bioasq_factoid` or `bioasq_list`;
+their normalized examples preserve `exact_answers` for a follow-up evaluator.
+
+### Lightweight BioASQ evaluation
+
+After a Level 4 BioASQ run, evaluate the existing artifacts without loading a
+generation or NLI model:
+
+```bash
+python scripts/evaluate_bioasq_quality.py \
+  --run_dir outputs/bioasq_summary_gemma3_12b_100x10 \
+  --quality_target mean \
+  --quality_threshold 0.15
+```
+
+This is a transparent local approximation of the official metric families,
+not the official BioASQ service. Summary answers use unstemmed ROUGE-2 and
+ROUGE-SU4 F1; yes/no uses accuracy; factoid uses strict/lenient exact-answer
+matching; list uses set precision/recall/F1. The threshold is only an
+operational low-quality cut-off for SE analysis, not a BioASQ pass mark.
 
 ## Local Tests
 
@@ -106,7 +254,7 @@ python -m unittest discover archehr_sebaseline\tests
 Current expected result:
 
 ```text
-Ran 30 tests
+Ran 47 tests
 OK
 ```
 
@@ -132,12 +280,13 @@ Server-style NLI run:
 ```bash
 python scripts/run_archehr_se.py \
   --data_path $SCRATCHDIR/final_project/data/archehr_qa/dev/archehr-qa.xml \
-  --output_dir $SCRATCHDIR/final_project/archehr_sebaseline/outputs/archehr_se_qwen25_nli \
-  --model_name Qwen/Qwen2.5-7B-Instruct \
+  --output_dir $SCRATCHDIR/final_project/archehr_sebaseline/outputs/archehr_se_gemma3_12b_nli \
+  --model_name google/gemma-3-12b-it \
   --num_samples 10 \
   --max_new_tokens 256 \
   --device cuda \
-  --torch_dtype float16 \
+  --max_input_tokens 4096 \
+  --torch_dtype bfloat16 \
   --local_files_only \
   --clustering_method nli \
   --nli_model_name microsoft/deberta-v2-xlarge-mnli \
@@ -149,13 +298,14 @@ Slurm version:
 
 ```bash
 DATA_PATH=$SCRATCHDIR/final_project/data/archehr_qa/dev/archehr-qa.xml \
-OUTPUT_DIR=$SCRATCHDIR/final_project/archehr_sebaseline/outputs/archehr_se_dev_n10 \
-MODEL_NAME=Qwen/Qwen2.5-7B-Instruct \
+OUTPUT_DIR=$SCRATCHDIR/final_project/archehr_sebaseline/outputs/archehr_se_gemma3_12b_dev20x10 \
+MODEL_NAME=google/gemma-3-12b-it \
 MAX_EXAMPLES=20 \
 NUM_SAMPLES=10 \
 MAX_NEW_TOKENS=256 \
+MAX_INPUT_TOKENS=4096 \
 DEVICE=cuda \
-TORCH_DTYPE=float16 \
+TORCH_DTYPE=bfloat16 \
 LOCAL_FILES_ONLY=1 \
 CLUSTERING_METHOD=nli \
 NLI_MODEL_NAME=microsoft/deberta-v2-xlarge-mnli \
@@ -179,12 +329,58 @@ analysis_report.md
 summary.txt
 ```
 
+## ArchEHR-QA Evaluation
+
+The evaluation script is a second-stage pipeline. It does not regenerate answers. It reads an existing SE run directory plus the ArchEHR-QA key JSON:
+
+```bash
+python scripts/evaluate_archehr_se.py \
+  --run_dir $SCRATCHDIR/final_project/archehr_sebaseline/outputs/archehr_se_gemma3_12b_dev20x10 \
+  --key_path $SCRATCHDIR/final_project/data/archehr_qa/dev/archehr-qa_key.json \
+  --overwrite
+```
+
+It writes `RUN_DIR/eval/` by default:
+
+```text
+answer_quality_generations.csv
+answer_quality_examples.csv
+se_eval_examples.csv
+se_auroc.csv
+se_ece.csv
+se_reliability_bins.csv
+se_rejection_curve.csv
+evaluation_summary.json
+evaluation_report.md
+auroc_bar.svg
+rejection_curve.svg
+reliability_diagram.svg
+```
+
+Lightweight answer quality is currently:
+
+```text
+citation_score = max(strict citation F1, lenient citation F1)
+answer_coverage = 0.5 * token recall + 0.5 * ROUGE-L recall
+lexical_similarity = 0.5 * token F1 + 0.5 * ROUGE-L F1
+relevance_score = 0.75 * answer_coverage + 0.25 * lexical_similarity
+quality_score = 0.75 * citation_score + 0.25 * relevance_score
+```
+
+`is_low_quality` is then used as the target for SE evaluation. The default threshold is `0.4`. AUROC, ECE, and rejection curves are computed for answer SE, citation SE, token entropy, NLL, and cluster count.
+
+If the key file has clinician reference answers but no gold evidence labels, the evaluator switches to reference-only mode. In that case `quality_score = relevance_score` and the default low-quality threshold is `0.2`.
+
+Reference-only mode is diagnostic only. It cannot evaluate factuality, citation correctness, or evidence support, so it should not be treated as the final project benchmark.
+
 ## Documentation
 
 Key docs:
 
 ```text
 docs/archehr_se_baseline_plan.md
+docs/archehr_evaluation_architecture.md
+docs/dataset_pivot_status.md
 docs/level5_evaluation_method.md
 docs/progress_level4.md
 docs/handoff_guide.md

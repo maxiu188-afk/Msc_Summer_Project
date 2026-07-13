@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import math
 import os
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 
 class TextGenerator(Protocol):
@@ -50,20 +50,25 @@ class MissingGenerationDependency(RuntimeError):
     """Raised when generation dependencies are unavailable."""
 
 
-def _load_transformers() -> tuple[Any, Any, Any]:
+def _load_transformers() -> tuple[Any, Any, Any, Any, Any, Any]:
     cache_dir = Path(__file__).resolve().parents[2] / ".cache" / "torchinductor"
     cache_dir.mkdir(parents=True, exist_ok=True)
     os.environ.setdefault("TORCHINDUCTOR_CACHE_DIR", str(cache_dir))
 
     try:
         import torch
-        from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
+        from transformers import AutoModelForCausalLM, AutoProcessor, AutoTokenizer, set_seed
+
+        try:
+            from transformers import Gemma3ForConditionalGeneration
+        except ImportError:
+            Gemma3ForConditionalGeneration = None
     except ImportError as exc:
         raise MissingGenerationDependency(
             "HuggingFace generation requires torch and transformers. "
             "Install the project environment from requirements.txt."
         ) from exc
-    return torch, AutoModelForCausalLM, AutoTokenizer, set_seed
+    return torch, AutoModelForCausalLM, AutoProcessor, AutoTokenizer, Gemma3ForConditionalGeneration, set_seed
 
 
 def _resolve_torch_dtype(torch: Any, dtype_name: str | None) -> Any | None:
@@ -75,15 +80,29 @@ def _resolve_torch_dtype(torch: Any, dtype_name: str | None) -> Any | None:
     return dtype
 
 
+def _is_gemma3_model(model_name: str) -> bool:
+    normalized = model_name.lower().replace("_", "-")
+    return "gemma-3" in normalized
+
+
 class HuggingFaceCausalLMGenerator:
     """HuggingFace causal-LM generator used by model-backed levels."""
 
     def __init__(self, config: GenerationConfig):
         config.validate()
         self.config = config
-        torch, auto_model, auto_tokenizer, set_seed = _load_transformers()
+        (
+            torch,
+            auto_model,
+            auto_processor,
+            auto_tokenizer,
+            gemma3_model,
+            set_seed,
+        ) = _load_transformers()
         self._torch = torch
         self._set_seed = set_seed
+        self.processor = None
+        self.tokenizer = None
         model_kwargs: dict[str, Any] = {
             "local_files_only": config.local_files_only,
             "trust_remote_code": config.trust_remote_code,
@@ -92,13 +111,31 @@ class HuggingFaceCausalLMGenerator:
         if torch_dtype is not None:
             model_kwargs["torch_dtype"] = torch_dtype
 
-        self.tokenizer = auto_tokenizer.from_pretrained(
-            config.model_name,
-            local_files_only=config.local_files_only,
-            trust_remote_code=config.trust_remote_code,
-        )
-        self.model = auto_model.from_pretrained(config.model_name, **model_kwargs)
-        if self.tokenizer.pad_token_id is None:
+        if _is_gemma3_model(config.model_name):
+            if gemma3_model is None:
+                raise MissingGenerationDependency(
+                    "Gemma 3 requires transformers>=4.50.0. "
+                    "Upgrade the server environment with: python -m pip install -U 'transformers>=4.50.0'"
+                )
+            self.processor = auto_processor.from_pretrained(
+                config.model_name,
+                local_files_only=config.local_files_only,
+                trust_remote_code=config.trust_remote_code,
+            )
+            self.tokenizer = getattr(self.processor, "tokenizer", None)
+            if self.tokenizer is not None:
+                self.tokenizer.truncation_side = "left"
+            self.model = gemma3_model.from_pretrained(config.model_name, **model_kwargs)
+        else:
+            self.tokenizer = auto_tokenizer.from_pretrained(
+                config.model_name,
+                local_files_only=config.local_files_only,
+                trust_remote_code=config.trust_remote_code,
+            )
+            self.tokenizer.truncation_side = "left"
+            self.model = auto_model.from_pretrained(config.model_name, **model_kwargs)
+
+        if self.tokenizer is not None and self.tokenizer.pad_token_id is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
         self.model.to(config.device)
         self.model.eval()
@@ -108,13 +145,7 @@ class HuggingFaceCausalLMGenerator:
 
     def generate_with_scores(self, prompt: str, *, sample_index: int = 0) -> dict[str, Any]:
         self._set_seed(self.config.seed + sample_index)
-        encoded = self.tokenizer(
-            prompt,
-            return_tensors="pt",
-            truncation=True,
-            max_length=self.config.max_input_tokens,
-        )
-        encoded = {key: value.to(self.config.device) for key, value in encoded.items()}
+        encoded = self._encode_prompt(prompt)
         input_length = encoded["input_ids"].shape[-1]
 
         with self._torch.no_grad():
@@ -124,14 +155,14 @@ class HuggingFaceCausalLMGenerator:
                 temperature=self.config.temperature,
                 top_p=self.config.top_p,
                 max_new_tokens=self.config.max_new_tokens,
-                pad_token_id=self.tokenizer.pad_token_id,
+                pad_token_id=self._pad_token_id(),
                 return_dict_in_generate=True,
                 output_scores=True,
             )
 
         output_ids = outputs.sequences
         new_token_ids = output_ids[0][input_length:]
-        answer = self.tokenizer.decode(new_token_ids, skip_special_tokens=True)
+        answer = self._decode(new_token_ids)
         token_logprobs: list[float] = []
         token_entropies: list[float | None] = []
 
@@ -157,7 +188,7 @@ class HuggingFaceCausalLMGenerator:
                 token_entropies.append(entropy_value if math.isfinite(entropy_value) else None)
 
         generated_token_ids = [int(token_id) for token_id in new_token_ids.detach().cpu().tolist()]
-        generated_tokens = self.tokenizer.convert_ids_to_tokens(generated_token_ids)
+        generated_tokens = self._convert_ids_to_tokens(generated_token_ids)
         summary = summarize_token_scores(token_logprobs, token_entropies)
         return {
             "raw_answer": answer.strip() or "[EMPTY_GENERATION]",
@@ -167,6 +198,73 @@ class HuggingFaceCausalLMGenerator:
             "token_entropies": token_entropies,
             **summary,
         }
+
+    def _encode_prompt(self, prompt: str) -> dict[str, Any]:
+        if self.processor is not None:
+            messages = [
+                {
+                    "role": "user",
+                    "content": [{"type": "text", "text": prompt}],
+                }
+            ]
+            encoded = self.processor.apply_chat_template(
+                messages,
+                add_generation_prompt=True,
+                tokenize=True,
+                return_dict=True,
+                return_tensors="pt",
+            )
+            return self._truncate_and_move(encoded)
+
+        if self.tokenizer is not None and getattr(self.tokenizer, "chat_template", None):
+            messages = [{"role": "user", "content": prompt}]
+            encoded = self.tokenizer.apply_chat_template(
+                messages,
+                add_generation_prompt=True,
+                tokenize=True,
+                return_dict=True,
+                return_tensors="pt",
+            )
+            return self._truncate_and_move(encoded)
+
+        encoded = self.tokenizer(
+            prompt,
+            return_tensors="pt",
+            truncation=True,
+            max_length=self.config.max_input_tokens,
+        )
+        return self._move_to_device(encoded)
+
+    def _truncate_and_move(self, encoded: dict[str, Any]) -> dict[str, Any]:
+        for key in ("input_ids", "attention_mask"):
+            value = encoded.get(key)
+            if value is not None and value.shape[-1] > self.config.max_input_tokens:
+                encoded[key] = value[:, -self.config.max_input_tokens :]
+        return self._move_to_device(encoded)
+
+    def _move_to_device(self, encoded: dict[str, Any]) -> dict[str, Any]:
+        moved = {}
+        for key, value in encoded.items():
+            if hasattr(value, "to"):
+                moved[key] = value.to(self.config.device)
+            else:
+                moved[key] = value
+        return moved
+
+    def _decode(self, token_ids: Any) -> str:
+        if self.processor is not None and hasattr(self.processor, "decode"):
+            return self.processor.decode(token_ids, skip_special_tokens=True)
+        return self.tokenizer.decode(token_ids, skip_special_tokens=True)
+
+    def _convert_ids_to_tokens(self, token_ids: list[int]) -> list[str]:
+        if self.tokenizer is None:
+            return [str(token_id) for token_id in token_ids]
+        return self.tokenizer.convert_ids_to_tokens(token_ids)
+
+    def _pad_token_id(self) -> int | None:
+        if self.tokenizer is not None:
+            return self.tokenizer.pad_token_id
+        return getattr(getattr(self.model, "generation_config", None), "pad_token_id", None)
 
 
 class HuggingFaceTinyGenerator(HuggingFaceCausalLMGenerator):
@@ -238,11 +336,13 @@ def generate_answer_records(
     model_name: str,
     generation_level: str = "generation",
     include_token_scores: bool = False,
+    progress_callback: Callable[[int, int, str, int], None] | None = None,
 ) -> list[dict[str, Any]]:
     if num_samples <= 0:
         raise ValueError("num_samples must be positive.")
 
     records: list[dict[str, Any]] = []
+    total_generations = len(prompt_records) * num_samples
     for prompt_record in prompt_records:
         for sample_id in range(num_samples):
             generation_details: dict[str, Any] = {}
@@ -266,4 +366,11 @@ def generate_answer_records(
             if prompt_record.get("split") is not None:
                 record["split"] = prompt_record["split"]
             records.append(record)
+            if progress_callback is not None:
+                progress_callback(
+                    len(records),
+                    total_generations,
+                    str(prompt_record["example_id"]),
+                    sample_id,
+                )
     return records

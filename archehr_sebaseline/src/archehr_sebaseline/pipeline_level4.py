@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import time
 from typing import Any
 
 from .baseline_uq import (
@@ -91,6 +92,35 @@ def _numeric_values(records: list[dict[str, Any]], field: str) -> list[float]:
         if isinstance(value, (int, float)):
             values.append(float(value))
     return values
+
+
+def _format_duration(seconds: float) -> str:
+    rounded = max(0, int(round(seconds)))
+    hours, remainder = divmod(rounded, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if hours:
+        return f"{hours:d}:{minutes:02d}:{seconds:02d}"
+    return f"{minutes:02d}:{seconds:02d}"
+
+
+def _print_progress(
+    stage: str,
+    completed: int,
+    total: int,
+    started_at: float,
+    detail: str,
+) -> None:
+    fraction = completed / total if total else 1.0
+    bar_width = 24
+    filled = min(bar_width, int(bar_width * fraction))
+    bar = "#" * filled + "-" * (bar_width - filled)
+    elapsed = time.monotonic() - started_at
+    remaining = elapsed * (total - completed) / completed if completed else 0.0
+    message = (
+        f"[{stage}] [{bar}] {completed}/{total} ({fraction:.1%}) "
+        f"elapsed={_format_duration(elapsed)} eta={_format_duration(remaining)} {detail}"
+    )
+    print("\r" + message.ljust(150), end="\n" if completed == total else "", flush=True)
 
 
 def score_level4_clusters(
@@ -184,6 +214,7 @@ def run_level4(
     clustering_method: str = "nli",
     nli_config: NLIConfig | None = None,
     nli_scorer: EntailmentScorer | None = None,
+    show_progress: bool = False,
 ) -> dict[str, Any]:
     """Run a Level 4 pilot with token-level baseline uncertainty outputs."""
 
@@ -203,7 +234,11 @@ def run_level4(
 
     if generator is None:
         try:
+            if show_progress:
+                print("[model] Loading generation model...", flush=True)
             generator = HuggingFaceCausalLMGenerator(config)
+            if show_progress:
+                print("[model] Generation model loaded; starting sampled generation.", flush=True)
         except MissingGenerationDependency:
             raise
         except OSError as exc:
@@ -212,6 +247,23 @@ def run_level4(
                 "--local_files_only, and server model path permissions."
             ) from exc
 
+    generation_started_at = time.monotonic()
+    generation_progress_callback = None
+    if show_progress:
+        def generation_progress_callback(
+            completed: int,
+            total: int,
+            example_id: str,
+            sample_id: int,
+        ) -> None:
+            _print_progress(
+                "generation",
+                completed,
+                total,
+                generation_started_at,
+                f"example={example_id} sample={sample_id + 1}/{config.num_samples}",
+            )
+
     generations = generate_answer_records(
         prompt_records,
         generator,
@@ -219,6 +271,7 @@ def run_level4(
         model_name=config.model_name,
         generation_level="level4",
         include_token_scores=True,
+        progress_callback=generation_progress_callback,
     )
     cleaned_generations = clean_generation_records(generations)
     if clustering_method == "exact":
@@ -226,17 +279,36 @@ def run_level4(
     elif clustering_method == "nli":
         nli_config = nli_config or NLIConfig(device=config.device)
         if nli_scorer is None:
+            if show_progress:
+                print("[nli] Loading NLI model...", flush=True)
             nli_scorer = HuggingFaceNLIScorer(nli_config)
+            if show_progress:
+                print("[nli] NLI model loaded; starting answer clustering.", flush=True)
         examples_by_id = {str(example["id"]): example for example in examples}
+        nli_started_at = time.monotonic()
+        nli_progress_callback = None
+        if show_progress:
+            def nli_progress_callback(completed: int, total: int, example_id: str) -> None:
+                _print_progress(
+                    "nli",
+                    completed,
+                    total,
+                    nli_started_at,
+                    f"example={example_id}",
+                )
+
         cluster_records = cluster_by_bidirectional_entailment(
             cleaned_generations,
             scorer=nli_scorer,
             examples_by_id=examples_by_id,
             strict_entailment=nli_config.strict_entailment,
+            progress_callback=nli_progress_callback,
         )
     else:
         raise ValueError(f"Unsupported clustering_method: {clustering_method}")
 
+    if show_progress:
+        print("[finalize] Computing uncertainty scores and writing artifacts...", flush=True)
     score_rows = score_level4_clusters(cluster_records, cleaned_generations)
     generation_uq = generation_uq_rows(cleaned_generations)
     example_uq = example_uq_rows(cleaned_generations)
@@ -284,6 +356,8 @@ def run_level4(
             f"{paths['summary']} already exists. Pass --overwrite if replacing it is intended."
         )
     paths["summary"].write_text(summary + "\n", encoding="utf-8")
+    if show_progress:
+        print("[complete] All artifacts and summary.txt were written.", flush=True)
     return result
 
 

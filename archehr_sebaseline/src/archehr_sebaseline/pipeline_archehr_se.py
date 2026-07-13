@@ -54,6 +54,79 @@ def _clean_parsed_generation_records(parsed_generations: list[dict[str, Any]]) -
     return cleaned
 
 
+def _citation_lookup(example: dict[str, Any]) -> dict[str, str]:
+    lookup: dict[str, str] = {}
+    for sentence_id in example.get("evidence_sentence_ids") or []:
+        sentence_id = str(sentence_id)
+        lookup[sentence_id] = sentence_id
+        lookup[sentence_id.lower()] = sentence_id
+        if sentence_id.lower().startswith("s") and sentence_id[1:].isdigit():
+            lookup[sentence_id[1:]] = sentence_id
+        elif sentence_id.isdigit():
+            lookup[f"S{sentence_id}"] = sentence_id
+            lookup[f"s{sentence_id}"] = sentence_id
+    return lookup
+
+
+def _filter_citations_to_evidence(
+    parsed_generations: list[dict[str, Any]],
+    examples: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    lookups = {str(example["id"]): _citation_lookup(example) for example in examples}
+    filtered_records = []
+    for record in parsed_generations:
+        lookup = lookups.get(str(record.get("example_id")), {})
+        raw_citations = [str(citation) for citation in record.get("citation_ids") or []]
+        if not lookup:
+            filtered_records.append(
+                {
+                    **record,
+                    "raw_citation_ids": raw_citations,
+                    "invalid_citation_ids": [],
+                }
+            )
+            continue
+
+        filtered_citations = []
+        invalid_citations = []
+        for citation in raw_citations:
+            normalized = lookup.get(citation) or lookup.get(citation.lower())
+            if normalized is None:
+                invalid_citations.append(citation)
+            else:
+                filtered_citations.append(normalized)
+
+        valid_set = set(filtered_citations)
+        statements = []
+        for item in record.get("statements") or []:
+            item_citations = []
+            item_invalid = []
+            for citation in item.get("citations") or []:
+                normalized = lookup.get(str(citation)) or lookup.get(str(citation).lower())
+                if normalized is None:
+                    item_invalid.append(str(citation))
+                else:
+                    item_citations.append(normalized)
+            statements.append(
+                {
+                    **item,
+                    "citations": sorted(set(item_citations), key=lambda value: (len(value), value)),
+                    "invalid_citations": sorted(set(item_invalid), key=lambda value: (len(value), value)),
+                }
+            )
+
+        filtered_records.append(
+            {
+                **record,
+                "raw_citation_ids": raw_citations,
+                "citation_ids": sorted(valid_set, key=lambda value: (len(value), value)),
+                "invalid_citation_ids": sorted(set(invalid_citations), key=lambda value: (len(value), value)),
+                "statements": statements,
+            }
+        )
+    return filtered_records
+
+
 def _validate_counts(
     *,
     examples: list[dict[str, Any]],
@@ -123,7 +196,7 @@ def run_archehr_se(
         generation_level="archehr_se",
         include_token_scores=True,
     )
-    parsed_generations = parse_generation_records(generations)
+    parsed_generations = _filter_citations_to_evidence(parse_generation_records(generations), examples)
     cleaned_generations = _clean_parsed_generation_records(parsed_generations)
 
     if clustering_method == "exact":

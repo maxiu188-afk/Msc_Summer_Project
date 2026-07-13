@@ -52,6 +52,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--nli_trust_remote_code", action="store_true")
     parser.add_argument("--strict_entailment", action="store_true")
     parser.add_argument("--no_condition_on_question", action="store_true")
+    parser.add_argument(
+        "--show_progress",
+        action="store_true",
+        help="Print generation and NLI progress with elapsed time and estimated remaining time.",
+    )
     parser.add_argument("--overwrite", action="store_true")
     return parser.parse_args()
 
@@ -93,6 +98,7 @@ def main() -> int:
             overwrite=args.overwrite,
             clustering_method=args.clustering_method,
             nli_config=nli_config,
+            show_progress=args.show_progress,
         )
     except MissingGenerationDependency as exc:
         print(str(exc), file=sys.stderr)

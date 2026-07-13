@@ -1,6 +1,6 @@
 # ArchEHR-QA Semantic Entropy Baseline Plan
 
-Last updated: 2026-07-04
+Last updated: 2026-07-09
 
 ## Goal
 
@@ -9,6 +9,11 @@ ArchEHR-QA-style grounded long-form clinical QA.
 
 The goal is not to build the strongest possible ArchEHR-QA answering system.
 The goal is to evaluate uncertainty in LLM answers.
+
+Status update: this ArchEHR-QA SE baseline has now been implemented and run on
+dev/test. It should be treated as an engineering baseline and diagnostic run,
+not as the final project benchmark, because the available test key does not
+contain gold evidence labels or answer-quality labels.
 
 Therefore, we should avoid complex answer-improvement systems such as:
 
@@ -48,6 +53,15 @@ engineering smoke tests, but it should not be used for the main ArchEHR-QA SE
 baseline or for later probe targets.
 
 The main pipeline should use ArchEHR-QA-style examples only.
+
+Current dataset limitation:
+
+- Dev has clinician answers and sentence relevance labels.
+- Test has clinician answers only.
+- Test therefore supports reference-only diagnostics, not factuality/citation
+  evaluation.
+- ArchEHR-QA should not be used as the main SEP target unless additional labels
+  are added.
 
 Restricted clinical data rules remain unchanged:
 
@@ -234,7 +248,7 @@ stable.
 Do not optimize for ArchEHR-QA shared-task leaderboard score. That is a
 different project objective.
 
-## Proposed Next Implementation Steps
+## Implementation Steps
 
 ### Step 1: ArchEHR-QA Loader
 
@@ -307,7 +321,40 @@ examples with stable answer but unstable citations
 examples with unstable answer but stable citations
 ```
 
-This completes the immediate SE baseline.
+This completed the immediate ArchEHR-QA SE engineering baseline.
+
+## Final ArchEHR-QA Status
+
+Completed:
+
+- official-style XML loading,
+- structured cited answer prompting,
+- JSON/fallback answer parsing,
+- Gemma 3 12B generation support,
+- NLI answer clustering,
+- answer-level SE,
+- citation-set UQ,
+- token-level UQ,
+- lightweight evaluation artifacts and SVG plots.
+
+Latest test run:
+
+```text
+examples: 100
+generations: 1000
+num_samples: 10
+parse_status: json for 1000/1000 generations
+```
+
+Key finding:
+
+```text
+ArchEHR-QA test lacks gold evidence/quality labels, so it cannot serve as the
+final answer-quality benchmark for SE or SEP.
+```
+
+The next project step is dataset replacement, not additional ArchEHR-QA answer
+optimization.
 
 ## Implemented Files
 
@@ -343,6 +390,6 @@ Current local validation:
 
 ```text
 python -m unittest discover archehr_sebaseline\tests
-Ran 29 tests
+Ran 43 tests
 OK
 ```

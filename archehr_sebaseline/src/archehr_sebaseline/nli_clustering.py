@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 
 ENTAILMENT = "entailment"
@@ -151,6 +151,7 @@ def cluster_by_bidirectional_entailment(
     scorer: EntailmentScorer,
     examples_by_id: dict[str, dict[str, Any]] | None = None,
     strict_entailment: bool = False,
+    progress_callback: Callable[[int, int, str], None] | None = None,
 ) -> list[dict[str, Any]]:
     """Cluster answers by semantic equivalence using bidirectional NLI."""
 
@@ -159,7 +160,8 @@ def cluster_by_bidirectional_entailment(
         grouped[str(generation["example_id"])].append(generation)
 
     cluster_records = []
-    for example_id in sorted(grouped):
+    ordered_example_ids = sorted(grouped)
+    for completed_examples, example_id in enumerate(ordered_example_ids, start=1):
         example_generations = sorted(grouped[example_id], key=lambda item: item["sample_id"])
         example = (examples_by_id or {}).get(example_id, {})
         question = example.get("question") or example.get("patient_question")
@@ -211,5 +213,7 @@ def cluster_by_bidirectional_entailment(
                 "clusters": clusters,
             }
         )
+        if progress_callback is not None:
+            progress_callback(completed_examples, len(ordered_example_ids), example_id)
 
     return cluster_records

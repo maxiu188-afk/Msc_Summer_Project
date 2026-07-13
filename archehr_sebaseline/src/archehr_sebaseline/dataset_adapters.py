@@ -10,7 +10,16 @@ import xml.etree.ElementTree as ET
 from .common_schema import make_common_example
 
 
-SUPPORTED_DATASETS = ["fake", "pubmedqa", "archehr_qa"]
+SUPPORTED_DATASETS = [
+    "fake",
+    "pubmedqa",
+    "bioasq",
+    "bioasq_summary",
+    "bioasq_factoid",
+    "bioasq_list",
+    "bioasq_yesno",
+    "archehr_qa",
+]
 
 
 FAKE_COMMON_FIXTURES = [
@@ -132,6 +141,137 @@ def load_pubmedqa_common_examples(
     return examples[:limit] if limit is not None else examples
 
 
+def _as_list(value: Any) -> list[Any]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    return [value]
+
+
+def _flatten_exact_answers(value: Any) -> list[str]:
+    answers: list[str] = []
+
+    def visit(item: Any) -> None:
+        if item is None:
+            return
+        if isinstance(item, list):
+            for child in item:
+                visit(child)
+            return
+        text = str(item).strip()
+        if text:
+            answers.append(text)
+
+    visit(value)
+    return answers
+
+
+def _load_bioasq_questions(path: str | Path) -> list[dict[str, Any]]:
+    input_path = Path(path)
+    paths = sorted(input_path.glob("*.json")) if input_path.is_dir() else [input_path]
+    questions: list[dict[str, Any]] = []
+    for json_path in paths:
+        loaded = _load_json(json_path)
+        records = loaded.get("questions") if isinstance(loaded, dict) else None
+        if not isinstance(records, list):
+            raise ValueError(f"BioASQ adapter expects a JSON object with questions: {json_path}")
+        for record in records:
+            if not isinstance(record, dict):
+                raise ValueError(f"BioASQ question records must be objects: {json_path}")
+            questions.append({**record, "_source_file": json_path.name})
+    return questions
+
+
+def bioasq_records_to_common(
+    records: list[dict[str, Any]],
+    *,
+    split: str = "train",
+    question_type: str | None = None,
+) -> list[dict[str, Any]]:
+    """Normalize BioASQ Task B records to the project common schema."""
+
+    wanted_type = question_type.lower() if question_type else None
+    common_examples = []
+    for index, record in enumerate(records, start=1):
+        bioasq_type = str(record.get("type") or "").lower()
+        if wanted_type and bioasq_type != wanted_type:
+            continue
+
+        snippets = record.get("snippets") or []
+        if not isinstance(snippets, list):
+            snippets = []
+        evidence_sentences = []
+        evidence_sentence_ids = []
+        snippet_documents = []
+        for snippet_index, snippet in enumerate(snippets, start=1):
+            if isinstance(snippet, dict):
+                text = str(snippet.get("text") or "").strip()
+                document = snippet.get("document")
+            else:
+                text = str(snippet).strip()
+                document = None
+            if not text:
+                continue
+            evidence_sentences.append(text)
+            evidence_sentence_ids.append(f"S{snippet_index}")
+            snippet_documents.append(str(document) if document else "")
+
+        ideal_answers = [
+            str(answer).strip()
+            for answer in _as_list(record.get("ideal_answer"))
+            if str(answer).strip()
+        ]
+        exact_answers = _flatten_exact_answers(record.get("exact_answer"))
+        label = None
+        options = None
+        if bioasq_type == "yesno":
+            normalized_exact = [answer.lower() for answer in exact_answers]
+            if "yes" in normalized_exact:
+                label = "yes"
+            elif "no" in normalized_exact:
+                label = "no"
+            options = ["yes", "no"]
+
+        example = make_common_example(
+            dataset="bioasq",
+            example_id=str(record.get("id") or index),
+            split=split,
+            question=str(record.get("body") or ""),
+            context="\n".join(evidence_sentences),
+            evidence_sentences=evidence_sentences,
+            gold_answer=ideal_answers[0] if ideal_answers else None,
+            citations=evidence_sentence_ids if evidence_sentence_ids else None,
+            options=options,
+            label=label,
+        )
+        example["bioasq_type"] = bioasq_type
+        example["source_file"] = record.get("_source_file")
+        example["documents"] = [str(document) for document in record.get("documents") or []]
+        example["concepts"] = [str(concept) for concept in record.get("concepts") or []]
+        example["ideal_answers"] = ideal_answers
+        example["exact_answers"] = exact_answers
+        example["evidence_sentence_ids"] = evidence_sentence_ids
+        example["snippet_documents"] = snippet_documents
+        common_examples.append(example)
+    return common_examples
+
+
+def load_bioasq_common_examples(
+    data_path: str | Path,
+    *,
+    split: str = "train",
+    limit: int | None = None,
+    question_type: str | None = None,
+) -> list[dict[str, Any]]:
+    examples = bioasq_records_to_common(
+        _load_bioasq_questions(data_path),
+        split=split,
+        question_type=question_type,
+    )
+    return examples[:limit] if limit is not None else examples
+
+
 def _load_json_or_jsonl(path: str | Path) -> Any:
     input_path = Path(path)
     if input_path.suffix.lower() == ".xml":
@@ -151,12 +291,48 @@ def _load_json_or_jsonl(path: str | Path) -> Any:
     return _load_json(input_path)
 
 
+def _local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1].lower().replace("-", "_")
+
+
 def _element_text(parent: ET.Element, tag: str) -> str | None:
-    child = parent.find(tag)
-    if child is None or child.text is None:
-        return None
-    text = child.text.strip()
-    return text or None
+    wanted = tag.lower().replace("-", "_")
+    for child in parent.iter():
+        if child is parent:
+            continue
+        if _local_name(child.tag) != wanted:
+            continue
+        text = " ".join(child.itertext()).strip()
+        return text or None
+    return None
+
+
+def _question_text(case: ET.Element, role: str) -> str | None:
+    role = role.lower()
+    for child in case.iter():
+        if child is case:
+            continue
+        name = _local_name(child.tag)
+        attrs = {str(key).lower(): str(value).lower() for key, value in child.attrib.items()}
+        attr_text = " ".join(attrs.values())
+        if role in name and "question" in name:
+            text = " ".join(child.itertext()).strip()
+            if text:
+                return text
+        if name == "question" and role in attr_text:
+            text = " ".join(child.itertext()).strip()
+            if text:
+                return text
+    return None
+
+
+def _case_sentence_elements(case: ET.Element) -> list[ET.Element]:
+    sentence_elements = []
+    for child in case.iter():
+        name = _local_name(child.tag)
+        if name in {"sentence", "note_sentence", "excerpt_sentence"}:
+            sentence_elements.append(child)
+    return sentence_elements
 
 
 def _load_archehr_xml_records(path: str | Path) -> list[dict[str, Any]]:
@@ -170,8 +346,8 @@ def _load_archehr_xml_records(path: str | Path) -> list[dict[str, Any]]:
         if not case_id:
             continue
         sentences = []
-        for index, sentence in enumerate(case.findall(".//note_excerpt_sentences/sentence"), start=1):
-            text = (sentence.text or "").strip()
+        for index, sentence in enumerate(_case_sentence_elements(case), start=1):
+            text = " ".join(sentence.itertext()).strip()
             if not text:
                 continue
             sentences.append(
@@ -183,8 +359,15 @@ def _load_archehr_xml_records(path: str | Path) -> list[dict[str, Any]]:
         records.append(
             {
                 "id": case_id,
-                "patient_question": _element_text(case, "patient_question") or "",
-                "clinician_question": _element_text(case, "clinician_question"),
+                "patient_question": _question_text(case, "patient")
+                or _element_text(case, "patient_question")
+                or _element_text(case, "patientQuestion")
+                or _element_text(case, "consumer_question")
+                or "",
+                "clinician_question": _question_text(case, "clinician")
+                or _element_text(case, "clinician_question")
+                or _element_text(case, "clinicianQuestion")
+                or _element_text(case, "clinical_question"),
                 "clinical_specialty": _element_text(case, "clinical_specialty"),
                 "evidence": sentences,
             }
@@ -294,6 +477,8 @@ def archehr_records_to_common(
             or record.get("clinicianQuestion")
             or record.get("clinical_question")
         )
+        if not patient_question and clinician_question:
+            patient_question = clinician_question
         example = make_common_example(
             dataset="archehr_qa",
             example_id=example_id,
@@ -341,6 +526,18 @@ def load_common_examples(
         if data_path is None:
             raise ValueError("--data_path is required for dataset=pubmedqa.")
         return load_pubmedqa_common_examples(data_path, split=split, limit=limit)
+    if dataset_name == "bioasq" or dataset_name.startswith("bioasq_"):
+        if data_path is None:
+            raise ValueError("--data_path is required for dataset=bioasq.")
+        question_type = None
+        if dataset_name.startswith("bioasq_"):
+            question_type = dataset_name.removeprefix("bioasq_")
+        return load_bioasq_common_examples(
+            data_path,
+            split=split,
+            limit=limit,
+            question_type=question_type,
+        )
     if dataset_name in {"archehr_qa", "archehr", "archehrqa"}:
         if data_path is None:
             raise ValueError("--data_path is required for dataset=archehr_qa.")
