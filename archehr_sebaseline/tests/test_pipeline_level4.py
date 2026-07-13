@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from contextlib import redirect_stdout
+from io import StringIO
 import sys
 import unittest
 from pathlib import Path
@@ -54,6 +56,27 @@ class PipelineLevel4Tests(unittest.TestCase):
         self.assertTrue((output_dir / "example_uq.csv").exists())
         self.assertTrue((output_dir / "se_scores.csv").exists())
         self.assertEqual(result["clustering_method"], "nli_bidirectional_entailment")
+
+    def test_level4_progress_reports_generation_and_nli(self) -> None:
+        output_dir = Path(__file__).resolve().parents[1] / "outputs" / "test_level4_progress"
+        captured = StringIO()
+        with redirect_stdout(captured):
+            run_level4(
+                dataset="fake",
+                output_dir=output_dir,
+                config=GenerationConfig(model_name="static-test", num_samples=2),
+                limit_examples=1,
+                generator=StaticGenerator(["same answer", "different answer"]),
+                clustering_method="nli",
+                nli_config=NLIConfig(model_name="fake-nli"),
+                nli_scorer=FakeEntailmentScorer(),
+                show_progress=True,
+                overwrite=True,
+            )
+        progress_output = captured.getvalue()
+        self.assertIn("[generation]", progress_output)
+        self.assertIn("[nli]", progress_output)
+        self.assertIn("[complete]", progress_output)
 
 
 if __name__ == "__main__":

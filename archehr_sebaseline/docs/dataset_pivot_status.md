@@ -1,6 +1,6 @@
 # Dataset Pivot Status
 
-Last updated: 2026-07-10
+Last updated: 2026-07-13
 
 ## Decision
 
@@ -44,6 +44,26 @@ should retain the current deterministic metrics as baselines and save the full
 judge prompt, rubric, model/configuration, score, rationale, and raw response.
 The LLM judge should be validated against gold labels where available, or a
 small manually reviewed sample, before its scores are used as SEP supervision.
+
+## BioASQ Grounded Batch Update (2026-07-13)
+
+The first required BioASQ batch completed with Gemma 3 12B, ten sampled answers
+per question, provided gold PubMed snippets in the prompt, token-level scores,
+and bidirectional-entailment NLI clustering. It contains Golden summary (80
+questions), Golden factoid (50), Golden list (50), and a training-summary
+repeat (50). All runs passed the Level 4 health check.
+
+The local BioASQ evaluator is useful for an initial SE signal but remains a
+provisional quality target. Discrete SE AUROC against its low-quality flag is
+0.471 for Golden summary, 0.676 for factoid, 0.606 for list, and 0.624 for the
+training-summary repeat. Different question types, sources, and small positive
+counts mean these values must not be pooled or treated as a model leaderboard.
+The mixed quality rates (12.5%--36%) are sufficient for the intended filtering
+study, so no generation-prompt change is warranted merely to improve lexical
+quality.
+
+Detailed figures, provenance, and limitations are in
+`bioasq_runpod_results_20260713.md`. Future GPU runs return to Isambard.
 
 ## Label Availability
 
@@ -192,8 +212,8 @@ question/context/reference answer/evidence labels/factuality or correctness labe
 
 ## Current Next Step
 
-Run a small BioASQ pilot first. In parallel, explore replacement datasets and
-record, for each candidate:
+Validate the current BioASQ quality target before SEP. In parallel, explore
+replacement datasets and record, for each candidate:
 
 - access and licensing constraints,
 - task and answer format,
@@ -202,7 +222,11 @@ record, for each candidate:
 - suitability for multi-sample Semantic Entropy,
 - suitability for later SEP training and evaluation.
 
-After selecting the dataset, add a new adapter under:
+The BioASQ adapter and lightweight evaluator are already implemented. Before
+using their labels for SEP, compare the deterministic evaluator with a fixed
+LLM judge or a manually reviewed subset, then add Isambard seed repeats of the
+most informative subsets. After the target is defensible, proceed with the
+existing adapter under:
 
 ```text
 src/archehr_sebaseline/dataset_adapters.py

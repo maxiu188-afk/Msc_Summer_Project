@@ -51,6 +51,24 @@ The replacement dataset direction is now BioASQ. PubMedQA remains available as
 a short-answer engineering smoke path, but it is not the preferred main SE
 dataset.
 
+### Latest BioASQ baseline evidence
+
+The first full grounded BioASQ batch is complete with Gemma 3 12B, ten samples
+per question, token scores, and bidirectional-entailment NLI clustering. The
+Golden summary/factoid/list and training-summary repeat all passed structural
+health checks. Their local quality/SE results vary by task, so they do not yet
+justify a general ranking of uncertainty methods. The prompt is deliberately
+unchanged: the observed low-quality rates (12.5%--36%) already provide the
+quality variation needed to test filtering rather than answer optimization.
+
+The raw required-batch archive and a cautious result table are documented in
+`docs/bioasq_runpod_results_20260713.md`. Future experiments run on Isambard;
+`RUNPOD.md` is retained only as a reproducibility record for this batch.
+
+New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
+`archehr` prefixes. This does not rename the package, Python imports, or
+historical ArchEHR-QA files. See `docs/naming_policy.md`.
+
 ## Package Layout
 
 ```text
@@ -107,6 +125,7 @@ Evaluation:
 
 ```text
 src/archehr_sebaseline/evaluation/archehr_answer_quality.py
+src/archehr_sebaseline/evaluation/bioasq_quality.py
 src/archehr_sebaseline/evaluation/uncertainty_metrics.py
 src/archehr_sebaseline/evaluation/pubmedqa_labels.py
 ```
@@ -139,6 +158,8 @@ scripts/run_level4.py
 scripts/run_level4.sbatch
 scripts/check_level4_outputs.py
 scripts/evaluate_pubmedqa_labels.py
+scripts/evaluate_bioasq_quality.py
+scripts/runpod_remaining_experiments.sh
 ```
 
 ## BioASQ SE Baseline
@@ -204,6 +225,24 @@ python scripts/run_level4.py \
 For stricter correctness supervision, use `bioasq_factoid` or `bioasq_list`;
 their normalized examples preserve `exact_answers` for a follow-up evaluator.
 
+### Lightweight BioASQ evaluation
+
+After a Level 4 BioASQ run, evaluate the existing artifacts without loading a
+generation or NLI model:
+
+```bash
+python scripts/evaluate_bioasq_quality.py \
+  --run_dir outputs/bioasq_summary_gemma3_12b_100x10 \
+  --quality_target mean \
+  --quality_threshold 0.15
+```
+
+This is a transparent local approximation of the official metric families,
+not the official BioASQ service. Summary answers use unstemmed ROUGE-2 and
+ROUGE-SU4 F1; yes/no uses accuracy; factoid uses strict/lenient exact-answer
+matching; list uses set precision/recall/F1. The threshold is only an
+operational low-quality cut-off for SE analysis, not a BioASQ pass mark.
+
 ## Local Tests
 
 From `D:\work\FinalProject\code`:
@@ -215,7 +254,7 @@ python -m unittest discover archehr_sebaseline\tests
 Current expected result:
 
 ```text
-Ran 43 tests
+Ran 47 tests
 OK
 ```
 

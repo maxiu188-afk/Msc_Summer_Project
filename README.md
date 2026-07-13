@@ -8,10 +8,10 @@ Current status:
 ```text
 ArchEHR-QA SE baseline: implemented and tested as an engineering baseline
 ArchEHR-QA final evaluation/training target: paused because no usable gold labels
-Current main dataset direction: test BioASQ Task B
-Parallel research advice: continue comparing credible replacement datasets
-Evaluation experiment: compare deterministic metrics with an LLM-based judge
-Following stage: SEP after the dataset and evaluation target are stable
+BioASQ Task B: grounded Gemma 3 12B / NLI baseline completed on summary, factoid, and list
+Current compute host: Isambard (Runpod was a completed temporary recovery path)
+Next evaluation work: validate deterministic quality scores against a reviewed or LLM-judged subset
+Following stage: SEP only after the evaluation target is stable
 ```
 
 ArchEHR-QA remains useful for testing grounded long-form generation, citation
@@ -24,10 +24,21 @@ baseline path. It is not the preferred main research target because its short
 yes/no/maybe labels do not match open long-form clinical generation.
 
 BioASQ Task B is the current main experimental direction. The immediate work is
-to test its summary, factoid, list, and yes/no paths using the existing
-generation and uncertainty pipeline. Simpson's recommendation to continue
-exploring candidate datasets is retained as a parallel validation activity, not
-as a reversal of the BioASQ direction.
+to validate its answer-quality target before SEP work. A first grounded Gemma 3
+12B / 10-sample / NLI batch has completed on Golden summary (80 questions),
+Golden factoid (50), Golden list (50), and a training-summary repeat (50).
+Simpson's recommendation to continue exploring candidate datasets is retained
+as a parallel validation activity, not as a reversal of the BioASQ direction.
+See `archehr_sebaseline/docs/bioasq_runpod_results_20260713.md` for the
+results and their interpretation boundary.
+
+## Active Naming Policy
+
+New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
+`archehr` prefixes. This is forward-only: the `archehr_sebaseline/` package,
+existing imports, historical ArchEHR-QA artifacts, and completed server
+results remain unchanged to preserve working paths and provenance. See
+`archehr_sebaseline/docs/naming_policy.md` for the exact rules.
 
 The current answer-quality evaluators are also treated as provisional. Their
 dataset-specific thresholds, heuristic parsing, and manually weighted scores
@@ -123,9 +134,9 @@ D:\work\FinalProject\literature
 Server upload archives may appear at the root, for example:
 
 ```text
-archehr_sebaseline_server_*.zip
-archehr_sebaseline_server_*.tar.gz
+bioasq_se_runpod_*.tar.gz
 ```
 
 These are transport artifacts, not source code. Regenerate them from
-`archehr_sebaseline/` when the code changes.
+`archehr_sebaseline/` when the code changes. Existing legacy archive names are
+not renamed retroactively.

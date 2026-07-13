@@ -107,13 +107,19 @@ def build_bioasq_prompt(example: dict[str, Any]) -> str:
 def build_prompt_records(examples: list[dict[str, Any]]) -> list[dict[str, Any]]:
     prompt_records = []
     for example in examples:
+        dataset = str(example.get("dataset") or "").lower()
+        prompt_version = (
+            "bioasq_grounded_v1"
+            if dataset == "bioasq"
+            else "grounded_qa_common_v1"
+        )
         prompt_records.append(
             {
                 "example_id": example["id"],
                 "dataset": example.get("dataset"),
                 "split": example.get("split"),
                 "prompt": build_prompt(example),
-                "prompt_version": "grounded_qa_common_v1",
+                "prompt_version": prompt_version,
             }
         )
     return prompt_records

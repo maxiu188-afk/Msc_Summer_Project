@@ -1,6 +1,6 @@
 ﻿# ArchEHR-QA Semantic Entropy Baseline Plan
 
-Last updated: 2026-07-10
+Last updated: 2026-07-13
 
 ## Current Decision
 
@@ -8,16 +8,21 @@ ArchEHR-QA is no longer the planned final evaluation or SEP training dataset.
 The ArchEHR-QA pipeline is implemented and useful as an engineering baseline,
 but the available test key has no gold evidence labels or answer-quality labels.
 
-The current main replacement-dataset direction is BioASQ Task B, which should be
-tested first using its summary, factoid, list, and yes/no supervision. The
-existing ArchEHR-QA code should be retained as a grounded long-form SE
-smoke/diagnostic pipeline.
+The current main replacement-dataset direction is BioASQ Task B. Its first
+grounded Gemma 3 12B / NLI batch is complete: Golden summary (80 questions),
+Golden factoid (50), Golden list (50), and a training-summary repeat (50), all
+with ten samples per question. The existing ArchEHR-QA code should be retained
+as a grounded long-form SE smoke/diagnostic pipeline.
+
+The temporary Runpod recovery path is complete. Future long-running work should
+return to Isambard; Runpod documents and scripts remain only as reproducibility
+records for this completed batch.
 
 ## Supervisor Meeting Update (2026-07-10)
 
 Following the discussion with Simpson, the next stages are:
 
-1. Test BioASQ as the current main direction while continuing to document and
+1. Keep BioASQ as the current main direction while continuing to document and
    compare credible candidate datasets as a parallel research check.
 2. Redesign the answer-quality evaluation for the selected dataset. The current
    evaluators rely on relatively rigid, dataset-specific rules, thresholds, and
@@ -175,13 +180,29 @@ ArchEHR-QA remain useful for engineering smoke tests and method diagnostics.
 Other candidate datasets should still be compared as advised by Simpson, but
 that comparison does not block the immediate BioASQ test.
 
+## BioASQ Batch Update (2026-07-13)
+
+All four required runs passed the Level 4 structural check with CUDA generation,
+bidirectional-entailment NLI clustering, populated token scores, and finite
+entropy values. The archive is
+`server_results/bioasq_se_runpod_required_results_20260713.tar.gz`; the
+earlier 100-question training-summary run remains extracted under
+`server_results/runpod_bioasq_summary_gemma3_12b_100x10/`.
+
+The lightweight evaluator gives different signals by task/source: Golden
+summary discrete SE AUROC is 0.471 (10 low-quality examples), while Golden
+factoid and list are 0.676 and 0.606; the 50-example training-summary repeat
+is 0.624. These are small, differently distributed samples and use a local
+approximation of BioASQ metric families, not official BioASQ scores. They are
+evidence to validate the quality target, not a stable model ranking.
+
 Current next step:
 
 ```text
-Test BioASQ on a small public subset; validate its dataset-specific evaluation;
-and trial an LLM-based evaluator alongside available label/rule-based checks.
-Continue candidate-dataset comparison in parallel, then scale the BioASQ SE run
-if the pilot supports it.
+On Isambard, keep the existing gold-snippet grounded prompt unchanged; compare
+the deterministic evaluator against a fixed LLM judge or reviewed subset, then
+run seed repeats of the most informative BioASQ subsets. Proceed to SEP only
+after that quality target is defensible.
 ```
 
 See:

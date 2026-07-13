@@ -1,8 +1,6 @@
 ﻿# ArchEHR-QA UQ Code Handoff Guide
 
-Last updated: 2026-07-03
-
-Last updated: 2026-07-09
+Last updated: 2026-07-13
 
 The active project is `archehr_sebaseline`. The package now contains:
 
@@ -11,21 +9,34 @@ The active project is `archehr_sebaseline`. The package now contains:
 - lightweight uncertainty/evaluation utilities,
 - documentation for the current dataset pivot.
 
-Current research direction: test BioASQ Task B as the main replacement dataset
-while continuing to compare credible candidates as Simpson advised. ArchEHR-QA
-remains useful as an engineering diagnostic, but it is not the final evaluation
-or SEP training dataset because its test key does not include gold evidence
-labels or answer-quality labels.
+Current research direction: validate BioASQ Task B answer-quality supervision
+for SE, while continuing to compare credible candidates as Simpson advised.
+ArchEHR-QA remains useful as an engineering diagnostic, but it is not the final
+evaluation or SEP training dataset because its test key does not include gold
+evidence labels or answer-quality labels.
 
 See:
 
 ```text
 docs/dataset_pivot_status.md
+docs/bioasq_runpod_results_20260713.md
 docs/archehr_se_baseline_plan.md
 docs/archehr_evaluation_architecture.md
 ```
 
 ## Current Stage
+
+The first grounded BioASQ batch is complete and archived at:
+
+```text
+server_results/bioasq_se_runpod_required_results_20260713.tar.gz
+```
+
+It contains Golden summary 80x10, Golden factoid 50x10, Golden list 50x10, and
+a training-summary 50x10 repeat, all with Gemma 3 12B and NLI clustering. All
+four passed structural health checks. Interpret the local quality/SE AUROCs by
+question type only; their small samples and provisional evaluator do not support
+a pooled score. Runpod was temporary; future jobs run on Isambard.
 
 ArchEHR-QA SE engineering baseline is complete, but dataset pivot is required.
 
@@ -129,10 +140,9 @@ label_heuristic_eval.md
 
 ## Next Work
 
-1. Test the implemented BioASQ adapter on a small public subset.
-2. Validate or add BioASQ-specific quality evaluation while preserving the
-   common artifact layout.
-3. Compare deterministic metrics with an LLM-based judge on a reviewed subset.
-4. Re-run SE with `num_samples=10` after the BioASQ pilot is stable.
-5. Use BioASQ labels for AUROC/ECE/rejection curves where appropriate.
-6. Defer SEP hidden-state probes until the new target is stable.
+1. On Isambard, validate the lightweight BioASQ quality labels against a fixed
+   LLM judge or a manually reviewed subset.
+2. Repeat the informative BioASQ subsets with independent seeds while keeping
+   the gold-snippet prompt fixed.
+3. Compare SE and token metrics only within matched task/source/seed groups.
+4. Defer SEP hidden-state probes until the quality target is stable.

@@ -18,7 +18,7 @@ from archehr_sebaseline.dataset_adapters import (
     bioasq_records_to_common,
     pubmedqa_records_to_common,
 )
-from archehr_sebaseline.prompting import build_prompt
+from archehr_sebaseline.prompting import build_prompt, build_prompt_records
 
 
 class DatasetAdapterTests(unittest.TestCase):
@@ -158,6 +158,7 @@ class DatasetAdapterTests(unittest.TestCase):
         self.assertIn("Question type: list", prompt)
         self.assertIn("[S1] EGF and epiregulin bind EGFR.", prompt)
         self.assertIn("comma-separated list", prompt)
+        self.assertEqual(build_prompt_records([example])[0]["prompt_version"], "bioasq_grounded_v1")
 
     def test_archehr_records_to_common_preserves_sentence_ids(self) -> None:
         examples = archehr_records_to_common(

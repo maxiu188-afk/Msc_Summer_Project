@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import math
 import os
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 
 class TextGenerator(Protocol):
@@ -336,11 +336,13 @@ def generate_answer_records(
     model_name: str,
     generation_level: str = "generation",
     include_token_scores: bool = False,
+    progress_callback: Callable[[int, int, str, int], None] | None = None,
 ) -> list[dict[str, Any]]:
     if num_samples <= 0:
         raise ValueError("num_samples must be positive.")
 
     records: list[dict[str, Any]] = []
+    total_generations = len(prompt_records) * num_samples
     for prompt_record in prompt_records:
         for sample_id in range(num_samples):
             generation_details: dict[str, Any] = {}
@@ -364,4 +366,11 @@ def generate_answer_records(
             if prompt_record.get("split") is not None:
                 record["split"] = prompt_record["split"]
             records.append(record)
+            if progress_callback is not None:
+                progress_callback(
+                    len(records),
+                    total_generations,
+                    str(prompt_record["example_id"]),
+                    sample_id,
+                )
     return records
