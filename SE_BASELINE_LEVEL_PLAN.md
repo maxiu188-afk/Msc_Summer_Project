@@ -189,20 +189,33 @@ entropy values. The archive is
 earlier 100-question training-summary run remains extracted under
 `server_results/runpod_bioasq_summary_gemma3_12b_100x10/`.
 
-The lightweight evaluator gives different signals by task/source: Golden
-summary discrete SE AUROC is 0.471 (10 low-quality examples), while Golden
-factoid and list are 0.676 and 0.606; the 50-example training-summary repeat
-is 0.624. These are small, differently distributed samples and use a local
-approximation of BioASQ metric families, not official BioASQ scores. They are
-evidence to validate the quality target, not a stable model ranking.
+The completed outputs have been re-analysed with `lightweight_bioasq_v2`
+without regenerating answers. It preserves the fixed-threshold AUROC for
+comparison, but adds answer-first factoid scoring, citation-ID diagnostics,
+per-type relative low-quality targets, continuous-risk association, coverage
+risk, and bootstrap intervals. Golden-summary discrete-SE fixed-target AUROC
+is 0.471 (10 low-quality examples), Golden factoid and list are 0.618 and
+0.606, and the 50-example training-summary repeat is 0.624. These are small,
+differently distributed samples and local approximations of BioASQ metric
+families, not official BioASQ scores. They are evidence to validate the
+quality target, not a stable model ranking.
 
 Current next step:
 
 ```text
-On Isambard, keep the existing gold-snippet grounded prompt unchanged; compare
-the deterministic evaluator against a fixed LLM judge or reviewed subset, then
-run seed repeats of the most informative BioASQ subsets. Proceed to SEP only
-after that quality target is defensible.
+On Isambard, keep the existing gold-snippet grounded prompt unchanged; run the
+CPU-only v2 post-processing after each Level 4 output, compare the
+deterministic evaluator against a fixed LLM judge or reviewed subset, then run
+seed repeats of the most informative BioASQ subsets. Proceed to SEP only after
+that quality target is defensible.
+
+Before any SEP comparison, the Level 4 benchmark now also includes simple UQ
+baselines alongside discrete and weighted SE: negative average token log-prob,
+average token entropy, and sequence NLL are available from existing token-score
+artifacts; verbalized confidence and P(True) are implemented as a single
+optional post-processing pass that loads the answer model but does not generate
+new answers or use NLI. Sequence NLL must be reported with answer length
+because it is length-sensitive.
 ```
 
 See:

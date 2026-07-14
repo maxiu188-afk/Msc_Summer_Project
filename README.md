@@ -10,7 +10,7 @@ ArchEHR-QA SE baseline: implemented and tested as an engineering baseline
 ArchEHR-QA final evaluation/training target: paused because no usable gold labels
 BioASQ Task B: grounded Gemma 3 12B / NLI baseline completed on summary, factoid, and list
 Current compute host: Isambard (Runpod was a completed temporary recovery path)
-Next evaluation work: validate deterministic quality scores against a reviewed or LLM-judged subset
+Next evaluation work: use v2 quality/SE post-processing, then validate it against a reviewed or LLM-judged subset
 Following stage: SEP only after the evaluation target is stable
 ```
 
@@ -40,11 +40,13 @@ existing imports, historical ArchEHR-QA artifacts, and completed server
 results remain unchanged to preserve working paths and provenance. See
 `archehr_sebaseline/docs/naming_policy.md` for the exact rules.
 
-The current answer-quality evaluators are also treated as provisional. Their
-dataset-specific thresholds, heuristic parsing, and manually weighted scores
-should be adapted and validated for any replacement dataset. An LLM-as-a-judge
-path is planned as a flexible comparison for long-form answer evaluation, with
-fixed prompts/configuration and validation against labels or manual review where
+The BioASQ evaluator now uses versioned post-processing with type-specific
+quality diagnostics, threshold sensitivity, continuous-risk association, and
+bootstrap intervals. It remains provisional: deterministic lexical and
+exact-answer rules must be validated against labels or manual review before they
+become SEP supervision. An LLM-as-a-judge path is planned as a flexible
+comparison for long-form answer evaluation, with fixed prompts/configuration and
+validation against labels or manual review where
 possible.
 
 ## Folder Structure
@@ -65,6 +67,7 @@ These root-level files are intentionally kept at the workspace level:
 ```text
 codex_task_overview_archehr_uq.txt
 SE_BASELINE_LEVEL_PLAN.md
+ISAMBARD_COMMANDS.md
 ```
 
 Their roles are:
@@ -73,6 +76,8 @@ Their roles are:
   requirements.
 - `SE_BASELINE_LEVEL_PLAN.md`: active stage plan, current status, and dataset
   pivot notes.
+- `ISAMBARD_COMMANDS.md`: common local and Isambard operational commands;
+  use the package guide for the full BioASQ launch procedure.
 
 ## Active Project
 

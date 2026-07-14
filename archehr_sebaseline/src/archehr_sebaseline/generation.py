@@ -143,6 +143,56 @@ class HuggingFaceCausalLMGenerator:
     def generate(self, prompt: str, *, sample_index: int = 0) -> str:
         return self.generate_with_scores(prompt, sample_index=sample_index)["raw_answer"]
 
+    def generate_deterministic(self, prompt: str, *, max_new_tokens: int) -> str:
+        """Generate a short greedy continuation for post-hoc self-report UQ."""
+
+        if max_new_tokens <= 0:
+            raise ValueError("max_new_tokens must be positive.")
+        encoded = self._encode_prompt(prompt)
+        input_length = encoded["input_ids"].shape[-1]
+        with self._torch.no_grad():
+            outputs = self.model.generate(
+                **encoded,
+                do_sample=False,
+                max_new_tokens=max_new_tokens,
+                pad_token_id=self._pad_token_id(),
+            )
+        return self._decode(outputs[0][input_length:]).strip()
+
+    def _continuation_logprob(self, prompt: str, continuation: str) -> float:
+        if self.tokenizer is None:
+            raise MissingGenerationDependency("Continuation scoring requires a tokenizer.")
+        encoded = self._encode_prompt(prompt)
+        continuation_ids = self.tokenizer(continuation, add_special_tokens=False)["input_ids"]
+        if not continuation_ids:
+            raise ValueError("Continuation must tokenize to at least one token.")
+        prompt_ids = encoded["input_ids"]
+        prompt_length = prompt_ids.shape[-1]
+        continuation_tensor = self._torch.tensor([continuation_ids], device=prompt_ids.device)
+        input_ids = self._torch.cat((prompt_ids, continuation_tensor), dim=-1)
+        attention_mask = encoded.get("attention_mask")
+        if attention_mask is not None:
+            continuation_mask = self._torch.ones((1, len(continuation_ids)), dtype=attention_mask.dtype, device=attention_mask.device)
+            attention_mask = self._torch.cat((attention_mask, continuation_mask), dim=-1)
+        model_inputs = {key: value for key, value in encoded.items() if key not in {"input_ids", "attention_mask"}}
+        model_inputs["input_ids"] = input_ids
+        if attention_mask is not None:
+            model_inputs["attention_mask"] = attention_mask
+        with self._torch.no_grad():
+            logits = self.model(**model_inputs).logits[0]
+        log_probs = self._torch.nn.functional.log_softmax(logits.float(), dim=-1)
+        return sum(float(log_probs[prompt_length - 1 + offset, token_id].item()) for offset, token_id in enumerate(continuation_ids))
+
+    def binary_continuation_probability(self, prompt: str, *, true_text: str, false_text: str) -> float:
+        """Compute P(True) after normalizing the True/False continuation likelihoods."""
+
+        true_logprob = self._continuation_logprob(prompt, true_text)
+        false_logprob = self._continuation_logprob(prompt, false_text)
+        maximum = max(true_logprob, false_logprob)
+        true_weight = math.exp(true_logprob - maximum)
+        false_weight = math.exp(false_logprob - maximum)
+        return true_weight / (true_weight + false_weight)
+
     def generate_with_scores(self, prompt: str, *, sample_index: int = 0) -> dict[str, Any]:
         self._set_seed(self.config.seed + sample_index)
         encoded = self._encode_prompt(prompt)

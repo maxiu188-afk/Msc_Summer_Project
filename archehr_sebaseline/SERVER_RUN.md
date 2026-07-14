@@ -2,6 +2,10 @@
 
 This guide covers the maintained server workflow for SE/UQ runs on Isambard. Use Slurm for model inference; do not run generation on login nodes.
 
+For the current BioASQ-first workflow, use `ISAMBARD_BIOASQ.md`. It covers the
+new BioASQ Slurm batch, separate public-data upload, first-time Hugging Face
+downloads, reference UQ, and the two model-backed UQ baselines.
+
 Current status: the ArchEHR-QA server workflow is kept as an engineering
 baseline and diagnostic run. It is not the final project benchmark because the
 available ArchEHR-QA test key has no gold evidence or answer-quality labels.
