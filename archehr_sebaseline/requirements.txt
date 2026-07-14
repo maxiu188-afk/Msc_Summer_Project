@@ -1,4 +1,6 @@
 torch
+torchvision
+Pillow
 transformers>=4.50.0
 sentencepiece
 protobuf

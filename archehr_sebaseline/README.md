@@ -58,12 +58,13 @@ per question, token scores, and bidirectional-entailment NLI clustering. The
 Golden summary/factoid/list and training-summary repeat all passed structural
 health checks. Their local quality/SE results vary by task, so they do not yet
 justify a general ranking of uncertainty methods. The prompt is deliberately
-unchanged: the observed low-quality rates (12.5%--36%) already provide the
+unchanged: the v2 observed low-quality rates (12.5%--52%) already provide the
 quality variation needed to test filtering rather than answer optimization.
 
 The raw required-batch archive and a cautious result table are documented in
 `docs/bioasq_runpod_results_20260713.md`. Future experiments run on Isambard;
 `RUNPOD.md` is retained only as a reproducibility record for this batch.
+For a fresh BioASQ launch on Isambard, follow `ISAMBARD_BIOASQ.md`.
 
 New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
 `archehr` prefixes. This does not rename the package, Python imports, or
@@ -227,21 +228,81 @@ their normalized examples preserve `exact_answers` for a follow-up evaluator.
 
 ### Lightweight BioASQ evaluation
 
-After a Level 4 BioASQ run, evaluate the existing artifacts without loading a
-generation or NLI model:
+After a Level 4 BioASQ run, reference mode evaluates existing artifacts without
+loading a generation or NLI model:
 
 ```bash
 python scripts/evaluate_bioasq_quality.py \
   --run_dir outputs/bioasq_summary_gemma3_12b_100x10 \
   --quality_target mean \
-  --quality_threshold 0.15
+  --quality_threshold 0.15 \
+  --relative_risk_fraction 0.25 \
+  --bootstrap_samples 1000
 ```
 
 This is a transparent local approximation of the official metric families,
 not the official BioASQ service. Summary answers use unstemmed ROUGE-2 and
-ROUGE-SU4 F1; yes/no uses accuracy; factoid uses strict/lenient exact-answer
-matching; list uses set precision/recall/F1. The threshold is only an
-operational low-quality cut-off for SE analysis, not a BioASQ pass mark.
+ROUGE-SU4 F1; yes/no uses accuracy; factoid records strict, answer-first, and
+lenient exact-answer diagnostics; list uses normalized set precision/recall/F1.
+Citation IDs are checked against the provided snippet IDs, but this is not a
+claim-entailment check. The evaluator writes fixed-threshold and per-type
+bottom-quality AUROC, bootstrap intervals, Spearman correlation with continuous
+risk (`1 - quality`), and a coverage-risk summary. These targets are SE
+sensitivity analyses, not BioASQ pass marks.
+
+For the primary grounded-quality analysis, use the already-maintained open NLI
+model to test whether each answer claim is entailed by the supplied gold
+snippets. This is post-processing only; it does not regenerate any answer:
+
+```bash
+python scripts/evaluate_bioasq_quality.py \
+  --run_dir outputs/bioasq_summary_gemma3_12b_100x10 \
+  --output_dir outputs/bioasq_summary_gemma3_12b_100x10/bioasq_eval_grounded \
+  --quality_mode grounded \
+  --grounding_nli_model microsoft/deberta-v2-xlarge-mnli \
+  --grounding_nli_device cuda \
+  --grounding_max_claims 4 \
+  --grounding_max_evidence_sentences 10 \
+  --bootstrap_samples 1000 \
+  --overwrite
+```
+
+Grounded mode preserves the reference-quality, entailment, contradiction, and
+cited-claim diagnostics in separate columns. Its composite is the geometric
+mean of reference quality and net evidence support, so a reference-like answer
+that contradicts the supplied snippets receives a low score. It remains an
+open-NLI proxy rather than clinical expert adjudication; validate it on a
+reviewed subset before using it as SEP supervision.
+
+### Simple UQ baselines
+
+The Level 4 token-score artifacts already provide average token log-probability,
+average token entropy, and sequence NLL. The BioASQ evaluator automatically
+compares all three with SE; negative average token log-probability is the same
+quantity as normalized NLL, and sequence NLL is retained separately to expose
+its answer-length sensitivity.
+
+Verbalized confidence and P(True) are implemented as one optional model-backed
+post-processing pass. Run it once for a completed output, then re-run the
+BioASQ evaluator to include both fields automatically:
+
+```bash
+python scripts/run_self_report_uq.py \
+  --run_dir outputs/bioasq_summary_gemma3_12b_100x10 \
+  --model_name google/gemma-3-12b-it \
+  --device cuda \
+  --torch_dtype bfloat16 \
+  --overwrite
+
+python scripts/evaluate_bioasq_quality.py \
+  --run_dir outputs/bioasq_summary_gemma3_12b_100x10 \
+  --bootstrap_samples 1000 \
+  --overwrite
+```
+
+The post-processing script scores every sampled answer, then averages the ten
+values per question for a fair comparison with answer-level SE. It uses neither
+retrieval nor NLI, but it does load the answer model once.
 
 ## Local Tests
 

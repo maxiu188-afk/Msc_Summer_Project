@@ -54,13 +54,16 @@ questions), Golden factoid (50), Golden list (50), and a training-summary
 repeat (50). All runs passed the Level 4 health check.
 
 The local BioASQ evaluator is useful for an initial SE signal but remains a
-provisional quality target. Discrete SE AUROC against its low-quality flag is
-0.471 for Golden summary, 0.676 for factoid, 0.606 for list, and 0.624 for the
+provisional quality target. Its v2 re-analysis adds answer-first factoid
+scoring, citation-ID diagnostics, per-type relative targets, continuous-risk
+association, coverage-risk analysis, and bootstrap intervals without changing
+any generated answers. Discrete SE AUROC against the retained fixed target is
+0.471 for Golden summary, 0.618 for factoid, 0.606 for list, and 0.624 for the
 training-summary repeat. Different question types, sources, and small positive
 counts mean these values must not be pooled or treated as a model leaderboard.
-The mixed quality rates (12.5%--36%) are sufficient for the intended filtering
-study, so no generation-prompt change is warranted merely to improve lexical
-quality.
+The mixed v2 quality rates (12.5%--52%) are sufficient for the intended
+filtering study, so no generation-prompt change is warranted merely to improve
+lexical quality.
 
 Detailed figures, provenance, and limitations are in
 `bioasq_runpod_results_20260713.md`. Future GPU runs return to Isambard.
