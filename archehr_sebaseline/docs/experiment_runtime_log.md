@@ -59,3 +59,54 @@ Planning reference for the same model and pipeline:
 These estimates apply only to the same single-GPU Gemma 3 12B, 10-sample, NLI,
 self-report configuration. Factoid/list workloads and hidden-state SEP runs may
 scale differently.
+
+### Isambard job 5660345 - fixed-subset independent Qwen judge
+
+```text
+status: COMPLETED (exit 0:0)
+Slurm start: 2026-07-15T09:17:27
+Slurm end: 2026-07-15T09:38:24
+elapsed: 00:20:57 (Slurm), 00:20:56 / 1,256 seconds (script timer)
+resources: 1 GPU, 72 allocated CPUs, 48 GB requested memory
+batch MaxRSS: 2,740,544 K (about 2.61 GiB)
+source run: Isambard job 5654721, seed 31
+judge: Qwen/Qwen2.5-7B-Instruct, greedy decoding
+selection: 30 questions, equal samples from lexical-quality thirds
+judgments: 300 generations
+valid parsed judgments: 296
+selection seed: 20260715
+```
+
+Observed end-to-end rate was about 4.19 seconds per judgment, including model
+loading and output analysis. Four responses reached the 160-token generation
+limit after emitting all rubric scores but before closing the JSON rationale;
+future judge runs should allow at least 256 new tokens or enforce a shorter
+rationale.
+
+### Isambard job 5660346 - BioASQ training summary 100x10 seed repeat
+
+```text
+status: COMPLETED (exit 0:0)
+Slurm start: 2026-07-15T12:50:11
+Slurm end: 2026-07-15T16:08:43
+elapsed: 03:18:32 (Slurm), 03:18:31 / 11,911 seconds (script timer)
+resources: 1 GPU, 72 allocated CPUs, 64 GB requested memory
+batch MaxRSS: 8,530,112 K (about 8.13 GiB)
+dataset: BioASQ training13b summary
+examples: 100
+samples per example: 10
+generations: 1,000
+model: google/gemma-3-12b-it
+generation seed: 47
+generation dtype/device: bfloat16 / CUDA
+max new tokens: 192
+clustering: microsoft/deberta-v2-xlarge-mnli, bidirectional entailment
+self-report UQ: enabled
+health check: PASS
+```
+
+Across the two matched 100x10 runs (seeds 31 and 47), elapsed time ranged from
+3:18:31 to 3:43:51, with a mean of about 3:31:12. Continue planning around
+4:20 for this cached configuration (approximately 15% above the slower
+observation), excluding queue time; retain the 12-hour limit until more runs
+show that a smaller allocation is consistently safe.
