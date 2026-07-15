@@ -15,7 +15,7 @@ set -euo pipefail
 : "${DATA_PATH:?Set DATA_PATH to the BioASQ JSON file or Golden directory.}"
 
 WORKDIR="${SCRATCHDIR}/final_project"
-PROJECT_DIR="${WORKDIR}/archehr_sebaseline"
+PROJECT_DIR="${PROJECT_DIR:-${WORKDIR}/archehr_sebaseline}"
 VENV_PATH="${VENV_PATH:-${PROJECT_DIR}/.venv_isambard}"
 OUTPUT_DIR="${OUTPUT_DIR:-${PROJECT_DIR}/outputs/bioasq_summary_gemma3_12b_100x10}"
 HF_CACHE_DIR="${WORKDIR}/hf_cache"

@@ -14,7 +14,7 @@ set -euo pipefail
 : "${RUN_DIR:?Set RUN_DIR to the completed BioASQ run directory.}"
 
 WORKDIR="${SCRATCHDIR}/final_project"
-PROJECT_DIR="${WORKDIR}/archehr_sebaseline"
+PROJECT_DIR="${PROJECT_DIR:-${WORKDIR}/archehr_sebaseline}"
 VENV_PATH="${VENV_PATH:-${PROJECT_DIR}/.venv_isambard}"
 OUTPUT_DIR="${OUTPUT_DIR:-${RUN_DIR}/llm_judge}"
 HF_CACHE_DIR="${WORKDIR}/hf_cache"
