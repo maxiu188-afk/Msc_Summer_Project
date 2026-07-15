@@ -957,7 +957,7 @@ def _summary(
         "low_quality_examples": sum(str(row.get("is_low_quality")).lower() == "true" for row in example_rows),
         "low_quality_rate": sum(str(row.get("is_low_quality")).lower() == "true" for row in example_rows) / len(example_rows) if example_rows else None,
         "mean_example_quality_score": sum(quality) / len(quality) if quality else None,
-        "median_example_quality_score": sorted(quality)[len(quality) // 2] if quality else None,
+        "median_example_quality_score": _median(quality) if quality else None,
         "auroc_low_quality_by_score": {row["score_name"]: finite_float(row.get("auroc")) for row in auroc_rows},
         "auroc_sensitivity_by_target": {
             target_name: {

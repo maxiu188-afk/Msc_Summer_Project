@@ -75,9 +75,45 @@ sacct -j <JOBID> --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS,AllocTRES%
 OUT="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_summary_gemma3_12b_100x10"
 cat "$OUT/health_check.txt"
 cat "$OUT/bioasq_eval/bioasq_eval_summary.json"
+cat "$OUT/run_timing.txt"
 ```
 
 The final comparison includes discrete/weighted SE, token log-probability,
 token entropy, sequence NLL, verbalized confidence, and P(True). Keep outputs,
-health checks, and Slurm logs; do not archive model caches or virtual
+health checks, `run_timing.txt`, and Slurm logs. Record each completed formal run
+in `docs/experiment_runtime_log.md`; do not archive model caches or virtual
 environments as experiment evidence.
+
+## Independent judge validation and matched repeat
+
+The completed 100x10 run can be validated on a fixed, quality-stratified
+30-question subset with the cached independent Qwen judge. All 300 prompts,
+raw responses, rubric scores, and comparison statistics are retained:
+
+```bash
+RUN_DIR="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_summary_gemma3_12b_100x10" \
+JUDGE_MODEL_NAME=Qwen/Qwen2.5-7B-Instruct \
+sbatch scripts/run_bioasq_llm_judge.sbatch
+```
+
+For an independently sampled repeat, keep every setting unchanged except the
+generation seed and output directory:
+
+```bash
+DATASET=bioasq_summary \
+DATA_PATH="$SCRATCHDIR/final_project/data/BioASQ-training13b/training13b.json" \
+SPLIT=train13b \
+OUTPUT_DIR="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_summary_gemma3_12b_100x10_seed47" \
+MAX_EXAMPLES=100 \
+NUM_SAMPLES=10 \
+SEED=47 \
+LOCAL_FILES_ONLY=1 \
+NLI_LOCAL_FILES_ONLY=1 \
+RUN_SELF_REPORT_UQ=1 \
+sbatch scripts/run_bioasq_isambard.sbatch
+```
+
+Both scripts write their own `run_timing.txt`. The repeat is matched to the
+original seed-31 configuration; changing the model, data order, precision,
+sample count, answer length, or evaluation stages would no longer be a pure
+seed replication.

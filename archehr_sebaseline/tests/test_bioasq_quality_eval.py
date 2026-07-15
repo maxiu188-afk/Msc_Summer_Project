@@ -140,6 +140,7 @@ class BioASQQualityEvalTests(unittest.TestCase):
         )
         self.assertEqual(result["summary"]["num_examples"], 2)
         self.assertEqual(result["summary"]["low_quality_examples"], 1)
+        self.assertAlmostEqual(result["summary"]["median_example_quality_score"], 0.5)
         self.assertAlmostEqual(result["summary"]["auroc_low_quality_by_score"]["normalized_discrete_semantic_entropy"], 1.0)
         with (eval_dir / "bioasq_quality_examples.csv").open("r", encoding="utf-8", newline="") as infile:
             self.assertEqual(len(list(csv.DictReader(infile))), 2)

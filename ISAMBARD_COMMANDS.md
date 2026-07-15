@@ -90,8 +90,31 @@ does not continue consuming a GPU because the script uses `set -euo pipefail`.
 OUT="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_summary_gemma3_12b_100x10"
 cat "$OUT/health_check.txt"
 cat "$OUT/bioasq_eval/bioasq_eval_summary.json"
+cat "$OUT/run_timing.txt"
 ```
 
 Keep the output directory, health check, quality summary, and Slurm logs as
-experiment evidence. Model caches and `.venv_isambard/` are rebuildable local
-state and should not be included in result archives or Git commits.
+experiment evidence. Formal BioASQ jobs write `run_timing.txt` on both success
+and failure; add completed runs to
+`archehr_sebaseline/docs/experiment_runtime_log.md` for future estimates. Model
+caches and `.venv_isambard/` are rebuildable local state and should not be
+included in result archives or Git commits.
+
+## Validate quality and repeat the baseline
+
+The package guide contains the full commands for the fixed 30-question Qwen
+judge and the matched seed-47 repeat. In short, submit:
+
+```bash
+RUN_DIR="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_summary_gemma3_12b_100x10" \
+sbatch scripts/run_bioasq_llm_judge.sbatch
+
+SEED=47 \
+OUTPUT_DIR="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_summary_gemma3_12b_100x10_seed47" \
+DATA_PATH="$SCRATCHDIR/final_project/data/BioASQ-training13b/training13b.json" \
+LOCAL_FILES_ONLY=1 NLI_LOCAL_FILES_ONLY=1 \
+sbatch scripts/run_bioasq_isambard.sbatch
+```
+
+The repeat otherwise inherits the same 100-example, 10-sample, Gemma 3 12B,
+NLI, self-report, CUDA, and bfloat16 settings.

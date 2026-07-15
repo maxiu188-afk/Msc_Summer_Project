@@ -42,6 +42,51 @@ NLI_MODEL_NAME="${NLI_MODEL_NAME:-microsoft/deberta-v2-xlarge-mnli}"
 LOCAL_FILES_ONLY="${LOCAL_FILES_ONLY:-0}"
 NLI_LOCAL_FILES_ONLY="${NLI_LOCAL_FILES_ONLY:-${LOCAL_FILES_ONLY}}"
 RUN_SELF_REPORT_UQ="${RUN_SELF_REPORT_UQ:-1}"
+SEED="${SEED:-31}"
+
+RUN_STARTED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+RUN_STARTED_EPOCH="$(date +%s)"
+
+record_run_timing() {
+  local exit_code=$?
+  local ended_at_utc
+  local ended_epoch
+  local elapsed_seconds
+  local elapsed_hms
+
+  trap - EXIT
+  ended_at_utc="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  ended_epoch="$(date +%s)"
+  elapsed_seconds=$((ended_epoch - RUN_STARTED_EPOCH))
+  printf -v elapsed_hms '%02d:%02d:%02d' \
+    $((elapsed_seconds / 3600)) \
+    $(((elapsed_seconds % 3600) / 60)) \
+    $((elapsed_seconds % 60))
+
+  printf '%s\n' \
+    "slurm_job_id: ${SLURM_JOB_ID:-manual}" \
+    "slurm_job_name: ${SLURM_JOB_NAME:-bioasq-se-uq}" \
+    "host: $(hostname)" \
+    "started_at_utc: ${RUN_STARTED_AT_UTC}" \
+    "ended_at_utc: ${ended_at_utc}" \
+    "elapsed_seconds: ${elapsed_seconds}" \
+    "elapsed_hms: ${elapsed_hms}" \
+    "exit_code: ${exit_code}" \
+    "dataset: ${DATASET}" \
+    "split: ${SPLIT}" \
+    "model_name: ${MODEL_NAME}" \
+    "max_examples: ${MAX_EXAMPLES}" \
+    "num_samples: ${NUM_SAMPLES}" \
+    "max_new_tokens: ${MAX_NEW_TOKENS}" \
+    "seed: ${SEED}" \
+    "clustering_method: nli" \
+    "run_self_report_uq: ${RUN_SELF_REPORT_UQ}" \
+    > "${OUTPUT_DIR}/run_timing.txt"
+
+  exit "${exit_code}"
+}
+
+trap record_run_timing EXIT
 
 if [[ ! -e "${DATA_PATH}" ]]; then
   echo "BioASQ data is missing: ${DATA_PATH}" >&2
@@ -68,6 +113,7 @@ python scripts/run_level4.py \
   --max_examples "${MAX_EXAMPLES}" \
   --max_new_tokens "${MAX_NEW_TOKENS}" \
   --max_input_tokens "${MAX_INPUT_TOKENS}" \
+  --seed "${SEED}" \
   --device cuda \
   --torch_dtype "${TORCH_DTYPE}" \
   "${LOCAL_FILES_ARG[@]}" \
