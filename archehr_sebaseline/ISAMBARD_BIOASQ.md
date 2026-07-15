@@ -86,6 +86,19 @@ environments as experiment evidence.
 
 ## Independent judge validation and matched repeat
 
+These validation runs completed on 2026-07-15:
+
+```text
+job 5660345: Qwen judge, COMPLETED, 00:20:56
+job 5660346: matched seed-47 100x10 repeat, COMPLETED, 03:18:31
+```
+
+The repeat passed the full health check. Discrete-SE AUROC was 0.609 versus
+0.687 in seed 31, while answer quality remained highly stable. The Qwen judge
+was too lenient to produce binary low-quality labels. See
+`docs/bioasq_isambard_results_20260715.md` for interpretation and
+`docs/experiment_runtime_log.md` for resource planning.
+
 The completed 100x10 run can be validated on a fixed, quality-stratified
 30-question subset with the cached independent Qwen judge. All 300 prompts,
 raw responses, rubric scores, and comparison statistics are retained:
@@ -117,3 +130,7 @@ Both scripts write their own `run_timing.txt`. The repeat is matched to the
 original seed-31 configuration; changing the model, data order, precision,
 sample count, answer length, or evaluation stages would no longer be a pure
 seed replication.
+
+Do not resubmit these exact completed jobs merely to reproduce their downloaded
+results. Use the commands as provenance or when an additional explicitly
+planned seed is required.

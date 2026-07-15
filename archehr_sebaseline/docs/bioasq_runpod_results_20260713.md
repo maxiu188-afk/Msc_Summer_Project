@@ -1,5 +1,9 @@
 # BioASQ Grounded SE Batch Results (2026-07-13)
 
+This document is the historical RunPod batch record. The matched Isambard
+100x10 baseline, seed repeat, and judge follow-up are documented in
+`bioasq_isambard_results_20260715.md`.
+
 ## Scope and provenance
 
 This note records the completed temporary Runpod A40 batch before future work

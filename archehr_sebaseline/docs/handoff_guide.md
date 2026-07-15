@@ -1,6 +1,6 @@
 ﻿# ArchEHR-QA UQ Code Handoff Guide
 
-Last updated: 2026-07-13
+Last updated: 2026-07-15
 
 The active project is `archehr_sebaseline`. The package now contains:
 
@@ -19,12 +19,30 @@ See:
 
 ```text
 docs/dataset_pivot_status.md
+docs/bioasq_isambard_results_20260715.md
 docs/bioasq_runpod_results_20260713.md
+docs/experiment_runtime_log.md
 docs/archehr_se_baseline_plan.md
 docs/archehr_evaluation_architecture.md
 ```
 
 ## Current Stage
+
+The primary Isambard baseline and its matched seed repeat are complete:
+
+```text
+job 5654721: BioASQ training summary 100x10, seed 31, 03:43:51
+job 5660346: BioASQ training summary 100x10, seed 47, 03:18:31
+model: google/gemma-3-12b-it
+clustering: NLI bidirectional entailment
+health checks: PASS / PASS
+```
+
+Answer quality is highly stable across seeds, but discrete-SE AUROC drops from
+0.687 to 0.609 and the repeat interval includes chance. Job 5660345 completed a
+fixed 30-question Qwen judge, but the judge ceiling effect produced zero
+low-quality labels. The baseline is complete; do not present SE as a robustly
+superior UQ method or the Qwen judge as external validation.
 
 The first grounded BioASQ batch is complete and archived at:
 
@@ -102,6 +120,8 @@ token_scores: True
 - `src/archehr_sebaseline/answer_parsing.py`: JSON/fallback parsing for cited answers.
 - `src/archehr_sebaseline/citation_uq.py`: citation-set uncertainty metrics.
 - `src/archehr_sebaseline/evaluation/archehr_answer_quality.py`: lightweight ArchEHR-QA dev/reference-only evaluator.
+- `src/archehr_sebaseline/evaluation/bioasq_quality.py`: BioASQ-aligned local quality and UQ evaluation.
+- `src/archehr_sebaseline/evaluation/bioasq_llm_judge.py`: fixed-subset judge validation utilities.
 - `src/archehr_sebaseline/evaluation/uncertainty_metrics.py`: AUROC, ECE, rejection curves, and SVG plots.
 
 ## Entry Points
@@ -114,6 +134,9 @@ token_scores: True
 - `scripts/run_archehr_se.py`
 - `scripts/run_archehr_se.sbatch`
 - `scripts/evaluate_archehr_se.py`
+- `scripts/evaluate_bioasq_quality.py`
+- `scripts/run_bioasq_llm_judge.py`
+- `scripts/run_bioasq_isambard.sbatch`
 
 ## Tests
 
@@ -140,9 +163,11 @@ label_heuristic_eval.md
 
 ## Next Work
 
-1. On Isambard, validate the lightweight BioASQ quality labels against a fixed
-   LLM judge or a manually reviewed subset.
-2. Repeat the informative BioASQ subsets with independent seeds while keeping
-   the gold-snippet prompt fixed.
-3. Compare SE and token metrics only within matched task/source/seed groups.
-4. Defer SEP hidden-state probes until the quality target is stable.
+1. Verify the local summary metric once with a standard or official BioASQ
+   evaluation implementation.
+2. Diagnose SE failure cases and clustering/sample sensitivity using both
+   matched seeds; report bootstrap intervals and rejection curves.
+3. Keep a stricter closed-model API judge as a later validation step rather
+   than the immediate priority.
+4. Decide on SEP hidden-state probes only after the quality target and baseline
+   behaviour are sufficiently stable.

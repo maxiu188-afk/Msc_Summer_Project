@@ -1,6 +1,10 @@
 # ArchEHR-QA Semantic Entropy Baseline Plan
 
-Last updated: 2026-07-09
+Last updated: 2026-07-15
+
+This document preserves the historical ArchEHR-QA engineering-baseline plan.
+The active BioASQ result and next-step decision are in
+`bioasq_isambard_results_20260715.md` and `dataset_pivot_status.md`.
 
 ## Goal
 

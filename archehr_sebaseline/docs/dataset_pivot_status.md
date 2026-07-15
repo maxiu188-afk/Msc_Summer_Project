@@ -1,6 +1,6 @@
 # Dataset Pivot Status
 
-Last updated: 2026-07-13
+Last updated: 2026-07-15
 
 ## Decision
 
@@ -67,6 +67,27 @@ lexical quality.
 
 Detailed figures, provenance, and limitations are in
 `bioasq_runpod_results_20260713.md`. Future GPU runs return to Isambard.
+
+## Isambard Replication Update (2026-07-15)
+
+Two matched BioASQ training-summary runs are complete on Isambard: 100 questions
+and ten Gemma 3 12B generations per question at seeds 31 and 47. Both passed the
+Level 4 health check. Answer quality is highly stable across seeds (paired rho
+0.993; 29/30 fixed-threshold low-quality examples shared), but uncertainty
+ranking is less stable. Discrete-SE AUROC changes from 0.687 to 0.609; the
+seed-47 confidence interval includes 0.5. Token entropy and P(True) outperform
+SE in the repeat.
+
+The fixed Qwen judge also completed on a stratified 30-question subset. It was
+too lenient to produce any example below its 0.5 threshold, so judge-label AUROC
+is undefined. This does not invalidate the deterministic BioASQ-aligned
+evaluation, but it does not provide useful external validation either.
+
+The immediate decision is to keep BioASQ as the main baseline dataset, report
+both seeds without selecting the stronger result, verify summary quality once
+with a standard/official implementation, and diagnose SE failure cases. A
+larger closed-model judge is deferred rather than abandoned. Full results are
+in `bioasq_isambard_results_20260715.md`.
 
 ## Label Availability
 
@@ -215,8 +236,10 @@ question/context/reference answer/evidence labels/factuality or correctness labe
 
 ## Current Next Step
 
-Validate the current BioASQ quality target before SEP. In parallel, explore
-replacement datasets and record, for each candidate:
+The matched BioASQ seed validation is complete. Before SEP, verify the current
+summary metric with a standard/official implementation and diagnose the weak,
+seed-sensitive SE discrimination. In parallel, continue to explore replacement
+datasets and record, for each candidate:
 
 - access and licensing constraints,
 - task and answer format,
@@ -225,11 +248,10 @@ replacement datasets and record, for each candidate:
 - suitability for multi-sample Semantic Entropy,
 - suitability for later SEP training and evaluation.
 
-The BioASQ adapter and lightweight evaluator are already implemented. Before
-using their labels for SEP, compare the deterministic evaluator with a fixed
-LLM judge or a manually reviewed subset, then add Isambard seed repeats of the
-most informative subsets. After the target is defensible, proceed with the
-existing adapter under:
+The BioASQ adapter, lightweight evaluator, fixed judge, and one matched seed
+repeat are implemented. The fixed judge showed a ceiling effect, so it should
+not yet be used as SEP supervision. After the target and SE behaviour are
+defensible, proceed with the existing adapter under:
 
 ```text
 src/archehr_sebaseline/dataset_adapters.py

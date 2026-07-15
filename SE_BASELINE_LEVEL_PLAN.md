@@ -1,6 +1,6 @@
 ﻿# ArchEHR-QA Semantic Entropy Baseline Plan
 
-Last updated: 2026-07-13
+Last updated: 2026-07-15
 
 ## Current Decision
 
@@ -18,6 +18,14 @@ The temporary Runpod recovery path is complete. Future long-running work should
 return to Isambard; Runpod documents and scripts remain only as reproducibility
 records for this completed batch.
 
+Two matched Isambard training-summary runs are now complete: jobs 5654721
+(seed 31) and 5660346 (seed 47), each with 100 questions and ten generations.
+Answer quality is strongly replicated (paired rho 0.993; 29/30 low-quality
+examples shared), but discrete-SE AUROC falls from 0.687 to 0.609 and the repeat
+bootstrap interval includes 0.5. Job 5660345 also completed a fixed 30-question
+Qwen judge; it was too lenient to create any low-quality labels. See
+`archehr_sebaseline/docs/bioasq_isambard_results_20260715.md`.
+
 ## Supervisor Meeting Update (2026-07-10)
 
 Following the discussion with Simpson, the next stages are:
@@ -27,10 +35,11 @@ Following the discussion with Simpson, the next stages are:
 2. Redesign the answer-quality evaluation for the selected dataset. The current
    evaluators rely on relatively rigid, dataset-specific rules, thresholds, and
    hand-set weights, so they should not be transferred unchanged.
-3. Prototype an LLM-based evaluator for generated answers. This can provide a
-   more flexible assessment of correctness, relevance, factual support, and
-   evidence use when exact labels or lexical overlap are insufficient.
-4. Once the dataset and evaluation target are stable, proceed to the SEP stage.
+3. Retain an LLM-based evaluator as a later validation option. The initial Qwen
+   implementation is complete but showed a ceiling effect; a stricter closed
+   model judge should follow only after conventional SE failure analysis.
+4. Once the dataset, evaluation target, and baseline behaviour are stable,
+   decide whether to proceed to the SEP stage.
 
 The LLM evaluator should initially be treated as an experimental comparison,
 not an unquestioned gold standard. Its prompt/rubric, model version, decoding
@@ -174,11 +183,12 @@ After the replacement dataset and its baseline evaluation are stable:
 
 ## Current Next Step
 
-The main research path now shifts away from ArchEHR-QA as a final benchmark and
-toward testing BioASQ Task B as the primary replacement dataset. PubMedQA and
-ArchEHR-QA remain useful for engineering smoke tests and method diagnostics.
-Other candidate datasets should still be compared as advised by Simpson, but
-that comparison does not block the immediate BioASQ test.
+The BioASQ baseline and its matched seed repeat are complete. The next work is
+to verify the local summary metric once with a standard or official BioASQ
+implementation, report both seeds and their uncertainty intervals, and diagnose
+why SE rankings move more than answer quality. A larger API-judge experiment is
+technically feasible but is not the immediate priority while conventional SE
+discrimination remains modest.
 
 ## BioASQ Batch Update (2026-07-13)
 
@@ -200,14 +210,14 @@ differently distributed samples and local approximations of BioASQ metric
 families, not official BioASQ scores. They are evidence to validate the
 quality target, not a stable model ranking.
 
-Current next step:
+Historical next step recorded on 2026-07-13 (now completed or superseded):
 
 ```text
 On Isambard, keep the existing gold-snippet grounded prompt unchanged; run the
 CPU-only v2 post-processing after each Level 4 output, compare the
 deterministic evaluator against a fixed LLM judge or reviewed subset, then run
-seed repeats of the most informative BioASQ subsets. Proceed to SEP only after
-that quality target is defensible.
+seed repeats of the most informative BioASQ subsets. These summary-path actions
+were completed on 2026-07-15; see the current-next-step section above.
 
 Before any SEP comparison, the Level 4 benchmark now also includes simple UQ
 baselines alongside discrete and weighted SE: negative average token log-prob,

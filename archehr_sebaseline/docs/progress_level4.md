@@ -1,6 +1,6 @@
 ﻿# Level 4 Progress
 
-Last updated: 2026-07-09
+Last updated: 2026-07-15
 
 ## Current Note
 
@@ -13,6 +13,7 @@ Current active planning is in:
 
 ```text
 docs/dataset_pivot_status.md
+docs/bioasq_isambard_results_20260715.md
 SE_BASELINE_LEVEL_PLAN.md
 ```
 

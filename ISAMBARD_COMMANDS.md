@@ -102,6 +102,17 @@ included in result archives or Git commits.
 
 ## Validate quality and repeat the baseline
 
+The reference validation jobs have completed:
+
+```text
+5660345  bioasq-judge  COMPLETED  00:20:56
+5660346  bioasq-se-uq  COMPLETED  03:18:31
+```
+
+Their result summary is
+`archehr_sebaseline/docs/bioasq_isambard_results_20260715.md`. The commands
+below are retained for provenance and future explicitly planned repeats.
+
 The package guide contains the full commands for the fixed 30-question Qwen
 judge and the matched seed-47 repeat. In short, submit:
 

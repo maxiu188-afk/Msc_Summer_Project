@@ -53,18 +53,27 @@ dataset.
 
 ### Latest BioASQ baseline evidence
 
-The first full grounded BioASQ batch is complete with Gemma 3 12B, ten samples
-per question, token scores, and bidirectional-entailment NLI clustering. The
-Golden summary/factoid/list and training-summary repeat all passed structural
-health checks. Their local quality/SE results vary by task, so they do not yet
-justify a general ranking of uncertainty methods. The prompt is deliberately
-unchanged: the v2 observed low-quality rates (12.5%--52%) already provide the
-quality variation needed to test filtering rather than answer optimization.
+The baseline now includes two matched Isambard training-summary runs with Gemma
+3 12B, 100 questions, ten samples per question, token scores, self-report UQ,
+and bidirectional-entailment NLI clustering. Both health checks passed. Mean
+quality is 0.2238 versus 0.2245 and paired example-quality rho is 0.993, but
+discrete-SE AUROC changes from 0.687 to 0.609. The repeat confidence interval
+includes 0.5, and token entropy/P(True) outperform SE in seed 47. The baseline
+therefore supports a positive but modest uncertainty-quality relationship, not
+a stable SE-superiority claim.
+
+A fixed 30-question Qwen judge also completed. Its mean score was 0.871, but it
+assigned no example below the preregistered 0.5 threshold, making judge-label
+AUROC undefined. A larger closed-model judge remains possible but is deferred
+until conventional SE failure analysis is complete.
 
 The raw required-batch archive and a cautious result table are documented in
 `docs/bioasq_runpod_results_20260713.md`. Future experiments run on Isambard;
 `RUNPOD.md` is retained only as a reproducibility record for this batch.
 For a fresh BioASQ launch on Isambard, follow `ISAMBARD_BIOASQ.md`.
+The latest Isambard results and interpretation boundary are documented in
+`docs/bioasq_isambard_results_20260715.md`; runtimes are in
+`docs/experiment_runtime_log.md`.
 
 New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
 `archehr` prefixes. This does not rename the package, Python imports, or
@@ -126,6 +135,7 @@ Evaluation:
 
 ```text
 src/archehr_sebaseline/evaluation/archehr_answer_quality.py
+src/archehr_sebaseline/evaluation/bioasq_llm_judge.py
 src/archehr_sebaseline/evaluation/bioasq_quality.py
 src/archehr_sebaseline/evaluation/uncertainty_metrics.py
 src/archehr_sebaseline/evaluation/pubmedqa_labels.py
@@ -160,6 +170,9 @@ scripts/run_level4.sbatch
 scripts/check_level4_outputs.py
 scripts/evaluate_pubmedqa_labels.py
 scripts/evaluate_bioasq_quality.py
+scripts/run_bioasq_llm_judge.py
+scripts/run_bioasq_llm_judge.sbatch
+scripts/run_bioasq_isambard.sbatch
 scripts/runpod_remaining_experiments.sh
 ```
 
@@ -306,16 +319,22 @@ retrieval nor NLI, but it does load the answer model once.
 
 ## Local Tests
 
-From `D:\work\FinalProject\code`:
+From the repository root on macOS/Linux:
+
+```bash
+python -m unittest discover archehr_sebaseline/tests
+```
+
+From the repository root on Windows PowerShell:
 
 ```powershell
-python -m unittest discover archehr_sebaseline\tests
+python -m unittest discover archehr_sebaseline/tests
 ```
 
 Current expected result:
 
 ```text
-Ran 47 tests
+Ran 57 tests
 OK
 ```
 

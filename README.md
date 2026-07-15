@@ -8,10 +8,11 @@ Current status:
 ```text
 ArchEHR-QA SE baseline: implemented and tested as an engineering baseline
 ArchEHR-QA final evaluation/training target: paused because no usable gold labels
-BioASQ Task B: grounded Gemma 3 12B / NLI baseline completed on summary, factoid, and list
+BioASQ Task B: baseline complete; two matched Isambard summary 100x10 runs passed
 Current compute host: Isambard (Runpod was a completed temporary recovery path)
-Next evaluation work: use v2 quality/SE post-processing, then validate it against a reviewed or LLM-judged subset
-Following stage: SEP only after the evaluation target is stable
+Main result: answer quality replicates strongly, but SE AUROC is modest and seed-sensitive
+Next work: standard/official metric verification and SE failure analysis
+Deferred work: larger closed-model judge study and SEP supervision
 ```
 
 ArchEHR-QA remains useful for testing grounded long-form generation, citation
@@ -23,14 +24,18 @@ PubMedQA remains available only as an engineering smoke-test and historical
 baseline path. It is not the preferred main research target because its short
 yes/no/maybe labels do not match open long-form clinical generation.
 
-BioASQ Task B is the current main experimental direction. The immediate work is
-to validate its answer-quality target before SEP work. A first grounded Gemma 3
-12B / 10-sample / NLI batch has completed on Golden summary (80 questions),
-Golden factoid (50), Golden list (50), and a training-summary repeat (50).
+BioASQ Task B is the current main experimental direction. In addition to the
+historical RunPod Golden summary/factoid/list batch, two matched Isambard
+training-summary runs have completed with 100 questions and ten generations per
+question. Their answer-quality scores correlate at 0.993 across seeds, while
+discrete-SE AUROC changes from 0.687 to 0.609 and the repeat confidence interval
+includes chance. This supports a cautious baseline result, not a robust claim
+that SE is the strongest uncertainty method.
 Simpson's recommendation to continue exploring candidate datasets is retained
 as a parallel validation activity, not as a reversal of the BioASQ direction.
-See `archehr_sebaseline/docs/bioasq_runpod_results_20260713.md` for the
-results and their interpretation boundary.
+See `archehr_sebaseline/docs/bioasq_isambard_results_20260715.md` for the latest
+results and `archehr_sebaseline/docs/bioasq_runpod_results_20260713.md` for the
+historical task-type batch.
 
 ## Active Naming Policy
 
@@ -40,14 +45,13 @@ existing imports, historical ArchEHR-QA artifacts, and completed server
 results remain unchanged to preserve working paths and provenance. See
 `archehr_sebaseline/docs/naming_policy.md` for the exact rules.
 
-The BioASQ evaluator now uses versioned post-processing with type-specific
+The BioASQ evaluator uses versioned post-processing with type-specific
 quality diagnostics, threshold sensitivity, continuous-risk association, and
-bootstrap intervals. It remains provisional: deterministic lexical and
-exact-answer rules must be validated against labels or manual review before they
-become SEP supervision. An LLM-as-a-judge path is planned as a flexible
-comparison for long-form answer evaluation, with fixed prompts/configuration and
-validation against labels or manual review where
-possible.
+bootstrap intervals. It follows BioASQ metric families but is not the official
+evaluator. A fixed Qwen judge was completed, but its ceiling effect produced no
+low-quality labels and only weak continuous agreement. A stronger API judge is
+deferred until conventional SE behaviour and the evaluation target are better
+understood.
 
 ## Folder Structure
 
