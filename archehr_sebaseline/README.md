@@ -75,6 +75,18 @@ The latest Isambard results and interpretation boundary are documented in
 `docs/bioasq_isambard_results_20260715.md`; runtimes are in
 `docs/experiment_runtime_log.md`.
 
+Two paired Isambard runs are currently awaiting collection. They keep the
+100-question, ten-sample, 192-token configuration and the seed-31/seed-47
+pair, but explicitly use `temperature=1.0` and `top_p=0.9`. The batch script
+records those values in `run_timing.txt`. Their role is a controlled UQ
+sensitivity check; interpret no outcome until both health checks pass.
+
+The active reference evaluator now retains answer-reference coverage and adds
+document-level overlap between cited snippet documents and BioASQ standard
+documents. It combines the two by geometric mean when gold document metadata
+is available. Consequently, its fixed low-quality threshold is provisional and
+must be calibrated against manually reviewed examples.
+
 New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
 `archehr` prefixes. This does not rename the package, Python imports, or
 historical ArchEHR-QA files. See `docs/naming_policy.md`.

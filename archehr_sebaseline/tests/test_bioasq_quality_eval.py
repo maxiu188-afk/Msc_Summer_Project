@@ -57,6 +57,35 @@ class BioASQQualityEvalTests(unittest.TestCase):
         self.assertEqual(listing["invalid_snippet_citation_count"], 1)
         self.assertEqual(extract_snippet_citation_ids("Claim [S1; S2] and another [S3]."), ["S1", "S2", "S3"])
 
+    def test_summary_quality_combines_reference_coverage_with_gold_document_overlap(self) -> None:
+        example = {
+            "id": "s",
+            "bioasq_type": "summary",
+            "ideal_answers": ["RET causes Hirschsprung disease."],
+            "evidence_sentence_ids": ["S1", "S2"],
+            "snippet_documents": ["pubmed/1", "pubmed/2"],
+            "documents": ["pubmed/1", "pubmed/2"],
+        }
+        scored = evaluate_generation_quality(
+            {"example_id": "s", "clean_answer": "RET causes Hirschsprung disease [S1]."},
+            example,
+        )
+        self.assertAlmostEqual(scored["reference_coverage_score"], 1.0)
+        self.assertAlmostEqual(scored["citation_document_precision"], 1.0)
+        self.assertAlmostEqual(scored["citation_document_recall"], 0.5)
+        self.assertAlmostEqual(scored["citation_document_f1"], 2.0 / 3.0)
+        self.assertAlmostEqual(scored["quality_score"], (2.0 / 3.0) ** 0.5)
+        self.assertEqual(scored["quality_metric"], "citation_document_geometric_mean_mean_rouge2_su4_f1")
+
+    def test_missing_gold_documents_preserves_coverage_only_score(self) -> None:
+        scored = evaluate_generation_quality(
+            {"example_id": "s", "clean_answer": "RET causes Hirschsprung disease [S1]."},
+            {"id": "s", "bioasq_type": "summary", "ideal_answers": ["RET causes Hirschsprung disease."]},
+        )
+        self.assertIsNone(scored["citation_document_f1"])
+        self.assertAlmostEqual(scored["quality_score"], 1.0)
+        self.assertEqual(scored["quality_metric"], "mean_rouge2_su4_f1")
+
     def test_relative_quality_risk_keeps_cutoff_ties_together(self) -> None:
         examples = [
             {"id": example_id, "bioasq_type": "yesno", "exact_answers": [expected]}

@@ -10,8 +10,9 @@ ArchEHR-QA SE baseline: implemented and tested as an engineering baseline
 ArchEHR-QA final evaluation/training target: paused because no usable gold labels
 BioASQ Task B: baseline complete; two matched Isambard summary 100x10 runs passed
 Current compute host: Isambard (Runpod was a completed temporary recovery path)
-Main result: answer quality replicates strongly, but SE AUROC is modest and seed-sensitive
-Next work: standard/official metric verification and SE failure analysis
+Main result: historical lexical-quality scores replicate strongly, but SE AUROC is modest and seed-sensitive
+Active run: paired temperature-sensitivity repeat at temperature 1.0 (seeds 31 and 47), results pending
+Next work: compare that controlled repeat using the citation-aware quality target, then calibrate against manual review
 Deferred work: larger closed-model judge study and SEP supervision
 ```
 
@@ -31,6 +32,17 @@ question. Their answer-quality scores correlate at 0.993 across seeds, while
 discrete-SE AUROC changes from 0.687 to 0.609 and the repeat confidence interval
 includes chance. This supports a cautious baseline result, not a robust claim
 that SE is the strongest uncertainty method.
+The previous ROUGE-only operational target is retained as historical evidence,
+but the active local evaluator now reports reference-answer coverage separately
+and combines it with document-level overlap between answer citations and
+BioASQ's standard documents. Its fixed low-quality threshold must be calibrated
+against the manually reviewed set rather than treated as a pass mark.
+
+On 2026-07-16, a paired temperature-sensitivity repeat was submitted with
+`temperature=1.0`, `top_p=0.9`, and the original 192-token output limit. It
+uses the same 100 questions, ten samples, model, NLI clustering, and seeds 31
+and 47 as the completed baseline. Results are pending; do not infer an effect
+before both runs pass health checks and are re-evaluated.
 Simpson's recommendation to continue exploring candidate datasets is retained
 as a parallel validation activity, not as a reversal of the BioASQ direction.
 See `archehr_sebaseline/docs/bioasq_isambard_results_20260715.md` for the latest

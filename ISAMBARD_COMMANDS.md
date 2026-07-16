@@ -67,6 +67,33 @@ returns a Slurm job ID:
 sbatch scripts/run_bioasq_isambard.sbatch
 ```
 
+## Active temperature-sensitivity repeat
+
+The 2026-07-16 follow-up keeps the 100x10 workload, 192-token answer cap,
+model, NLI clustering, and self-report stages unchanged. It changes only the
+generation temperature from the historical default of `0.8` to `1.0` and runs
+both established seeds. The batch script now records `temperature` and `top_p`
+in `run_timing.txt`.
+
+```bash
+cd "$SCRATCHDIR/final_project/archehr_sebaseline"
+DATA_PATH="$SCRATCHDIR/final_project/data/BioASQ-training13b/training13b.json"
+
+SEED=31 TEMPERATURE=1.0 TOP_P=0.9 MAX_NEW_TOKENS=192 \
+OUTPUT_DIR="$PWD/outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed31" \
+DATA_PATH="$DATA_PATH" LOCAL_FILES_ONLY=1 NLI_LOCAL_FILES_ONLY=1 \
+sbatch scripts/run_bioasq_isambard.sbatch
+
+SEED=47 TEMPERATURE=1.0 TOP_P=0.9 MAX_NEW_TOKENS=192 \
+OUTPUT_DIR="$PWD/outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed47" \
+DATA_PATH="$DATA_PATH" LOCAL_FILES_ONLY=1 NLI_LOCAL_FILES_ONLY=1 \
+sbatch scripts/run_bioasq_isambard.sbatch
+```
+
+These jobs are currently pending result collection. Treat them as a controlled
+UQ sensitivity check, not evidence of improvement until both seeds pass the
+health check and are evaluated with the same citation-aware target.
+
 ## Monitor and inspect a job
 
 Replace `<JOBID>` with the ID returned by `sbatch`.

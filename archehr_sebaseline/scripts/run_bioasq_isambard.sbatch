@@ -37,6 +37,8 @@ MAX_EXAMPLES="${MAX_EXAMPLES:-100}"
 NUM_SAMPLES="${NUM_SAMPLES:-10}"
 MAX_NEW_TOKENS="${MAX_NEW_TOKENS:-192}"
 MAX_INPUT_TOKENS="${MAX_INPUT_TOKENS:-4096}"
+TEMPERATURE="${TEMPERATURE:-0.8}"
+TOP_P="${TOP_P:-0.9}"
 TORCH_DTYPE="${TORCH_DTYPE:-bfloat16}"
 NLI_MODEL_NAME="${NLI_MODEL_NAME:-microsoft/deberta-v2-xlarge-mnli}"
 LOCAL_FILES_ONLY="${LOCAL_FILES_ONLY:-0}"
@@ -78,6 +80,8 @@ record_run_timing() {
     "max_examples: ${MAX_EXAMPLES}" \
     "num_samples: ${NUM_SAMPLES}" \
     "max_new_tokens: ${MAX_NEW_TOKENS}" \
+    "temperature: ${TEMPERATURE}" \
+    "top_p: ${TOP_P}" \
     "seed: ${SEED}" \
     "clustering_method: nli" \
     "run_self_report_uq: ${RUN_SELF_REPORT_UQ}" \
@@ -113,6 +117,8 @@ python scripts/run_level4.py \
   --max_examples "${MAX_EXAMPLES}" \
   --max_new_tokens "${MAX_NEW_TOKENS}" \
   --max_input_tokens "${MAX_INPUT_TOKENS}" \
+  --temperature "${TEMPERATURE}" \
+  --top_p "${TOP_P}" \
   --seed "${SEED}" \
   --device cuda \
   --torch_dtype "${TORCH_DTYPE}" \
