@@ -40,9 +40,10 @@ A paired follow-up at `temperature=1.0`, `top_p=0.9`, and the same 192-token
 cap, model, 100x10 workload, NLI clustering, and seeds 31/47 completed on
 2026-07-16. Jobs 5679663 and 5679664 both passed their full health checks.
 Their local reference-only re-evaluation is complete; jobs 5683932 and
-5683933 are running to add the ideal-answer NLI axis without regenerating
-answers. The results below are therefore a controlled preliminary comparison,
-not the final three-axis conclusion.
+5683933 completed the ideal-answer NLI axis in 01:38 and 01:34 without
+regenerating answers. The evidence-conditioned temperature-1.0 pair now has a
+final three-axis result, although a matched temperature-0.8 three-axis result
+is still required for a final temperature claim.
 
 ### Temperature 1.0 preliminary comparison
 
@@ -70,6 +71,20 @@ and +0.014 respectively when averaged over seeds. Discrete and weighted SE
 each fell by about 0.019 on average, with opposite directions in the two seeds.
 This two-seed result is descriptive rather than evidence of a stable temperature
 effect.
+
+### Evidence-conditioned three-axis result and direct-answer follow-up
+
+For the temperature-1.0 evidence-conditioned outputs, mean three-axis quality
+was 0.1968 (seed 31) and 0.1864 (seed 47), with fixed-threshold low-quality
+rates of 0.56 and 0.60. These scores include ideal-answer NLI coverage and are
+not numerically interchangeable with the reference-only table above.
+
+Jobs 5684358 (seed 31) and 5684360 (seed 47) were then submitted for a matched
+direct-answer ablation: the model receives the BioASQ question but no snippets,
+while temperature, top-p, seeds, model, data order, sample count, output cap,
+NLI clustering, and self-report UQ remain unchanged. Since citations cannot be
+produced without supplied snippets, that condition will be assessed by the
+ROUGE + ideal-answer-NLI two-axis fallback rather than by document overlap.
 
 ## Runtime
 

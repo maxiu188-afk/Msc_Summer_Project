@@ -366,6 +366,9 @@ def citation_document_overlap(
     claim-entailment judgment.
     """
 
+    if str(example.get("prompt_evidence_mode") or "provided").lower() == "none":
+        return None, None, None, 0, 0
+
     snippet_ids = [str(value).strip() for value in example.get("evidence_sentence_ids") or []]
     snippet_documents = [str(value).strip() for value in example.get("snippet_documents") or []]
     snippet_to_document = {

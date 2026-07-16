@@ -179,9 +179,10 @@ confound a temperature effect with the known truncation behaviour.
 The downloaded outputs were re-evaluated locally with the citation-aware
 reference target. The mean quality scores were 0.3079 (seed 31) and 0.3105
 (seed 47), versus 0.3070 and 0.3111 for the matched temperature-0.8 outputs.
-This reference-only result is preliminary. Separate GPU jobs 5683932 and
-5683933 are running to add the ideal-answer NLI axis without regenerating any
-answers:
+This reference-only result was followed by separate GPU jobs 5683932 and
+5683933, which completed in 01:38 and 01:34 to add the ideal-answer NLI axis
+without regenerating answers. Their final mean three-axis scores were 0.1968
+(seed 31) and 0.1864 (seed 47):
 
 ```bash
 for RUN in \
@@ -192,9 +193,37 @@ for RUN in \
 done
 ```
 
-After those jobs complete, download the refreshed `bioasq_eval/` directories
-and compare all four runs using the same three-axis target. Calibrate its fixed
-threshold against manual review before interpreting AUROC changes.
+The refreshed `bioasq_eval/` directories are now available locally. Compare
+all four evidence-conditioned runs using the same three-axis target, then
+calibrate its fixed threshold against manual review before interpreting AUROC
+changes.
+
+## Direct-answer ablation without snippets
+
+The matched no-evidence ablation keeps all temperature-1.0 settings unchanged
+but removes BioASQ snippets from the generation prompt. It uses output
+directories `outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_direct_seed31`
+and `..._seed47`; jobs 5684358 and 5684360 were submitted on 2026-07-16.
+
+Set `INCLUDE_EVIDENCE=0` to select the `bioasq_direct_v1` prompt. The original
+BioASQ metadata remains in the artifacts for ideal-answer evaluation, but no
+snippet IDs are shown to the model. Therefore document-overlap/citation scores
+are intentionally unavailable and `three_axis` correctly falls back to the
+geometric mean of lexical reference coverage and ideal-answer NLI coverage.
+
+```bash
+for SEED in 31 47; do
+  DATASET=bioasq_summary \
+  DATA_PATH="$SCRATCHDIR/final_project/data/BioASQ-training13b/training13b.json" \
+  SPLIT=train13b \
+  OUTPUT_DIR="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_direct_seed${SEED}" \
+  MAX_EXAMPLES=100 NUM_SAMPLES=10 MAX_NEW_TOKENS=192 \
+  TEMPERATURE=1.0 TOP_P=0.9 SEED="$SEED" INCLUDE_EVIDENCE=0 \
+  LOCAL_FILES_ONLY=1 NLI_LOCAL_FILES_ONLY=1 REFERENCE_NLI_LOCAL_FILES_ONLY=1 \
+  RUN_SELF_REPORT_UQ=1 \
+  sbatch scripts/run_bioasq_isambard.sbatch
+done
+```
 
 Do not resubmit these exact completed jobs merely to reproduce their downloaded
 results. Use the commands as provenance or when an additional explicitly

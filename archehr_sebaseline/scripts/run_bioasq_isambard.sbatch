@@ -82,6 +82,7 @@ QUALITY_MODE="${QUALITY_MODE:-three_axis}"
 REFERENCE_NLI_MODEL="${REFERENCE_NLI_MODEL:-${NLI_MODEL_NAME}}"
 REFERENCE_NLI_DEVICE="${REFERENCE_NLI_DEVICE:-cuda}"
 REFERENCE_NLI_LOCAL_FILES_ONLY="${REFERENCE_NLI_LOCAL_FILES_ONLY:-${NLI_LOCAL_FILES_ONLY}}"
+INCLUDE_EVIDENCE="${INCLUDE_EVIDENCE:-1}"
 
 RUN_STARTED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 RUN_STARTED_EPOCH="$(date +%s)"
@@ -124,6 +125,7 @@ record_run_timing() {
     "max_new_tokens: ${MAX_NEW_TOKENS}" \
     "temperature: ${TEMPERATURE}" \
     "top_p: ${TOP_P}" \
+    "include_evidence: ${INCLUDE_EVIDENCE}" \
     "seed: ${SEED}" \
     "clustering_method: nli" \
     "run_self_report_uq: ${RUN_SELF_REPORT_UQ}" \
@@ -146,6 +148,13 @@ fi
 NLI_LOCAL_FILES_ARG=()
 if [[ "${NLI_LOCAL_FILES_ONLY}" == "1" ]]; then
   NLI_LOCAL_FILES_ARG=(--nli_local_files_only)
+fi
+PROMPT_EVIDENCE_ARGS=()
+if [[ "${INCLUDE_EVIDENCE}" == "0" ]]; then
+  PROMPT_EVIDENCE_ARGS=(--without_evidence)
+elif [[ "${INCLUDE_EVIDENCE}" != "1" ]]; then
+  echo "INCLUDE_EVIDENCE must be 0 or 1, got: ${INCLUDE_EVIDENCE}" >&2
+  exit 2
 fi
 QUALITY_ARGS=(--quality_mode "${QUALITY_MODE}")
 if [[ "${QUALITY_MODE}" == "three_axis" ]]; then
@@ -171,6 +180,7 @@ python scripts/run_level4.py \
   --max_input_tokens "${MAX_INPUT_TOKENS}" \
   --temperature "${TEMPERATURE}" \
   --top_p "${TOP_P}" \
+  "${PROMPT_EVIDENCE_ARGS[@]}" \
   --seed "${SEED}" \
   --device cuda \
   --torch_dtype "${TORCH_DTYPE}" \

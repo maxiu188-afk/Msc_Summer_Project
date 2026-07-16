@@ -18,24 +18,44 @@ Queueing time is excluded: elapsed time is measured from Slurm start to end.
 
 ## Submitted runs awaiting result collection
 
-### BioASQ three-axis ideal-answer NLI re-evaluation - temperature 1.0 pair
+### BioASQ training summary 100x10 - no-evidence direct-answer pair
 
 ```text
 submitted: 2026-07-16
-status: RUNNING (both started 2026-07-16T22:18:34)
-jobs: 5683932 (seed 31), 5683933 (seed 47)
-purpose: add ideal/exact-answer NLI coverage to already completed outputs
-model: microsoft/deberta-v2-xlarge-mnli
-quality axes: lexical reference coverage, cited-document overlap, NLI coverage
-generation: not rerun
+jobs: 5684358 (seed 31), 5684360 (seed 47)
+purpose: controlled evidence-ablation with direct biomedical answering
+model: google/gemma-3-12b-it
+temperature / top_p: 1.0 / 0.9
+examples / samples: 100 / 10
+max new tokens: 192
+prompt evidence: omitted (`INCLUDE_EVIDENCE=0`, `bioasq_direct_v1`)
+clustering: microsoft/deberta-v2-xlarge-mnli, bidirectional entailment
+self-report UQ: enabled
 ```
 
-The jobs use `scripts/evaluate_bioasq_nli_isambard.sbatch`, select the CUDA
-environment from the allocated node's driver, and record their own
-`reference_nli_timing.txt` in each output directory. Download the refreshed
-`bioasq_eval/` artifacts after they complete.
+The evaluator retains ideal-answer metadata but treats the citation axis as not
+applicable, producing the ROUGE + ideal-answer-NLI two-axis fallback. Record
+job states, health checks, and timing after completion.
 
 ## Completed runs
+
+### Isambard jobs 5683932 and 5683933 - three-axis NLI re-evaluation
+
+```text
+status: COMPLETED, exit 0:0
+source runs: temperature-1.0 evidence-conditioned seeds 31 and 47
+elapsed: 01:38 (seed 31) and 01:34 (seed 47)
+nodes: nid010208 (seed 31) and nid010291 (seed 47)
+model: microsoft/deberta-v2-xlarge-mnli, local cached files only
+environment: cuda127-cu126, torch 2.6.0+cu126
+generation: not rerun
+final quality mode: three_axis
+```
+
+The refreshed evaluation artifacts report mean three-axis quality of 0.1968
+(seed 31) and 0.1864 (seed 47). These values are not directly comparable to
+the earlier reference-only scores, and the direct-answer ablation will use the
+two-axis fallback because citations are intentionally absent.
 
 ### BioASQ training summary 100x10 - temperature 1.0 paired repeat
 

@@ -11,8 +11,8 @@ ArchEHR-QA final evaluation/training target: paused because no usable gold label
 BioASQ Task B: baseline complete; two matched Isambard summary 100x10 runs passed
 Current compute host: Isambard (Runpod was a completed temporary recovery path)
 Main result: historical lexical-quality scores replicate strongly, but SE AUROC is modest and seed-sensitive
-Active run: temperature-1.0 generation and local reference evaluation complete; three-axis NLI evaluation running
-Next work: retrieve the queued NLI results, then calibrate the final three-axis target against manual review
+Active run: no-evidence direct-answer temperature-1.0 paired repeat submitted; evidence-conditioned NLI evaluation complete
+Next work: retrieve the direct-answer pair, compare it with the evidence-conditioned result, then calibrate the final target against manual review
 Deferred work: larger closed-model judge study and SEP supervision
 ```
 
@@ -45,8 +45,12 @@ and `top_p=0.9` completed for both seeds (jobs 5679663 and 5679664). Both
 100x10 outputs passed their Level 4 health checks. A same-config local
 citation-aware reference evaluation found virtually unchanged mean answer
 quality versus temperature 0.8, while within-question semantic variation rose
-slightly. The final three-axis NLI re-evaluation is running on Isambard; do not
-interpret the reference-only comparison as the final quality result.
+slightly. The final three-axis NLI re-evaluation completed in 01:31 and 01:26
+for seeds 31 and 47, giving mean three-axis scores of 0.1968 and 0.1864. A
+matched no-evidence direct-answer ablation (jobs 5684358 and 5684360) is now
+submitted with the same temperature, seeds, and generation settings. Do not
+compare the direct-answer condition on the citation axis: its final target uses
+the valid ROUGE + ideal-answer-NLI two-axis fallback.
 Simpson's recommendation to continue exploring candidate datasets is retained
 as a parallel validation activity, not as a reversal of the BioASQ direction.
 See `archehr_sebaseline/docs/bioasq_isambard_results_20260715.md` for the latest

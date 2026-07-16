@@ -178,6 +178,15 @@ class BioASQQualityEvalTests(unittest.TestCase):
         self.assertEqual(poor["nli_reference_score"], 0.0)
         self.assertEqual(poor["quality_score"], 0.0)
 
+        direct = evaluate_generation_quality(
+            {"example_id": "s", "clean_answer": "RET causes Hirschsprung disease."},
+            {**example, "prompt_evidence_mode": "none"},
+            quality_mode="three_axis",
+            reference_nli_scorer=scorer,
+        )
+        self.assertIsNone(direct["citation_document_f1"])
+        self.assertAlmostEqual(direct["quality_score"], 1.0)
+
     def test_evaluator_writes_summary_and_se_artifacts(self) -> None:
         root = Path(__file__).resolve().parents[1] / "outputs" / "test_bioasq_eval"
         run_dir = root / "run"
