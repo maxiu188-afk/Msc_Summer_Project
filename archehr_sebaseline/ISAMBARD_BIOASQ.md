@@ -43,6 +43,31 @@ Before submitting a GPU job, confirm that the installed PyTorch build can see
 the allocated GPU from a short interactive allocation or a site-supported GPU
 test command. Do not replace a CUDA build with CPU PyTorch if this check fails.
 
+## GPU-driver-specific environments
+
+Keep the existing `.venv_isambard` unchanged. It is the original CUDA 13
+environment and is selected on nodes with an NVIDIA R580-or-newer driver.
+Create the separate CUDA-12.7-compatible environment once on shared scratch:
+
+```bash
+cd "$SCRATCHDIR/final_project/archehr_sebaseline"
+module load cray-python
+python -m venv .venv_isambard_cuda127
+source .venv_isambard_cuda127/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements-isambard-cuda127.txt
+```
+
+The CUDA-12.7 environment intentionally uses the official PyTorch 2.6 CUDA 12.6
+wheel. The CUDA 12 driver family supports it, while the existing CUDA 13 wheel
+does not run on the older R5xx nodes. `scripts/run_bioasq_isambard.sbatch`
+queries the allocated node's NVIDIA driver before activation: it selects
+`.venv_isambard` for R580+ and `.venv_isambard_cuda127` otherwise. The selected
+driver and PyTorch versions are recorded in `run_timing.txt`.
+
+Set `VENV_PATH=/path/to/venv` only for an explicit diagnostic override; normal
+submissions should use the automatic selection.
+
 ## Submit the first BioASQ run
 
 ```bash
@@ -79,10 +104,13 @@ cat "$OUT/run_timing.txt"
 ```
 
 The final comparison includes discrete/weighted SE, token log-probability,
-token entropy, sequence NLL, verbalized confidence, and P(True). Keep outputs,
-health checks, `run_timing.txt`, and Slurm logs. Record each completed formal run
-in `docs/experiment_runtime_log.md`; do not archive model caches or virtual
-environments as experiment evidence.
+token entropy, sequence NLL, verbalized confidence, and P(True). New runs use
+the `three_axis` quality mode: lexical reference coverage, cited-document
+overlap, and NLI ideal-answer coverage. NLI assigns 1.0 when the generated
+answer entails an ideal/exact answer, 0.5 when it is a semantically incomplete
+subset, and 0.0 otherwise. Keep outputs, health checks, `run_timing.txt`, and
+Slurm logs. Record each completed formal run in `docs/experiment_runtime_log.md`;
+do not archive model caches or virtual environments as experiment evidence.
 
 ## Independent judge validation and matched repeat
 
@@ -131,9 +159,9 @@ original seed-31 configuration; changing the model, data order, precision,
 sample count, answer length, or evaluation stages would no longer be a pure
 seed replication.
 
-## Active temperature-sensitivity repeat (2026-07-16)
+## Temperature-sensitivity repeat (2026-07-16)
 
-Two pending runs extend the matched baseline with `temperature=1.0` while
+Two completed runs extend the matched baseline with `temperature=1.0` while
 retaining `top_p=0.9`, `max_new_tokens=192`, the same data order, model,
 sample count, NLI clustering, and seeds 31/47. Their output directories are:
 
@@ -142,12 +170,31 @@ outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed31
 outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed47
 ```
 
-`scripts/run_bioasq_isambard.sbatch` now passes both sampling parameters
-explicitly and records them in `run_timing.txt`. Do not change the output cap
-in this pair: a cap change would confound a temperature effect with the known
-truncation behaviour. Re-evaluate both outputs with the citation-aware
-reference target, then calibrate its fixed threshold against manual review
-before interpreting AUROC changes.
+`scripts/run_bioasq_isambard.sbatch` passes both sampling parameters explicitly
+and records them in `run_timing.txt`. Job 5679663 (seed 31) completed in
+02:36:46 and job 5679664 (seed 47) in 02:28:21; both passed the full Level 4
+health check. Do not change the output cap in this pair: a cap change would
+confound a temperature effect with the known truncation behaviour.
+
+The downloaded outputs were re-evaluated locally with the citation-aware
+reference target. The mean quality scores were 0.3079 (seed 31) and 0.3105
+(seed 47), versus 0.3070 and 0.3111 for the matched temperature-0.8 outputs.
+This reference-only result is preliminary. Separate GPU jobs 5683932 and
+5683933 are running to add the ideal-answer NLI axis without regenerating any
+answers:
+
+```bash
+for RUN in \
+  "$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed31" \
+  "$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed47"; do
+  OUTPUT_DIR="$RUN" REFERENCE_NLI_LOCAL_FILES_ONLY=1 \
+    sbatch scripts/evaluate_bioasq_nli_isambard.sbatch
+done
+```
+
+After those jobs complete, download the refreshed `bioasq_eval/` directories
+and compare all four runs using the same three-axis target. Calibrate its fixed
+threshold against manual review before interpreting AUROC changes.
 
 Do not resubmit these exact completed jobs merely to reproduce their downloaded
 results. Use the commands as provenance or when an additional explicitly

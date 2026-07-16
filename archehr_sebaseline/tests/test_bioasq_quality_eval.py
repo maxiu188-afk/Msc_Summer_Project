@@ -129,6 +129,55 @@ class BioASQQualityEvalTests(unittest.TestCase):
         self.assertEqual(good["grounded_quality_score"], good["reference_quality_score"])
         self.assertEqual(contradicted["grounded_quality_score"], 0.0)
 
+    def test_three_axis_mode_uses_three_class_nli_reference_coverage(self) -> None:
+        class ControlledScorer:
+            def check_implication(self, premise: str, hypothesis: str, *, question: str | None = None) -> str:
+                if "does not" in premise.lower():
+                    return "contradiction"
+                if premise == hypothesis:
+                    return "entailment"
+                if premise == "RET causes Hirschsprung disease." and hypothesis == "RET causes disease.":
+                    return "entailment"
+                return "neutral"
+
+        example = {
+            "id": "s",
+            "bioasq_type": "summary",
+            "question": "What does RET cause?",
+            "ideal_answers": ["RET causes Hirschsprung disease."],
+            "evidence_sentence_ids": ["S1"],
+            "snippet_documents": ["pubmed/1"],
+            "documents": ["pubmed/1"],
+        }
+        scorer = ControlledScorer()
+        good = evaluate_generation_quality(
+            {"example_id": "s", "clean_answer": "RET causes Hirschsprung disease [S1]."},
+            example,
+            quality_mode="three_axis",
+            reference_nli_scorer=scorer,
+        )
+        partial = evaluate_generation_quality(
+            {"example_id": "s", "clean_answer": "RET causes disease [S1]."},
+            example,
+            quality_mode="three_axis",
+            reference_nli_scorer=scorer,
+        )
+        poor = evaluate_generation_quality(
+            {"example_id": "s", "clean_answer": "RET does not cause Hirschsprung disease [S1]."},
+            example,
+            quality_mode="three_axis",
+            reference_nli_scorer=scorer,
+        )
+        self.assertEqual(good["nli_reference_label"], "good")
+        self.assertEqual(good["nli_reference_score"], 1.0)
+        self.assertAlmostEqual(good["quality_score"], 1.0)
+        self.assertEqual(partial["nli_reference_label"], "partial")
+        self.assertEqual(partial["nli_reference_score"], 0.5)
+        self.assertGreater(partial["quality_score"], 0.0)
+        self.assertEqual(poor["nli_reference_label"], "poor")
+        self.assertEqual(poor["nli_reference_score"], 0.0)
+        self.assertEqual(poor["quality_score"], 0.0)
+
     def test_evaluator_writes_summary_and_se_artifacts(self) -> None:
         root = Path(__file__).resolve().parents[1] / "outputs" / "test_bioasq_eval"
         run_dir = root / "run"

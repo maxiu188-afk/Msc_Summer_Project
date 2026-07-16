@@ -1,0 +1,14 @@
+# Dedicated Isambard environment for GPU nodes whose driver reports CUDA 12.7.
+# The cu126 wheel is the nearest official PyTorch CUDA 12 build and is driver
+# compatible with CUDA 12.7 nodes.  Keep this separate from requirements.txt,
+# which remains the unconstrained general project dependency list.
+--index-url https://download.pytorch.org/whl/cu126
+--extra-index-url https://pypi.org/simple
+
+torch==2.6.0+cu126
+torchvision==0.21.0
+Pillow==12.3.0
+transformers==5.13.1
+sentencepiece==0.2.2
+protobuf==7.35.1
+tiktoken==0.13.0

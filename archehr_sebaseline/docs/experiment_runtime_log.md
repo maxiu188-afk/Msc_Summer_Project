@@ -18,11 +18,31 @@ Queueing time is excluded: elapsed time is measured from Slurm start to end.
 
 ## Submitted runs awaiting result collection
 
+### BioASQ three-axis ideal-answer NLI re-evaluation - temperature 1.0 pair
+
+```text
+submitted: 2026-07-16
+status: RUNNING (both started 2026-07-16T22:18:34)
+jobs: 5683932 (seed 31), 5683933 (seed 47)
+purpose: add ideal/exact-answer NLI coverage to already completed outputs
+model: microsoft/deberta-v2-xlarge-mnli
+quality axes: lexical reference coverage, cited-document overlap, NLI coverage
+generation: not rerun
+```
+
+The jobs use `scripts/evaluate_bioasq_nli_isambard.sbatch`, select the CUDA
+environment from the allocated node's driver, and record their own
+`reference_nli_timing.txt` in each output directory. Download the refreshed
+`bioasq_eval/` artifacts after they complete.
+
+## Completed runs
+
 ### BioASQ training summary 100x10 - temperature 1.0 paired repeat
 
 ```text
 submitted: 2026-07-16
-status: results pending (record Slurm job IDs and states after collection)
+status: COMPLETED, exit 0:0; both Level 4 health checks PASS
+jobs: 5679663 (seed 31), 5679664 (seed 47)
 purpose: controlled sampling-temperature sensitivity check for UQ
 model: google/gemma-3-12b-it
 temperature / top_p: 1.0 / 0.9
@@ -31,16 +51,15 @@ examples / samples: 100 / 10
 max new tokens: 192 (unchanged from the historical baseline)
 clustering: microsoft/deberta-v2-xlarge-mnli, bidirectional entailment
 self-report UQ: enabled
-expected cached runtime: approximately 3-4 hours per seed, excluding queue time
+elapsed: 02:36:46 (seed 31) and 02:28:21 (seed 47), excluding queue time
+nodes: nid010501 (seed 31) and nid010661 (seed 47)
+driver/environment: 565.57.01 / cuda127-cu126, torch 2.6.0+cu126
 ```
 
-The batch script records temperature and top-p in each `run_timing.txt`.
-After completion, add actual Slurm IDs, elapsed times, memory usage, health
-status, and result-archive checksum here. Evaluate both outputs using the
-citation-aware reference target; its fixed threshold remains provisional until
+The downloaded artifacts contain 100 examples and 1,000 generations per seed.
+Their local citation-aware reference re-evaluation is complete; separate queued
+jobs are adding the NLI axis. The fixed quality threshold remains provisional until
 manual calibration.
-
-## Completed runs
 
 ### Isambard job 5654721 - BioASQ training summary 100x10
 

@@ -26,7 +26,7 @@ quality evaluation: lightweight BioASQ-aligned reference metrics
 The only intended generation difference was the random seed: 31 for job
 5654721 and 47 for job 5660346. Both Level 4 health checks passed.
 
-## Evaluation revision and pending temperature follow-up
+## Evaluation revision and temperature follow-up
 
 The results below retain the historical, ROUGE-based reference target exactly
 as recorded on 2026-07-15. On 2026-07-16, the local evaluator was revised to
@@ -36,11 +36,40 @@ available, the active quality score is their geometric combination; the fixed
 threshold therefore requires calibration against manual review and is not
 numerically interchangeable with the historical `0.15` ROUGE threshold.
 
-A paired follow-up has been submitted with `temperature=1.0`, `top_p=0.9`, and
-the same 192-token cap, model, 100x10 workload, NLI configuration, and seeds
-31/47. Its results are pending. It is intended to test UQ sensitivity to a
-broader sampling distribution; it must not be described as an improvement until
-both health checks and the two-seed evaluation are complete.
+A paired follow-up at `temperature=1.0`, `top_p=0.9`, and the same 192-token
+cap, model, 100x10 workload, NLI clustering, and seeds 31/47 completed on
+2026-07-16. Jobs 5679663 and 5679664 both passed their full health checks.
+Their local reference-only re-evaluation is complete; jobs 5683932 and
+5683933 are running to add the ideal-answer NLI axis without regenerating
+answers. The results below are therefore a controlled preliminary comparison,
+not the final three-axis conclusion.
+
+### Temperature 1.0 preliminary comparison
+
+All four runs were re-evaluated locally with the same citation-aware reference
+target. Mean answer quality is effectively unchanged, so increasing temperature
+did not measurably alter this reference-only quality target in the two-seed
+pair.
+
+| Temperature | Seed 31 mean quality | Seed 47 mean quality | Mean low-quality examples |
+|---|---:|---:|---:|
+| 0.8 | 0.3070 | 0.3111 | 18.5 / 100 |
+| 1.0 | 0.3079 | 0.3105 | 19.0 / 100 |
+
+Within-question answer variation increased slightly at temperature 1.0:
+mean semantic-cluster count rose from 3.115 to 3.235, normalized discrete SE
+from 0.3506 to 0.3596, and per-question quality standard deviation from 0.0368
+to 0.0416. Cross-seed quality remained highly stable (Spearman 0.9871 at 0.8,
+0.9908 at 1.0). Thus temperature broadened the sampled answer distribution
+without materially changing aggregate reference quality; NLI results are still
+needed before drawing a conclusion about answer correctness/coverage.
+
+Reference-target AUROC changes were mixed. Token entropy, P(True), normalized
+NLL, and verbalized-confidence uncertainty improved by +0.019, +0.015, +0.031,
+and +0.014 respectively when averaged over seeds. Discrete and weighted SE
+each fell by about 0.019 on average, with opposite directions in the two seeds.
+This two-seed result is descriptive rather than evidence of a stable temperature
+effect.
 
 ## Runtime
 
@@ -49,6 +78,8 @@ both health checks and the two-seed evaluation are complete.
 | 5654721 | seed-31 formal baseline | completed, exit 0 | 03:43:51 |
 | 5660345 | fixed 30-question Qwen judge | completed, exit 0 | 00:20:56 |
 | 5660346 | seed-47 matched repeat | completed, exit 0 | 03:18:31 |
+| 5679663 | seed-31 temperature-1.0 repeat | completed, exit 0 | 02:36:46 |
+| 5679664 | seed-47 temperature-1.0 repeat | completed, exit 0 | 02:28:21 |
 
 The two matched 100x10 runs average about 03:31:12. Plan approximately 04:20
 for the same cached configuration, excluding queue time, while retaining the
@@ -150,7 +181,7 @@ Immediate priorities are:
 4. Keep closed-model judge evaluation as a later validation step after the
    conventional target and baseline behaviour are better understood.
 
-Downloaded raw outputs and Slurm logs are retained locally under
-`server_results/`. They remain excluded from Git because they contain large,
-generated experiment artifacts; this tracked document records the portable
-result summary and provenance.
+Downloaded raw outputs and Slurm logs are retained locally under the ignored
+`outputs/` run directories. They remain excluded from Git because they contain
+large, generated experiment artifacts; this tracked document records the
+portable result summary and provenance.
