@@ -1,6 +1,6 @@
 ﻿# ArchEHR-QA UQ Code Handoff Guide
 
-Last updated: 2026-07-15
+Last updated: 2026-07-16
 
 The active project is `archehr_sebaseline`. The package now contains:
 
@@ -43,6 +43,19 @@ Answer quality is highly stable across seeds, but discrete-SE AUROC drops from
 fixed 30-question Qwen judge, but the judge ceiling effect produced zero
 low-quality labels. The baseline is complete; do not present SE as a robustly
 superior UQ method or the Qwen judge as external validation.
+
+Two further paired Isambard runs are awaiting result collection. They use the
+same 100 questions, ten samples, seeds 31/47, model, NLI clustering, and
+192-token cap as the historical baseline, but set `temperature=1.0` (with
+`top_p=0.9`). Their purpose is to test whether an intentionally broader
+sampling distribution changes UQ behaviour consistently across seeds. The
+batch script records both sampling parameters in `run_timing.txt`.
+
+The active reference evaluation now separates answer-reference coverage from
+document-level cited-evidence overlap and uses their geometric combination when
+BioASQ standard documents are available. Historical ROUGE-only AUROCs must not
+be compared numerically with the new thresholded target before manual
+calibration.
 
 The first grounded BioASQ batch is complete and archived at:
 
@@ -163,11 +176,11 @@ label_heuristic_eval.md
 
 ## Next Work
 
-1. Verify the local summary metric once with a standard or official BioASQ
-   evaluation implementation.
-2. Diagnose SE failure cases and clustering/sample sensitivity using both
-   matched seeds; report bootstrap intervals and rejection curves.
-3. Keep a stricter closed-model API judge as a later validation step rather
-   than the immediate priority.
-4. Decide on SEP hidden-state probes only after the quality target and baseline
-   behaviour are sufficiently stable.
+1. Collect both temperature-1.0 runs, verify health checks and `run_timing.txt`,
+   then compare their UQ rankings to the matched temperature-0.8 runs.
+2. Calibrate the citation-aware quality threshold on manual review; retain
+   coverage and citation overlap as separate reported axes.
+3. Diagnose SE failure cases and clustering/sample sensitivity using all
+   matched runs; report bootstrap intervals and rejection curves.
+4. Keep a stricter closed-model API judge as a later validation step, and decide
+   on SEP hidden-state probes only after the quality target is stable.

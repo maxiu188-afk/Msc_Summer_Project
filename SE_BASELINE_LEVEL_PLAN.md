@@ -1,6 +1,6 @@
 ﻿# ArchEHR-QA Semantic Entropy Baseline Plan
 
-Last updated: 2026-07-15
+Last updated: 2026-07-16
 
 ## Current Decision
 
@@ -25,6 +25,29 @@ examples shared), but discrete-SE AUROC falls from 0.687 to 0.609 and the repeat
 bootstrap interval includes 0.5. Job 5660345 also completed a fixed 30-question
 Qwen judge; it was too lenient to create any low-quality labels. See
 `archehr_sebaseline/docs/bioasq_isambard_results_20260715.md`.
+
+## Active Temperature-Sensitivity Repeat (2026-07-16)
+
+Two additional Isambard jobs have been submitted and their results are pending.
+They form a paired temperature-sensitivity check rather than a new benchmark:
+
+```text
+model: google/gemma-3-12b-it
+temperature: 1.0 (baseline default was 0.8)
+top_p: 0.9
+max new tokens: 192 (unchanged)
+examples / samples: 100 / 10 (unchanged)
+seeds: 31 and 47
+NLI clustering, token scores, self-report UQ: unchanged
+```
+
+Keeping the output cap unchanged isolates the sampling-temperature intervention,
+although truncation remains a documented limitation. The active evaluator now
+uses reference coverage together with document-level cited-evidence overlap;
+the prior ROUGE-only fixed-threshold AUROCs remain historical comparisons, not
+the primary target for this repeat. Do not compare thresholded AUROCs across
+the quality-target revision without first calibrating the new threshold on the
+manually reviewed subset.
 
 ## Supervisor Meeting Update (2026-07-10)
 
@@ -183,12 +206,13 @@ After the replacement dataset and its baseline evaluation are stable:
 
 ## Current Next Step
 
-The BioASQ baseline and its matched seed repeat are complete. The next work is
-to verify the local summary metric once with a standard or official BioASQ
-implementation, report both seeds and their uncertainty intervals, and diagnose
-why SE rankings move more than answer quality. A larger API-judge experiment is
-technically feasible but is not the immediate priority while conventional SE
-discrimination remains modest.
+The historical baseline and its matched seed repeat are complete. First wait
+for the submitted temperature-1.0 seed-31/seed-47 runs, verify their health
+checks and runtime records, and compare their UQ rankings against the matched
+temperature-0.8 runs with the citation-aware quality analysis. Then calibrate
+the revised quality target on manual review and diagnose whether any apparent
+UQ movement is stable across seeds. A larger API-judge experiment remains
+deferred while this conventional evaluation target is being calibrated.
 
 ## BioASQ Batch Update (2026-07-13)
 

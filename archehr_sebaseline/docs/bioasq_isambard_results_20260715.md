@@ -1,6 +1,6 @@
 # BioASQ Isambard Baseline and Replication Results
 
-Last updated: 2026-07-15
+Last updated: 2026-07-16
 
 ## Scope
 
@@ -25,6 +25,22 @@ quality evaluation: lightweight BioASQ-aligned reference metrics
 
 The only intended generation difference was the random seed: 31 for job
 5654721 and 47 for job 5660346. Both Level 4 health checks passed.
+
+## Evaluation revision and pending temperature follow-up
+
+The results below retain the historical, ROUGE-based reference target exactly
+as recorded on 2026-07-15. On 2026-07-16, the local evaluator was revised to
+report reference-answer coverage and document-level overlap between cited
+snippet documents and BioASQ standard documents. When standard documents are
+available, the active quality score is their geometric combination; the fixed
+threshold therefore requires calibration against manual review and is not
+numerically interchangeable with the historical `0.15` ROUGE threshold.
+
+A paired follow-up has been submitted with `temperature=1.0`, `top_p=0.9`, and
+the same 192-token cap, model, 100x10 workload, NLI configuration, and seeds
+31/47. Its results are pending. It is intended to test UQ sensitivity to a
+broader sampling distribution; it must not be described as an improvement until
+both health checks and the two-seed evaluation are complete.
 
 ## Runtime
 

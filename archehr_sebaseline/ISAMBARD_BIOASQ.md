@@ -131,6 +131,24 @@ original seed-31 configuration; changing the model, data order, precision,
 sample count, answer length, or evaluation stages would no longer be a pure
 seed replication.
 
+## Active temperature-sensitivity repeat (2026-07-16)
+
+Two pending runs extend the matched baseline with `temperature=1.0` while
+retaining `top_p=0.9`, `max_new_tokens=192`, the same data order, model,
+sample count, NLI clustering, and seeds 31/47. Their output directories are:
+
+```text
+outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed31
+outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed47
+```
+
+`scripts/run_bioasq_isambard.sbatch` now passes both sampling parameters
+explicitly and records them in `run_timing.txt`. Do not change the output cap
+in this pair: a cap change would confound a temperature effect with the known
+truncation behaviour. Re-evaluate both outputs with the citation-aware
+reference target, then calibrate its fixed threshold against manual review
+before interpreting AUROC changes.
+
 Do not resubmit these exact completed jobs merely to reproduce their downloaded
 results. Use the commands as provenance or when an additional explicitly
 planned seed is required.

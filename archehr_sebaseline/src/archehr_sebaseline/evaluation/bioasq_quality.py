@@ -4,9 +4,11 @@ This module is deliberately a transparent approximation, not a replacement for
 the official BioASQ evaluation service.  It uses the same *families* of
 automatic metrics where practical: ROUGE-2 and ROUGE-SU4 for ideal (summary)
 answers, accuracy for yes/no, exact-answer matching for factoids, and set
-precision/recall/F1 for lists.  The local implementation has no stemming,
-synonym resource, manual readability assessment, or official ranked-answer
-format; those limitations are recorded in the output report.
+precision/recall/F1 for lists.  When standard BioASQ document identifiers are
+available, it also compares the documents behind generated snippet citations
+with those identifiers.  The local implementation has no stemming, synonym
+resource, manual readability assessment, or official ranked-answer format;
+those limitations are recorded in the output report.
 """
 
 from __future__ import annotations
@@ -58,8 +60,14 @@ GENERATION_QUALITY_FIELDS = [
     "quality_mode",
     "quality_score",
     "reference_quality_score",
+    "reference_coverage_score",
     "reference_completeness_score",
     "reference_conciseness_score",
+    "citation_document_precision",
+    "citation_document_recall",
+    "citation_document_f1",
+    "cited_document_count",
+    "gold_document_count",
     "grounded_quality_score",
     "answer_token_count",
     "rouge_2_f1",
@@ -114,8 +122,12 @@ EXAMPLE_QUALITY_FIELDS = [
     "mean_rouge_2_f1",
     "mean_rouge_su4_f1",
     "mean_reference_quality_score",
+    "mean_reference_coverage_score",
     "mean_reference_completeness_score",
     "mean_grounded_quality_score",
+    "mean_citation_document_precision",
+    "mean_citation_document_recall",
+    "mean_citation_document_f1",
     "mean_evidence_entailment_rate",
     "mean_evidence_contradiction_rate",
     "mean_cited_claim_entailment_rate",
@@ -329,6 +341,43 @@ def extract_snippet_citation_ids(text: str) -> list[str]:
     return citation_ids
 
 
+def _document_set(values: Any) -> set[str]:
+    """Return non-empty BioASQ document identifiers as a normalized set."""
+
+    if not isinstance(values, list):
+        return set()
+    return {str(value).strip() for value in values if str(value).strip()}
+
+
+def citation_document_overlap(
+    citation_ids: list[str],
+    example: dict[str, Any],
+) -> tuple[float | None, float | None, float | None, int, int]:
+    """Compare cited snippet documents with BioASQ's standard document set.
+
+    BioASQ does not provide sentence-level gold citations for this setting.
+    The metric is therefore document-level evidence-selection agreement, not a
+    claim-entailment judgment.
+    """
+
+    snippet_ids = [str(value).strip() for value in example.get("evidence_sentence_ids") or []]
+    snippet_documents = [str(value).strip() for value in example.get("snippet_documents") or []]
+    snippet_to_document = {
+        snippet_id: snippet_documents[index]
+        for index, snippet_id in enumerate(snippet_ids)
+        if index < len(snippet_documents) and snippet_documents[index]
+    }
+    cited_documents = {snippet_to_document[citation_id] for citation_id in citation_ids if citation_id in snippet_to_document}
+    gold_documents = _document_set(example.get("documents"))
+    if not gold_documents:
+        return None, None, None, len(cited_documents), 0
+    overlap = len(cited_documents & gold_documents)
+    precision = overlap / len(cited_documents) if cited_documents else 0.0
+    recall = overlap / len(gold_documents)
+    f1 = 2.0 * precision * recall / (precision + recall) if precision + recall else 0.0
+    return precision, recall, f1, len(cited_documents), len(gold_documents)
+
+
 def _known_snippet_ids(example: dict[str, Any]) -> set[str]:
     explicit_ids = {str(value).strip() for value in example.get("evidence_sentence_ids") or [] if str(value).strip()}
     if explicit_ids:
@@ -430,6 +479,7 @@ def _finalize_quality(
     grounding_scorer: EntailmentScorer | None,
     max_claims: int,
     max_evidence_sentences: int,
+    citation_document_f1: float | None,
     reference_completeness: float | None = None,
     reference_conciseness: float | None = None,
 ) -> dict[str, Any]:
@@ -437,7 +487,12 @@ def _finalize_quality(
 
     if quality_mode not in {"reference", "grounded"}:
         raise ValueError("quality_mode must be 'reference' or 'grounded'.")
-    reference_score = float(row["quality_score"])
+    coverage_score = float(row["quality_score"])
+    citation_aware_score = (
+        math.sqrt(coverage_score * citation_document_f1)
+        if citation_document_f1 is not None
+        else coverage_score
+    )
     grounding = _score_evidence_grounding(
         answer,
         example,
@@ -450,17 +505,22 @@ def _finalize_quality(
     grounded_score = None
     if entailment is not None and contradiction is not None:
         support = max(0.0, float(entailment) - float(contradiction))
-        grounded_score = math.sqrt(reference_score * support)
+        grounded_score = math.sqrt(citation_aware_score * support)
     if quality_mode == "grounded" and grounded_score is None:
         raise ValueError("quality_mode='grounded' requires an NLI grounding scorer and non-empty evidence.")
-    chosen_score = grounded_score if quality_mode == "grounded" else reference_score
-    chosen_metric = f"grounded_{row['quality_metric']}" if quality_mode == "grounded" else row["quality_metric"]
+    chosen_score = grounded_score if quality_mode == "grounded" else citation_aware_score
+    coverage_metric = row["quality_metric"]
+    citation_metric = f"citation_document_geometric_mean_{coverage_metric}"
+    chosen_metric = f"grounded_{citation_metric}" if quality_mode == "grounded" else citation_metric
+    if citation_document_f1 is None:
+        chosen_metric = f"grounded_{coverage_metric}" if quality_mode == "grounded" else coverage_metric
     return {
         **row,
         "quality_metric": chosen_metric,
         "quality_mode": quality_mode,
         "quality_score": chosen_score,
-        "reference_quality_score": reference_score,
+        "reference_quality_score": coverage_score,
+        "reference_coverage_score": coverage_score,
         "reference_completeness_score": reference_completeness,
         "reference_conciseness_score": reference_conciseness,
         "grounded_quality_score": grounded_score,
@@ -495,6 +555,7 @@ def evaluate_generation_quality(
     known_snippet_ids = _known_snippet_ids(example)
     valid_citation_count = sum(citation_id in known_snippet_ids for citation_id in citation_ids)
     citation_validity = valid_citation_count / len(citation_ids) if citation_ids and known_snippet_ids else None
+    citation_document_precision, citation_document_recall, citation_document_f1, cited_document_count, gold_document_count = citation_document_overlap(citation_ids, example)
     base = {
         "example_id": generation.get("example_id"),
         "dataset": generation.get("dataset") or example.get("dataset"),
@@ -504,8 +565,14 @@ def evaluate_generation_quality(
         "quality_mode": quality_mode,
         "answer_token_count": len(tokenize(answer)),
         "reference_quality_score": None,
+        "reference_coverage_score": None,
         "reference_completeness_score": None,
         "reference_conciseness_score": None,
+        "citation_document_precision": citation_document_precision,
+        "citation_document_recall": citation_document_recall,
+        "citation_document_f1": citation_document_f1,
+        "cited_document_count": cited_document_count,
+        "gold_document_count": gold_document_count,
         "grounded_quality_score": None,
         "rouge_2_f1": None,
         "rouge_2_precision": None,
@@ -547,14 +614,14 @@ def evaluate_generation_quality(
             "rouge_su4_precision": su4[0] if su4 else None,
             "rouge_su4_recall": su4[1] if su4 else None,
             "rouge_su4_f1": su4[2] if su4 else None,
-        }, answer=answer, example=example, quality_mode=quality_mode, grounding_scorer=grounding_scorer,
+        }, answer=answer, example=example, quality_mode=quality_mode, grounding_scorer=grounding_scorer, citation_document_f1=citation_document_f1,
             max_claims=max_claims, max_evidence_sentences=max_evidence_sentences,
             reference_completeness=((rouge2[1] + su4[1]) / 2 if rouge2 and su4 else 0.0),
             reference_conciseness=((rouge2[0] + su4[0]) / 2 if rouge2 and su4 else 0.0))
     if question_type == "yesno":
         gold = _normalize_entity(exact_answers[0]) if exact_answers else ""
         accuracy = float(extract_yesno(answer) == gold) if gold else 0.0
-        return _finalize_quality({**base, "quality_metric": "yesno_accuracy", "quality_score": accuracy, "yesno_accuracy": accuracy}, answer=answer, example=example, quality_mode=quality_mode, grounding_scorer=grounding_scorer, max_claims=max_claims, max_evidence_sentences=max_evidence_sentences, reference_completeness=accuracy, reference_conciseness=accuracy)
+        return _finalize_quality({**base, "quality_metric": "yesno_accuracy", "quality_score": accuracy, "yesno_accuracy": accuracy}, answer=answer, example=example, quality_mode=quality_mode, grounding_scorer=grounding_scorer, citation_document_f1=citation_document_f1, max_claims=max_claims, max_evidence_sentences=max_evidence_sentences, reference_completeness=accuracy, reference_conciseness=accuracy)
     if question_type == "factoid":
         aliases = {_normalize_entity(item) for item in exact_answers if _normalize_entity(item)}
         strict = float(_normalize_factoid_candidate(answer) in aliases) if aliases else 0.0
@@ -567,12 +634,12 @@ def evaluate_generation_quality(
             "factoid_strict_accuracy": strict,
             "factoid_answer_first_accuracy": answer_first,
             "factoid_lenient_accuracy": lenient,
-        }, answer=answer, example=example, quality_mode=quality_mode, grounding_scorer=grounding_scorer, max_claims=max_claims, max_evidence_sentences=max_evidence_sentences, reference_completeness=answer_first, reference_conciseness=answer_first)
+        }, answer=answer, example=example, quality_mode=quality_mode, grounding_scorer=grounding_scorer, citation_document_f1=citation_document_f1, max_claims=max_claims, max_evidence_sentences=max_evidence_sentences, reference_completeness=answer_first, reference_conciseness=answer_first)
     if question_type == "list":
         gold = {_normalize_entity(item) for item in exact_answers if _normalize_entity(item)}
         precision, recall, f1 = _set_prf(_robust_list_items(answer), gold)
-        return _finalize_quality({**base, "quality_metric": "list_f1", "quality_score": f1, "list_precision": precision, "list_recall": recall, "list_f1": f1}, answer=answer, example=example, quality_mode=quality_mode, grounding_scorer=grounding_scorer, max_claims=max_claims, max_evidence_sentences=max_evidence_sentences, reference_completeness=recall, reference_conciseness=precision)
-    return _finalize_quality({**base, "quality_metric": "unsupported", "quality_score": 0.0}, answer=answer, example=example, quality_mode=quality_mode, grounding_scorer=grounding_scorer, max_claims=max_claims, max_evidence_sentences=max_evidence_sentences)
+        return _finalize_quality({**base, "quality_metric": "list_f1", "quality_score": f1, "list_precision": precision, "list_recall": recall, "list_f1": f1}, answer=answer, example=example, quality_mode=quality_mode, grounding_scorer=grounding_scorer, citation_document_f1=citation_document_f1, max_claims=max_claims, max_evidence_sentences=max_evidence_sentences, reference_completeness=recall, reference_conciseness=precision)
+    return _finalize_quality({**base, "quality_metric": "unsupported", "quality_score": 0.0}, answer=answer, example=example, quality_mode=quality_mode, grounding_scorer=grounding_scorer, citation_document_f1=citation_document_f1, max_claims=max_claims, max_evidence_sentences=max_evidence_sentences)
 
 
 def _mean(rows: list[dict[str, Any]], field: str) -> float | None:
@@ -693,8 +760,12 @@ def build_quality_rows(
             "mean_rouge_2_f1": _mean(raw_rows, "rouge_2_f1"),
             "mean_rouge_su4_f1": _mean(raw_rows, "rouge_su4_f1"),
             "mean_reference_quality_score": _mean(raw_rows, "reference_quality_score"),
+            "mean_reference_coverage_score": _mean(raw_rows, "reference_coverage_score"),
             "mean_reference_completeness_score": _mean(raw_rows, "reference_completeness_score"),
             "mean_grounded_quality_score": _mean(raw_rows, "grounded_quality_score"),
+            "mean_citation_document_precision": _mean(raw_rows, "citation_document_precision"),
+            "mean_citation_document_recall": _mean(raw_rows, "citation_document_recall"),
+            "mean_citation_document_f1": _mean(raw_rows, "citation_document_f1"),
             "mean_evidence_entailment_rate": _mean(raw_rows, "evidence_entailment_rate"),
             "mean_evidence_contradiction_rate": _mean(raw_rows, "evidence_contradiction_rate"),
             "mean_cited_claim_entailment_rate": _mean(raw_rows, "cited_claim_entailment_rate"),
@@ -981,9 +1052,9 @@ def _write_report(summary: dict[str, Any], paths: dict[str, str], output_path: P
         "## Scope and limits",
         "",
         "This local evaluator follows BioASQ metric families but is not the official service: it uses unstemmed lexical ROUGE-2 and ROUGE-SU4 approximations, no manual ideal-answer review, no synonym resource, and no official ranked-answer protocol.",
-        "The fixed `quality_threshold` and the per-type bottom-quality quantile are SE sensitivity targets, not BioASQ pass marks or gold correctness labels. Continuous quality/risk associations are reported alongside AUROC to avoid treating one threshold as the full result.",
-        "Reference mode scores answer-reference agreement. Grounded mode uses the geometric mean of reference quality and NLI evidence support, while retaining contradiction and cited-claim diagnostics. NLI grounding is a diagnostic, not expert clinical review.",
-        "Snippet citation validity checks only whether cited IDs exist in the provided evidence; they do not establish that a claim is entailed by that snippet.",
+        "When BioASQ standard documents and snippet-document mappings are available, reference mode combines answer-reference coverage with document-level cited-evidence overlap using their geometric mean. If those gold document fields are absent, it falls back to coverage alone.",
+        "The fixed `quality_threshold` and the per-type bottom-quality quantile are SE sensitivity targets, not BioASQ pass marks or gold correctness labels. Recalibrate the threshold against reviewed examples whenever the quality composition changes. Continuous quality/risk associations are reported alongside AUROC to avoid treating one threshold as the full result.",
+        "Grounded mode additionally combines this citation-aware score with NLI evidence support, while retaining contradiction and cited-claim diagnostics. Document overlap and NLI grounding are diagnostics, not expert clinical review or sentence-level gold citation labels.",
         "",
         "## Summary",
         "",

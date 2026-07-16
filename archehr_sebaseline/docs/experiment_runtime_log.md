@@ -16,6 +16,30 @@ Queueing time is excluded: elapsed time is measured from Slurm start to end.
 - Estimates should include a safety margin and should not silently substitute a
   different model, device, precision, sample count, or evaluation stage.
 
+## Submitted runs awaiting result collection
+
+### BioASQ training summary 100x10 - temperature 1.0 paired repeat
+
+```text
+submitted: 2026-07-16
+status: results pending (record Slurm job IDs and states after collection)
+purpose: controlled sampling-temperature sensitivity check for UQ
+model: google/gemma-3-12b-it
+temperature / top_p: 1.0 / 0.9
+seeds: 31 and 47
+examples / samples: 100 / 10
+max new tokens: 192 (unchanged from the historical baseline)
+clustering: microsoft/deberta-v2-xlarge-mnli, bidirectional entailment
+self-report UQ: enabled
+expected cached runtime: approximately 3-4 hours per seed, excluding queue time
+```
+
+The batch script records temperature and top-p in each `run_timing.txt`.
+After completion, add actual Slurm IDs, elapsed times, memory usage, health
+status, and result-archive checksum here. Evaluate both outputs using the
+citation-aware reference target; its fixed threshold remains provisional until
+manual calibration.
+
 ## Completed runs
 
 ### Isambard job 5654721 - BioASQ training summary 100x10
