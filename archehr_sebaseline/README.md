@@ -88,11 +88,25 @@ the same temperature, seeds, generation settings, NLI clustering, and
 self-report UQ. Its citation axis is intentionally not applicable, so its
 final quality target uses the evaluator's ROUGE + ideal-answer-NLI fallback.
 
+The main-answer protocol was corrected on 2026-07-17 to match the Semantic
+Entropy reference implementation. Ten samples at `T=1.0`, `top_p=0.9`, and
+`top_k=50` are reserved for SE and other UQ scores. A separately generated
+single `T=0.1` answer is the only answer used to establish quality. Four
+supplemental Isambard jobs (5692776, 5692777, 5692779, and 5692780) are adding
+these files to the completed temperature-1.0 evidence/no-evidence pair. The
+final label source will be a local Claude Sonnet 5 three-way text comparison;
+`poor` is the binary error label. The prior 4,000 high-temperature Claude
+labels remain an auxiliary, non-primary analysis. Details and commands are in
+`docs/semantic_entropy_generation_protocol.md`.
+
 The active reference evaluator now retains answer-reference coverage and adds
 document-level overlap between cited snippet documents and BioASQ standard
 documents. It combines the two by geometric mean when gold document metadata
-is available. Consequently, its fixed low-quality threshold is provisional and
-must be calibrated against manually reviewed examples.
+is available. Its deterministic comparator uses the lowest 30% of quality
+scores within a BioASQ question type, avoiding a score-scale-dependent fixed
+cutoff. The fixed threshold remains a diagnostic and must be calibrated against
+reviewed examples; the final UQ label is the low-temperature Claude `poor`
+classification described below.
 
 New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
 `archehr` prefixes. This does not rename the package, Python imports, or
@@ -269,7 +283,7 @@ python scripts/evaluate_bioasq_quality.py \
   --run_dir outputs/bioasq_summary_gemma3_12b_100x10 \
   --quality_target mean \
   --quality_threshold 0.15 \
-  --relative_risk_fraction 0.25 \
+  --relative_risk_fraction 0.30 \
   --bootstrap_samples 1000
 ```
 
@@ -278,10 +292,12 @@ not the official BioASQ service. Summary answers use unstemmed ROUGE-2 and
 ROUGE-SU4 F1; yes/no uses accuracy; factoid records strict, answer-first, and
 lenient exact-answer diagnostics; list uses normalized set precision/recall/F1.
 Citation IDs are checked against the provided snippet IDs, but this is not a
-claim-entailment check. The evaluator writes fixed-threshold and per-type
-bottom-quality AUROC, bootstrap intervals, Spearman correlation with continuous
-risk (`1 - quality`), and a coverage-risk summary. These targets are SE
-sensitivity analyses, not BioASQ pass marks.
+claim-entailment check. The evaluator uses the per-type bottom 30% as a
+deterministic comparison label and retains the fixed threshold as a diagnostic.
+It writes bootstrap intervals, Spearman correlation with continuous risk
+(`1 - quality`), and a coverage-risk summary. These targets are not BioASQ pass
+marks and do not replace the low-temperature Claude outcome for final UQ
+results.
 
 For the primary grounded-quality analysis, use the already-maintained open NLI
 model to test whether each answer claim is entailed by the supplied gold
@@ -306,6 +322,34 @@ mean of reference quality and net evidence support, so a reference-like answer
 that contradicts the supplied snippets receives a low score. It remains an
 open-NLI proxy rather than clinical expert adjudication; validate it on a
 reviewed subset before using it as SEP supervision.
+
+### Claude main-answer evaluation
+
+After the low-temperature `best_generations.jsonl` file has been downloaded,
+Claude is run locally as a separate post-processing stage. It does not alter
+the server pipeline or its `bioasq_eval/` artifacts. The judge compares each
+candidate only with BioASQ ideal answers and emits exactly one of `good`,
+`partial`, or `poor`; its system instruction explicitly establishes this as
+offline academic annotation rather than medical advice. Use low reasoning
+effort and a 32-token response cap:
+
+```bash
+python scripts/run_bioasq_claude_judge.py submit \
+  --run_dir outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed31 \
+  --model claude-sonnet-5 --effort low --max_tokens 32
+
+python scripts/run_bioasq_claude_judge.py download \
+  --run_dir outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed31
+
+python scripts/evaluate_bioasq_claude_judge.py \
+  --run_dir outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed31 \
+  --overwrite
+```
+
+The final command writes isolated `claude_judge/claude_uq_*.csv` artifacts;
+only `poor` is positive for AUROC and AURAC. Do not feed Claude labels into the
+earlier deterministic quality evaluator or use the historical high-temperature
+sample labels as a substitute for the low-temperature main answer.
 
 ### Simple UQ baselines
 
@@ -354,7 +398,7 @@ python -m unittest discover archehr_sebaseline/tests
 Current expected result:
 
 ```text
-Ran 57 tests
+Ran 61 tests
 OK
 ```
 

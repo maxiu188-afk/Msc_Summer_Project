@@ -35,7 +35,7 @@ from .uncertainty_metrics import (
 
 
 DEFAULT_QUALITY_THRESHOLD = 0.15
-DEFAULT_RELATIVE_RISK_FRACTION = 0.25
+DEFAULT_RELATIVE_RISK_FRACTION = 0.30
 DEFAULT_BOOTSTRAP_SAMPLES = 1000
 DEFAULT_BOOTSTRAP_SEED = 31
 DEFAULT_UNCERTAINTY_FIELDS = [
@@ -121,6 +121,7 @@ EXAMPLE_QUALITY_FIELDS = [
     "quality_score_stddev",
     "quality_pass_rate",
     "is_low_quality",
+    "is_below_fixed_quality_threshold",
     "is_bottom_quantile_quality",
     "quality_rank_within_type",
     "quality_band",
@@ -757,11 +758,14 @@ def _assign_relative_quality_risk(
     *,
     relative_risk_fraction: float,
 ) -> None:
-    """Mark the lowest-quality fraction separately within each BioASQ type.
+    """Mark the primary lowest-quality fraction separately within each BioASQ type.
 
-    This is a threshold-sensitivity target for ranking evaluation, not a gold
-    correctness label.  All examples tied at the cutoff are included so that
-    arbitrary example identifiers cannot decide a low-quality label.
+    Exactly ``ceil(n * relative_risk_fraction)`` examples are marked in each
+    type. Ties in the composite score are broken by lexical reference coverage,
+    then ideal-answer NLI coverage, then stable example ID. This avoids a mass
+    of zero-valued NLI scores turning a nominal 30% target into a much larger
+    class. The fixed score threshold remains a diagnostic field only because
+    score scales differ by condition.
     """
 
     if not 0.0 < relative_risk_fraction < 1.0:
@@ -770,15 +774,22 @@ def _assign_relative_quality_risk(
     for row in rows:
         groups[str(row.get("bioasq_type") or "unknown")].append(row)
     for group_rows in groups.values():
-        ordered = sorted(group_rows, key=lambda row: finite_float(row.get("quality_score")) or 0.0)
+        ordered = sorted(
+            group_rows,
+            key=lambda row: (
+                finite_float(row.get("quality_score")) or 0.0,
+                finite_float(row.get("mean_reference_coverage_score")) or 0.0,
+                finite_float(row.get("mean_nli_reference_score")) or 0.0,
+                str(row.get("example_id") or ""),
+            ),
+        )
         num_risk = max(1, math.ceil(len(ordered) * relative_risk_fraction))
-        cutoff = finite_float(ordered[num_risk - 1].get("quality_score")) or 0.0
         denominator = max(len(ordered) - 1, 1)
-        ranks = _average_ranks([finite_float(row.get("quality_score")) or 0.0 for row in ordered])
-        for row, rank in zip(ordered, ranks):
-            quality_score = finite_float(row.get("quality_score")) or 0.0
-            row["quality_rank_within_type"] = fmt((rank - 1.0) / denominator)
-            row["is_bottom_quantile_quality"] = fmt(quality_score <= cutoff)
+        for index, row in enumerate(ordered):
+            row["quality_rank_within_type"] = fmt(index / denominator)
+            is_low_quality = index < num_risk
+            row["is_bottom_quantile_quality"] = fmt(is_low_quality)
+            row["is_low_quality"] = fmt(is_low_quality)
 
 
 def _quality_target(values: list[float], quality_target: str) -> float:
@@ -843,7 +854,8 @@ def build_quality_rows(
             "median_quality_score": _median(values),
             "quality_score_stddev": _population_stddev(values),
             "quality_pass_rate": sum(value >= quality_threshold for value in values) / len(values),
-            "is_low_quality": target < quality_threshold,
+            "is_low_quality": None,
+            "is_below_fixed_quality_threshold": target < quality_threshold,
             "is_bottom_quantile_quality": None,
             "quality_rank_within_type": None,
             "quality_band": _quality_band(target, quality_threshold=quality_threshold),
@@ -1115,6 +1127,7 @@ def _summary(
         "quality_mode": example_rows[0].get("quality_mode") if example_rows else None,
         "quality_threshold": finite_float(example_rows[0].get("quality_threshold")) if example_rows else None,
         "relative_risk_fraction": relative_risk_fraction,
+        "low_quality_target": "bottom_quality_quantile",
         "bootstrap_samples": bootstrap_samples,
         "low_quality_examples": sum(str(row.get("is_low_quality")).lower() == "true" for row in example_rows),
         "low_quality_rate": sum(str(row.get("is_low_quality")).lower() == "true" for row in example_rows) / len(example_rows) if example_rows else None,
@@ -1144,13 +1157,13 @@ def _write_report(summary: dict[str, Any], paths: dict[str, str], output_path: P
         "",
         "This local evaluator follows BioASQ metric families but is not the official service: it uses unstemmed lexical ROUGE-2 and ROUGE-SU4 approximations, no manual ideal-answer review, no synonym resource, and no official ranked-answer protocol.",
         "When BioASQ standard documents and snippet-document mappings are available, reference mode combines answer-reference coverage with document-level cited-evidence overlap using their geometric mean. If those gold document fields are absent, it falls back to coverage alone.",
-        "The fixed `quality_threshold` and the per-type bottom-quality quantile are SE sensitivity targets, not BioASQ pass marks or gold correctness labels. Recalibrate the threshold against reviewed examples whenever the quality composition changes. Continuous quality/risk associations are reported alongside AUROC to avoid treating one threshold as the full result.",
+        "The primary low-quality label is the lowest `relative_risk_fraction` within each BioASQ question type (30% by default). The fixed `quality_threshold` is retained only as a diagnostic field. Neither is a BioASQ pass mark or gold correctness label. Continuous quality/risk associations are reported alongside AUROC to avoid treating one threshold as the full result.",
         "Grounded mode additionally combines this citation-aware score with NLI evidence support, while retaining contradiction and cited-claim diagnostics. Document overlap and NLI grounding are diagnostics, not expert clinical review or sentence-level gold citation labels.",
         "",
         "## Summary",
         "",
     ]
-    for key in ("num_examples", "num_generations", "question_type_counts", "quality_mode", "quality_threshold", "relative_risk_fraction", "bootstrap_samples", "low_quality_examples", "low_quality_rate", "mean_example_quality_score", "median_example_quality_score"):
+    for key in ("num_examples", "num_generations", "question_type_counts", "quality_mode", "quality_threshold", "relative_risk_fraction", "low_quality_target", "bootstrap_samples", "low_quality_examples", "low_quality_rate", "mean_example_quality_score", "median_example_quality_score"):
         lines.append(f"- {key}: {summary.get(key)}")
     lines.extend(["", "## Artifacts", ""])
     for key, value in paths.items():
@@ -1241,6 +1254,95 @@ def evaluate_level4_bioasq(
         bootstrap_samples=bootstrap_samples,
     )
     write_csv(generation_rows, paths["generation_quality"], GENERATION_QUALITY_FIELDS, overwrite=overwrite)
+    write_csv(example_rows, paths["example_quality"], EXAMPLE_QUALITY_FIELDS, overwrite=overwrite)
+    write_csv(se_rows, paths["se_eval_examples"], SE_EVAL_FIELDS, overwrite=overwrite)
+    write_csv(auroc_rows, paths["auroc"], AUROC_FIELDS, overwrite=overwrite)
+    write_csv(sensitivity_rows, paths["auroc_sensitivity"], SE_AUROC_SENSITIVITY_FIELDS, overwrite=overwrite)
+    write_csv(association_rows, paths["association"], SE_ASSOCIATION_FIELDS, overwrite=overwrite)
+    write_csv(rejection_rows, paths["rejection_curve"], REJECTION_CURVE_FIELDS, overwrite=overwrite)
+    fail_if_exists(paths["summary"], overwrite)
+    paths["summary"].write_text(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8")
+    string_paths = {key: str(value) for key, value in paths.items()}
+    _write_report(summary, string_paths, paths["report"], overwrite=overwrite)
+    return {"summary": summary, "paths": string_paths}
+
+
+def reevaluate_existing_bioasq_labels(
+    run_dir: str | Path,
+    *,
+    output_dir: str | Path | None = None,
+    relative_risk_fraction: float = DEFAULT_RELATIVE_RISK_FRACTION,
+    bootstrap_samples: int = DEFAULT_BOOTSTRAP_SAMPLES,
+    bootstrap_seed: int = DEFAULT_BOOTSTRAP_SEED,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    """Rebuild UQ labels/statistics from saved quality rows without loading NLI.
+
+    Generation-level lexical, citation, and NLI values are immutable inputs to
+    this operation. It only changes the question-level low-quality label and
+    downstream UQ summaries.
+    """
+
+    run_path = Path(run_dir)
+    output_path = Path(output_dir) if output_dir else run_path / "bioasq_eval"
+    paths = {
+        "generation_quality": output_path / "bioasq_quality_generations.csv",
+        "example_quality": output_path / "bioasq_quality_examples.csv",
+        "se_eval_examples": output_path / "bioasq_se_eval_examples.csv",
+        "auroc": output_path / "bioasq_se_auroc.csv",
+        "auroc_sensitivity": output_path / "bioasq_se_auroc_sensitivity.csv",
+        "association": output_path / "bioasq_se_association.csv",
+        "rejection_curve": output_path / "bioasq_se_rejection_curve.csv",
+        "summary": output_path / "bioasq_eval_summary.json",
+        "report": output_path / "bioasq_eval_report.md",
+    }
+    with paths["generation_quality"].open("r", encoding="utf-8", newline="") as infile:
+        generation_rows = list(csv.DictReader(infile))
+    with paths["example_quality"].open("r", encoding="utf-8", newline="") as infile:
+        example_rows = list(csv.DictReader(infile))
+    if not example_rows:
+        raise ValueError(f"Saved example-quality rows are empty: {paths['example_quality']}")
+    for row in example_rows:
+        if not row.get("is_below_fixed_quality_threshold"):
+            threshold = finite_float(row.get("quality_threshold"))
+            score = finite_float(row.get("quality_score"))
+            row["is_below_fixed_quality_threshold"] = fmt(
+                score is not None and threshold is not None and score < threshold
+            )
+    _assign_relative_quality_risk(example_rows, relative_risk_fraction=relative_risk_fraction)
+
+    with (run_path / "se_scores.csv").open("r", encoding="utf-8", newline="") as infile:
+        score_rows = list(csv.DictReader(infile))
+    generation_uq_path = run_path / "generation_uq.csv"
+    if generation_uq_path.exists():
+        with generation_uq_path.open("r", encoding="utf-8", newline="") as infile:
+            generation_uq_rows = list(csv.DictReader(infile))
+    else:
+        generation_uq_rows = []
+    self_report_path = run_path / "uq_baselines" / "self_report_examples.csv"
+    if self_report_path.exists():
+        with self_report_path.open("r", encoding="utf-8", newline="") as infile:
+            self_report_rows = list(csv.DictReader(infile))
+    else:
+        self_report_rows = []
+    se_rows = _merge_se_rows(example_rows, score_rows, generation_uq_rows, self_report_rows)
+    auroc_rows = _build_auroc_rows(se_rows)
+    sensitivity_rows = _build_auroc_sensitivity_rows(
+        se_rows, bootstrap_samples=bootstrap_samples, bootstrap_seed=bootstrap_seed
+    )
+    association_rows = _build_association_rows(
+        se_rows, bootstrap_samples=bootstrap_samples, bootstrap_seed=bootstrap_seed
+    )
+    rejection_rows = _build_rejection_rows(se_rows)
+    summary = _summary(
+        generation_rows,
+        example_rows,
+        auroc_rows,
+        sensitivity_rows,
+        association_rows,
+        relative_risk_fraction=relative_risk_fraction,
+        bootstrap_samples=bootstrap_samples,
+    )
     write_csv(example_rows, paths["example_quality"], EXAMPLE_QUALITY_FIELDS, overwrite=overwrite)
     write_csv(se_rows, paths["se_eval_examples"], SE_EVAL_FIELDS, overwrite=overwrite)
     write_csv(auroc_rows, paths["auroc"], AUROC_FIELDS, overwrite=overwrite)

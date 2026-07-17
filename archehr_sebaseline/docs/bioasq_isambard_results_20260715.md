@@ -1,6 +1,6 @@
 # BioASQ Isambard Baseline and Replication Results
 
-Last updated: 2026-07-16
+Last updated: 2026-07-17
 
 ## Scope
 
@@ -79,12 +79,35 @@ was 0.1968 (seed 31) and 0.1864 (seed 47), with fixed-threshold low-quality
 rates of 0.56 and 0.60. These scores include ideal-answer NLI coverage and are
 not numerically interchangeable with the reference-only table above.
 
-Jobs 5684358 (seed 31) and 5684360 (seed 47) were then submitted for a matched
+Jobs 5684358 (seed 31) and 5684360 (seed 47) then completed a matched
 direct-answer ablation: the model receives the BioASQ question but no snippets,
 while temperature, top-p, seeds, model, data order, sample count, output cap,
 NLI clustering, and self-report UQ remain unchanged. Since citations cannot be
 produced without supplied snippets, that condition will be assessed by the
 ROUGE + ideal-answer-NLI two-axis fallback rather than by document overlap.
+
+### Main-answer correction and Claude outcome
+
+The completed runs were initially missing the separate low-temperature model
+answer required by the Semantic Entropy reference protocol. Their 10 samples
+per question were generated at `T=1.0` for UQ, but an accuracy target must be a
+separate `T=0.1` answer. This distinction matters: `sample_id=0` from the
+high-temperature set is not the paper-protocol main answer.
+
+Jobs 5692776/5692777 (evidence) and 5692779/5692780 (direct) were submitted on
+2026-07-17 to add 100 `T=0.1`, `top_p=0.9`, `top_k=50` answers to each run.
+They do not regenerate samples, NLI clusters, self-report UQ, or deterministic
+metrics. Once downloaded, these 400 answers will be judged locally with Claude
+Sonnet 5 at low effort. It returns `good`, `partial`, or `poor`; only `poor` is
+positive for the final UQ AUROC and AURAC.
+
+Before that correction, a local Claude batch labelled all 4,000 existing
+high-temperature samples for an exploratory comparison (about US$2.60). It
+found 4/997 and 9/998 `poor` labels in the evidence conditions, versus 271/993
+and 253/993 in the direct conditions (seeds 31/47 respectively). These labels
+support the expected condition-level contrast, but they are deliberately not
+reported as primary UQ metrics because they do not evaluate the low-temperature
+main answer.
 
 ## Runtime
 
@@ -95,6 +118,8 @@ ROUGE + ideal-answer-NLI two-axis fallback rather than by document overlap.
 | 5660346 | seed-47 matched repeat | completed, exit 0 | 03:18:31 |
 | 5679663 | seed-31 temperature-1.0 repeat | completed, exit 0 | 02:36:46 |
 | 5679664 | seed-47 temperature-1.0 repeat | completed, exit 0 | 02:28:21 |
+| 5684358 | seed-31 direct-answer ablation | completed, exit 0 | 01:59:42 |
+| 5684360 | seed-47 direct-answer ablation | completed, exit 0 | 01:59:20 |
 
 The two matched 100x10 runs average about 03:31:12. Plan approximately 04:20
 for the same cached configuration, excluding queue time, while retaining the

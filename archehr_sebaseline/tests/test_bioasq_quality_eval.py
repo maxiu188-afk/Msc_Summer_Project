@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -86,7 +87,7 @@ class BioASQQualityEvalTests(unittest.TestCase):
         self.assertAlmostEqual(scored["quality_score"], 1.0)
         self.assertEqual(scored["quality_metric"], "mean_rouge2_su4_f1")
 
-    def test_relative_quality_risk_keeps_cutoff_ties_together(self) -> None:
+    def test_relative_quality_risk_uses_stable_tie_breaks_to_keep_exact_fraction(self) -> None:
         examples = [
             {"id": example_id, "bioasq_type": "yesno", "exact_answers": [expected]}
             for example_id, expected in (("a", "yes"), ("b", "yes"), ("c", "yes"), ("d", "no"))
@@ -97,7 +98,11 @@ class BioASQQualityEvalTests(unittest.TestCase):
         ]
         _, rows = build_quality_rows(examples, generations, relative_risk_fraction=0.25)
         risky_ids = {row["example_id"] for row in rows if row["is_bottom_quantile_quality"] == "true"}
-        self.assertEqual(risky_ids, {"a", "b", "c"})
+        self.assertEqual(risky_ids, {"a"})
+        self.assertEqual(
+            {row["example_id"] for row in rows if row["is_low_quality"] == "true"},
+            risky_ids,
+        )
 
     def test_grounded_mode_penalizes_contradicted_claims(self) -> None:
         class ControlledScorer:
@@ -188,7 +193,11 @@ class BioASQQualityEvalTests(unittest.TestCase):
         self.assertAlmostEqual(direct["quality_score"], 1.0)
 
     def test_evaluator_writes_summary_and_se_artifacts(self) -> None:
-        root = Path(__file__).resolve().parents[1] / "outputs" / "test_bioasq_eval"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "test_bioasq_eval"
+            self._assert_evaluator_artifacts(root)
+
+    def _assert_evaluator_artifacts(self, root: Path) -> None:
         run_dir = root / "run"
         eval_dir = root / "eval"
         examples = [

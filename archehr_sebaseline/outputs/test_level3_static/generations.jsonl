@@ -1,6 +1,0 @@
-{"dataset": "fake_archehr", "example_id": "fake_001", "generation_level": "level3", "model_name": "static-test", "raw_answer": "same answer", "sample_id": 0, "split": "dev"}
-{"dataset": "fake_archehr", "example_id": "fake_001", "generation_level": "level3", "model_name": "static-test", "raw_answer": "same answer", "sample_id": 1, "split": "dev"}
-{"dataset": "fake_archehr", "example_id": "fake_001", "generation_level": "level3", "model_name": "static-test", "raw_answer": "different answer", "sample_id": 2, "split": "dev"}
-{"dataset": "fake_archehr", "example_id": "fake_002", "generation_level": "level3", "model_name": "static-test", "raw_answer": "same answer", "sample_id": 0, "split": "dev"}
-{"dataset": "fake_archehr", "example_id": "fake_002", "generation_level": "level3", "model_name": "static-test", "raw_answer": "same answer", "sample_id": 1, "split": "dev"}
-{"dataset": "fake_archehr", "example_id": "fake_002", "generation_level": "level3", "model_name": "static-test", "raw_answer": "different answer", "sample_id": 2, "split": "dev"}

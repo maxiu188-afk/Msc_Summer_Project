@@ -94,6 +94,33 @@ These jobs are currently pending result collection. Treat them as a controlled
 UQ sensitivity check, not evidence of improvement until both seeds pass the
 health check and are evaluated with the same citation-aware target.
 
+## Add paper-protocol low-temperature main answers
+
+Semantic Entropy uses a separate low-temperature answer as the accuracy target:
+the 100x10 `T=1.0`, `top_p=0.9`, `top_k=50` samples remain exclusively for SE
+and other UQ scores. For an existing run, add exactly one `T=0.1` answer per
+saved prompt without regenerating or re-evaluating its samples:
+
+```bash
+cd "$SCRATCHDIR/final_project/archehr_sebaseline"
+
+for SPEC in \
+  'bioasq_summary_gemma3_12b_100x10_temp1p0_seed31 31 best-evid-s31' \
+  'bioasq_summary_gemma3_12b_100x10_temp1p0_seed47 47 best-evid-s47' \
+  'bioasq_summary_gemma3_12b_100x10_temp1p0_direct_seed31 31 best-direct-s31' \
+  'bioasq_summary_gemma3_12b_100x10_temp1p0_direct_seed47 47 best-direct-s47'; do
+  set -- $SPEC
+  PROJECT_DIR="$PWD" RUN_DIR="$PWD/outputs/$1" SEED="$2" \
+  TEMPERATURE=0.1 TOP_P=0.9 TOP_K=50 MAX_NEW_TOKENS=192 \
+  sbatch --job-name="$3" scripts/run_bioasq_best_isambard.sbatch
+done
+```
+
+The 2026-07-17 submissions are jobs 5692776, 5692777, 5692779, and 5692780.
+Each writes `best_generations.jsonl` and `best_generation_timing.txt` in its
+existing result directory. Download those files before the local Claude stage;
+do not submit Claude as an Isambard job.
+
 ## Monitor and inspect a job
 
 Replace `<JOBID>` with the ID returned by `sbatch`.

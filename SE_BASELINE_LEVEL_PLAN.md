@@ -1,6 +1,6 @@
 ﻿# ArchEHR-QA Semantic Entropy Baseline Plan
 
-Last updated: 2026-07-16
+Last updated: 2026-07-17
 
 ## Current Decision
 
@@ -23,8 +23,12 @@ Two matched Isambard training-summary runs are now complete: jobs 5654721
 Answer quality is strongly replicated (paired rho 0.993; 29/30 low-quality
 examples shared), but discrete-SE AUROC falls from 0.687 to 0.609 and the repeat
 bootstrap interval includes 0.5. Job 5660345 also completed a fixed 30-question
-Qwen judge; it was too lenient to create any low-quality labels. See
-`archehr_sebaseline/docs/bioasq_isambard_results_20260715.md`.
+Qwen judge; it was too lenient to create any low-quality labels. The no-evidence
+temperature-1.0 pair then completed (jobs 5684358/5684360), and the Semantic
+Entropy generation protocol was corrected: the ten `T=1.0` samples are only for
+UQ, while a separate `T=0.1` main answer is evaluated. Four small backfill jobs
+(5692776/5692777 with evidence; 5692779/5692780 direct) are queued to create
+that main answer. See `archehr_sebaseline/docs/bioasq_isambard_results_20260715.md`.
 
 ## Active Temperature-Sensitivity Repeat (2026-07-16)
 
@@ -206,13 +210,15 @@ After the replacement dataset and its baseline evaluation are stable:
 
 ## Current Next Step
 
-The historical baseline and its matched seed repeat are complete. First wait
-for the submitted temperature-1.0 seed-31/seed-47 runs, verify their health
-checks and runtime records, and compare their UQ rankings against the matched
-temperature-0.8 runs with the citation-aware quality analysis. Then calibrate
-the revised quality target on manual review and diagnose whether any apparent
-UQ movement is stable across seeds. A larger API-judge experiment remains
-deferred while this conventional evaluation target is being calibrated.
+The historical baseline, the matched temperature repeat, and the no-evidence
+ablation are complete. Wait for the four `T=0.1` main-answer backfill jobs,
+retrieve `best_generations.jsonl`, and use the local Claude Sonnet 5
+three-class comparison with low effort and a short response cap. Compute UQ
+AUROC/AURAC only against `poor`; do not replace this target with the earlier
+fixed threshold, the bottom-30% deterministic proxy, or labels on the
+high-temperature samples. Then report both seeds and both evidence conditions,
+including uncertainty intervals and rejection curves, before deciding whether
+SEP supervision is justified.
 
 ## BioASQ Batch Update (2026-07-13)
 

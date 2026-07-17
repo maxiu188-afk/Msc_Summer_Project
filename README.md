@@ -11,9 +11,9 @@ ArchEHR-QA final evaluation/training target: paused because no usable gold label
 BioASQ Task B: baseline complete; two matched Isambard summary 100x10 runs passed
 Current compute host: Isambard (Runpod was a completed temporary recovery path)
 Main result: historical lexical-quality scores replicate strongly, but SE AUROC is modest and seed-sensitive
-Active run: no-evidence direct-answer temperature-1.0 paired repeat submitted; evidence-conditioned NLI evaluation complete
-Next work: retrieve the direct-answer pair, compare it with the evidence-conditioned result, then calibrate the final target against manual review
-Deferred work: larger closed-model judge study and SEP supervision
+Active run: four low-temperature main-answer jobs are queued on Isambard for the completed evidence/no-evidence temperature-1.0 pair
+Next work: retrieve the four main-answer files, label only those answers locally with Claude, then compute AUROC/AURAC against `poor`
+Deferred work: SEP supervision; the historical high-temperature Claude batch is retained only as an auxiliary analysis
 ```
 
 ArchEHR-QA remains useful for testing grounded long-form generation, citation
@@ -38,7 +38,9 @@ reference-answer coverage, document-level overlap between answer citations and
 BioASQ's standard documents, and a three-class NLI ideal-answer coverage score
 (good/partial/poor = 1.0/0.5/0.0). New runs combine the available axes with a
 geometric mean. Its fixed low-quality threshold must be calibrated against the
-manually reviewed set rather than treated as a pass mark.
+manually reviewed set rather than treated as a pass mark. The deterministic
+evaluator uses the lowest 30% of quality scores within each BioASQ question
+type as a diagnostic comparator; the fixed threshold remains diagnostic only.
 
 On 2026-07-16, the paired temperature-sensitivity repeat at `temperature=1.0`
 and `top_p=0.9` completed for both seeds (jobs 5679663 and 5679664). Both
@@ -48,9 +50,19 @@ quality versus temperature 0.8, while within-question semantic variation rose
 slightly. The final three-axis NLI re-evaluation completed in 01:31 and 01:26
 for seeds 31 and 47, giving mean three-axis scores of 0.1968 and 0.1864. A
 matched no-evidence direct-answer ablation (jobs 5684358 and 5684360) is now
-submitted with the same temperature, seeds, and generation settings. Do not
-compare the direct-answer condition on the citation axis: its final target uses
-the valid ROUGE + ideal-answer-NLI two-axis fallback.
+complete (both exit 0; 01:59:42 and 01:59:20). Do not compare the direct-answer
+condition on the citation axis: its deterministic fallback uses ROUGE plus
+ideal-answer NLI only.
+
+The generation protocol was corrected on 2026-07-17 to follow the Semantic
+Entropy reference implementation: ten high-temperature samples (`T=1.0`,
+`top_p=0.9`, `top_k=50`) are used only for SE and other UQ scores, while one
+separate low-temperature answer (`T=0.1`) is the accuracy target. Jobs 5692776,
+5692777, 5692779, and 5692780 are adding that missing main-answer file to the
+four completed temperature-1.0 runs without regenerating their samples. Claude
+Sonnet 5 is deliberately local-only post-processing; its three labels are
+`good`, `partial`, and `poor`, and only `poor` defines the final binary label.
+See `archehr_sebaseline/docs/semantic_entropy_generation_protocol.md`.
 Simpson's recommendation to continue exploring candidate datasets is retained
 as a parallel validation activity, not as a reversal of the BioASQ direction.
 See `archehr_sebaseline/docs/bioasq_isambard_results_20260715.md` for the latest

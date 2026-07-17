@@ -29,6 +29,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max_new_tokens", type=int, default=128)
     parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--top_p", type=float, default=0.9)
+    parser.add_argument("--top_k", type=int, default=50)
+    parser.add_argument("--best_generation_temperature", type=float, default=0.1)
+    parser.add_argument("--best_generation_top_p", type=float, default=None)
+    parser.add_argument("--best_generation_top_k", type=int, default=None)
     parser.add_argument("--seed", type=int, default=31)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--torch_dtype", default=None)
@@ -74,6 +78,7 @@ def main() -> int:
         max_new_tokens=args.max_new_tokens,
         temperature=args.temperature,
         top_p=args.top_p,
+        top_k=args.top_k,
         seed=args.seed,
         device=args.device,
         max_input_tokens=args.max_input_tokens,
@@ -105,6 +110,9 @@ def main() -> int:
             nli_config=nli_config,
             show_progress=args.show_progress,
             include_evidence=not args.without_evidence,
+            best_generation_temperature=args.best_generation_temperature,
+            best_generation_top_p=args.best_generation_top_p,
+            best_generation_top_k=args.best_generation_top_k,
         )
     except MissingGenerationDependency as exc:
         print(str(exc), file=sys.stderr)

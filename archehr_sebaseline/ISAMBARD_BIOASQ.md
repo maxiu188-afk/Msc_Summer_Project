@@ -194,9 +194,10 @@ done
 ```
 
 The refreshed `bioasq_eval/` directories are now available locally. Compare
-all four evidence-conditioned runs using the same three-axis target, then
-calibrate its fixed threshold against manual review before interpreting AUROC
-changes.
+all four evidence-conditioned runs using the same three-axis target. The
+deterministic comparison label is the lowest 30% of quality scores within each
+question type; the fixed threshold remains a diagnostic. The final UQ outcome
+will instead use the low-temperature Claude `poor` label described below.
 
 ## Direct-answer ablation without snippets
 
@@ -228,3 +229,35 @@ done
 Do not resubmit these exact completed jobs merely to reproduce their downloaded
 results. Use the commands as provenance or when an additional explicitly
 planned seed is required.
+
+## Low-temperature main answers for Semantic Entropy evaluation
+
+The original Semantic Entropy protocol separates the stochastic answers used to
+compute uncertainty from the single answer whose quality is evaluated. For a
+new run, `run_level4.py` now records both: ten `T=1.0`, `top_p=0.9`, `top_k=50`
+samples for UQ and one `T=0.1` main answer. The earlier temperature-1.0 runs
+pre-date this correction, so add their main answers with the small standalone
+job below rather than rerunning their 100x10 workload:
+
+```bash
+cd "$SCRATCHDIR/final_project/archehr_sebaseline"
+
+for SPEC in \
+  'bioasq_summary_gemma3_12b_100x10_temp1p0_seed31 31 best-evid-s31' \
+  'bioasq_summary_gemma3_12b_100x10_temp1p0_seed47 47 best-evid-s47' \
+  'bioasq_summary_gemma3_12b_100x10_temp1p0_direct_seed31 31 best-direct-s31' \
+  'bioasq_summary_gemma3_12b_100x10_temp1p0_direct_seed47 47 best-direct-s47'; do
+  set -- $SPEC
+  PROJECT_DIR="$PWD" RUN_DIR="$PWD/outputs/$1" SEED="$2" \
+  TEMPERATURE=0.1 TOP_P=0.9 TOP_K=50 MAX_NEW_TOKENS=192 \
+  sbatch --job-name="$3" scripts/run_bioasq_best_isambard.sbatch
+done
+```
+
+The four 2026-07-17 submissions are 5692776/5692777 (evidence, seeds 31/47)
+and 5692779/5692780 (direct answers, seeds 31/47). They produce only
+`best_generations.jsonl` and `best_generation_timing.txt`; existing samples,
+NLI clusters, UQ scores, and quality files remain immutable. Retrieve these
+files, then run the Claude Sonnet 5 three-class comparison locally. Its `poor`
+label, not a fixed deterministic score threshold and not a label on one of the
+high-temperature samples, is the primary binary outcome for UQ AUROC/AURAC.

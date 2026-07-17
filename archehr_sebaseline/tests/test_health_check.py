@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -33,39 +34,41 @@ class FakeEntailmentScorer:
 
 class HealthCheckTests(unittest.TestCase):
     def test_level4_static_output_passes_health_check(self) -> None:
-        output_dir = Path(__file__).resolve().parents[1] / "outputs" / "test_level4_health"
-        run_level4(
-            dataset="fake",
-            output_dir=output_dir,
-            config=GenerationConfig(model_name="static-test", num_samples=3),
-            limit_examples=2,
-            generator=StaticGenerator(["same answer", "same answer", "different answer"]),
-            clustering_method="nli",
-            nli_config=NLIConfig(model_name="fake-nli"),
-            nli_scorer=FakeEntailmentScorer(),
-            overwrite=True,
-        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir) / "test_level4_health"
+            run_level4(
+                dataset="fake",
+                output_dir=output_dir,
+                config=GenerationConfig(model_name="static-test", num_samples=3),
+                limit_examples=2,
+                generator=StaticGenerator(["same answer", "same answer", "different answer"]),
+                clustering_method="nli",
+                nli_config=NLIConfig(model_name="fake-nli"),
+                nli_scorer=FakeEntailmentScorer(),
+                overwrite=True,
+            )
 
-        result = check_level4_output_dir(
-            output_dir,
-            expected_examples=2,
-            expected_num_samples=3,
-            expected_generations=6,
-            require_nli=True,
-            require_token_scores=True,
-        )
+            result = check_level4_output_dir(
+                output_dir,
+                expected_examples=2,
+                expected_num_samples=3,
+                expected_generations=6,
+                require_nli=True,
+                require_token_scores=True,
+            )
 
-        self.assertTrue(result.passed, result.format_report())
-        self.assertEqual(result.counts["generations.jsonl"], 6)
+            self.assertTrue(result.passed, result.format_report())
+            self.assertEqual(result.counts["generations.jsonl"], 6)
 
     def test_missing_output_file_fails_health_check(self) -> None:
-        output_dir = Path(__file__).resolve().parents[1] / "outputs" / "missing_level4_health"
-        output_dir.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir) / "missing_level4_health"
+            output_dir.mkdir()
 
-        result = check_level4_output_dir(output_dir)
+            result = check_level4_output_dir(output_dir)
 
-        self.assertFalse(result.passed)
-        self.assertIn("missing required files", result.failures[0])
+            self.assertFalse(result.passed)
+            self.assertIn("missing required files", result.failures[0])
 
 
 if __name__ == "__main__":
