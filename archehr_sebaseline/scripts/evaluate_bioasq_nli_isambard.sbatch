@@ -25,6 +25,7 @@ REFERENCE_NLI_MODEL="${REFERENCE_NLI_MODEL:-microsoft/deberta-v2-xlarge-mnli}"
 REFERENCE_NLI_LOCAL_FILES_ONLY="${REFERENCE_NLI_LOCAL_FILES_ONLY:-1}"
 REFERENCE_NLI_MAX_INPUT_TOKENS="${REFERENCE_NLI_MAX_INPUT_TOKENS:-512}"
 BOOTSTRAP_SAMPLES="${BOOTSTRAP_SAMPLES:-1000}"
+RELATIVE_RISK_FRACTION="${RELATIVE_RISK_FRACTION:-0.30}"
 TIMING_PATH="${TIMING_PATH:-${OUTPUT_DIR}/reference_nli_timing.txt}"
 
 module load cray-python || true
@@ -105,6 +106,7 @@ ARGS=(
   --reference_nli_model "${REFERENCE_NLI_MODEL}"
   --reference_nli_device cuda
   --reference_nli_max_input_tokens "${REFERENCE_NLI_MAX_INPUT_TOKENS}"
+  --relative_risk_fraction "${RELATIVE_RISK_FRACTION}"
   --bootstrap_samples "${BOOTSTRAP_SAMPLES}"
   --overwrite
 )

@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -42,7 +43,11 @@ class PubMedQALabelEvalTests(unittest.TestCase):
         self.assertIsNone(auroc([1, 1], [0.2, 0.3]))
 
     def test_evaluate_level4_pubmedqa_labels_writes_artifacts(self) -> None:
-        output_dir = Path(__file__).resolve().parents[1] / "outputs" / "test_pubmedqa_eval"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir) / "test_pubmedqa_eval"
+            self._assert_evaluation_artifacts(output_dir)
+
+    def _assert_evaluation_artifacts(self, output_dir: Path) -> None:
         examples = [
             {
                 "id": "ex1",

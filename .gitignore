@@ -3,6 +3,7 @@ __pycache__/
 *$py.class
 
 .venv/
+.venv_api/
 venv/
 env/
 .env
@@ -40,3 +41,6 @@ server_results/*
 tmp/
 soffice_convert_*/
 soffice_profile_*/
+
+# Local reference copies; extracted notes live under archehr_sebaseline/docs/.
+Detecting hallucinations in large language models using semantic entropy.pdf

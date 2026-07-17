@@ -72,6 +72,8 @@ MAX_NEW_TOKENS="${MAX_NEW_TOKENS:-192}"
 MAX_INPUT_TOKENS="${MAX_INPUT_TOKENS:-4096}"
 TEMPERATURE="${TEMPERATURE:-0.8}"
 TOP_P="${TOP_P:-0.9}"
+TOP_K="${TOP_K:-50}"
+BEST_GENERATION_TEMPERATURE="${BEST_GENERATION_TEMPERATURE:-0.1}"
 TORCH_DTYPE="${TORCH_DTYPE:-bfloat16}"
 NLI_MODEL_NAME="${NLI_MODEL_NAME:-microsoft/deberta-v2-xlarge-mnli}"
 LOCAL_FILES_ONLY="${LOCAL_FILES_ONLY:-0}"
@@ -83,6 +85,7 @@ REFERENCE_NLI_MODEL="${REFERENCE_NLI_MODEL:-${NLI_MODEL_NAME}}"
 REFERENCE_NLI_DEVICE="${REFERENCE_NLI_DEVICE:-cuda}"
 REFERENCE_NLI_LOCAL_FILES_ONLY="${REFERENCE_NLI_LOCAL_FILES_ONLY:-${NLI_LOCAL_FILES_ONLY}}"
 INCLUDE_EVIDENCE="${INCLUDE_EVIDENCE:-1}"
+RELATIVE_RISK_FRACTION="${RELATIVE_RISK_FRACTION:-0.30}"
 
 RUN_STARTED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 RUN_STARTED_EPOCH="$(date +%s)"
@@ -125,7 +128,10 @@ record_run_timing() {
     "max_new_tokens: ${MAX_NEW_TOKENS}" \
     "temperature: ${TEMPERATURE}" \
     "top_p: ${TOP_P}" \
+    "top_k: ${TOP_K}" \
+    "best_generation_temperature: ${BEST_GENERATION_TEMPERATURE}" \
     "include_evidence: ${INCLUDE_EVIDENCE}" \
+    "relative_risk_fraction: ${RELATIVE_RISK_FRACTION}" \
     "seed: ${SEED}" \
     "clustering_method: nli" \
     "run_self_report_uq: ${RUN_SELF_REPORT_UQ}" \
@@ -156,7 +162,10 @@ elif [[ "${INCLUDE_EVIDENCE}" != "1" ]]; then
   echo "INCLUDE_EVIDENCE must be 0 or 1, got: ${INCLUDE_EVIDENCE}" >&2
   exit 2
 fi
-QUALITY_ARGS=(--quality_mode "${QUALITY_MODE}")
+QUALITY_ARGS=(
+  --quality_mode "${QUALITY_MODE}"
+  --relative_risk_fraction "${RELATIVE_RISK_FRACTION}"
+)
 if [[ "${QUALITY_MODE}" == "three_axis" ]]; then
   QUALITY_ARGS+=(
     --reference_nli_model "${REFERENCE_NLI_MODEL}"
@@ -180,6 +189,8 @@ python scripts/run_level4.py \
   --max_input_tokens "${MAX_INPUT_TOKENS}" \
   --temperature "${TEMPERATURE}" \
   --top_p "${TOP_P}" \
+  --top_k "${TOP_K}" \
+  --best_generation_temperature "${BEST_GENERATION_TEMPERATURE}" \
   "${PROMPT_EVIDENCE_ARGS[@]}" \
   --seed "${SEED}" \
   --device cuda \

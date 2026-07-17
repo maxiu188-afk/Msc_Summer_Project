@@ -50,6 +50,34 @@ class GenerationLevel1Tests(unittest.TestCase):
         self.assertEqual(records[0]["normalized_nll"], 0.5)
         self.assertEqual(records[0]["mean_token_entropy"], 0.25)
 
+    def test_generation_overrides_reach_scored_generator_without_retaining_scores(self) -> None:
+        class RecordingGenerator:
+            def __init__(self) -> None:
+                self.calls: list[dict[str, object]] = []
+
+            def generate(self, prompt: str, *, sample_index: int = 0) -> str:
+                raise AssertionError("Override generation should use generate_with_scores.")
+
+            def generate_with_scores(self, prompt: str, **kwargs: object) -> dict[str, object]:
+                self.calls.append(kwargs)
+                return {"raw_answer": "best answer", "sequence_nll": 99.0}
+
+        generator = RecordingGenerator()
+        records = generate_answer_records(
+            [{"example_id": "ex1", "prompt": "Prompt 1"}],
+            generator,
+            num_samples=1,
+            model_name="test-model",
+            temperature=0.1,
+            top_p=0.9,
+            top_k=50,
+        )
+        self.assertEqual(generator.calls[0]["temperature"], 0.1)
+        self.assertEqual(generator.calls[0]["top_p"], 0.9)
+        self.assertEqual(generator.calls[0]["top_k"], 50)
+        self.assertEqual(records[0]["raw_answer"], "best answer")
+        self.assertNotIn("sequence_nll", records[0])
+
 
 if __name__ == "__main__":
     unittest.main()

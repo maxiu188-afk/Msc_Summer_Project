@@ -66,6 +66,7 @@ def _output_paths(output_dir: str | Path) -> dict[str, Path]:
         "prompts": output_path / "prompts.jsonl",
         "generations": output_path / "generations.jsonl",
         "cleaned_generations": output_path / "cleaned_generations.jsonl",
+        "best_generations": output_path / "best_generations.jsonl",
         "clusters": output_path / "clusters.jsonl",
         "scores": output_path / "se_scores.csv",
         "generation_uq": output_path / "generation_uq.csv",
@@ -218,6 +219,9 @@ def run_level4(
     nli_scorer: EntailmentScorer | None = None,
     show_progress: bool = False,
     include_evidence: bool = True,
+    best_generation_temperature: float = 0.1,
+    best_generation_top_p: float | None = None,
+    best_generation_top_k: int | None = None,
 ) -> dict[str, Any]:
     """Run a Level 4 pilot with token-level baseline uncertainty outputs."""
 
@@ -236,6 +240,8 @@ def run_level4(
     if not include_evidence:
         examples = [{**example, "prompt_evidence_mode": "none"} for example in examples]
     prompt_records = build_prompt_records(examples, include_evidence=include_evidence)
+    if best_generation_temperature <= 0:
+        raise ValueError("best_generation_temperature must be positive.")
 
     if generator is None:
         try:
@@ -269,6 +275,21 @@ def run_level4(
                 f"example={example_id} sample={sample_id + 1}/{config.num_samples}",
             )
 
+    # The low-temperature answer is the accuracy target.  High-temperature
+    # samples below remain exclusively for semantic-uncertainty estimation.
+    best_raw_generations = generate_answer_records(
+        prompt_records,
+        generator,
+        num_samples=1,
+        model_name=config.model_name,
+        generation_level="best_generation",
+        include_token_scores=False,
+        temperature=best_generation_temperature,
+        top_p=config.top_p if best_generation_top_p is None else best_generation_top_p,
+        top_k=config.top_k if best_generation_top_k is None else best_generation_top_k,
+    )
+    best_generations = clean_generation_records(best_raw_generations)
+
     generations = generate_answer_records(
         prompt_records,
         generator,
@@ -276,6 +297,9 @@ def run_level4(
         model_name=config.model_name,
         generation_level="level4",
         include_token_scores=True,
+        temperature=config.temperature,
+        top_p=config.top_p,
+        top_k=config.top_k,
         progress_callback=generation_progress_callback,
     )
     cleaned_generations = clean_generation_records(generations)
@@ -325,11 +349,14 @@ def run_level4(
         cluster_records=cluster_records,
         num_samples=config.num_samples,
     )
+    if len(best_generations) != len(examples):
+        raise RuntimeError("Best-generation count does not match example count.")
 
     write_jsonl(examples, paths["examples"], overwrite=overwrite)
     write_jsonl(prompt_records, paths["prompts"], overwrite=overwrite)
     write_jsonl(generations, paths["generations"], overwrite=overwrite)
     write_jsonl(cleaned_generations, paths["cleaned_generations"], overwrite=overwrite)
+    write_jsonl(best_generations, paths["best_generations"], overwrite=overwrite)
     write_jsonl(cluster_records, paths["clusters"], overwrite=overwrite)
     write_csv(score_rows, paths["scores"], LEVEL4_SCORE_FIELDS, overwrite=overwrite)
     write_csv(generation_uq, paths["generation_uq"], GENERATION_UQ_FIELDS, overwrite=overwrite)
@@ -342,9 +369,16 @@ def run_level4(
         "data_path": str(data_path) if data_path is not None else "",
         "num_examples": len(examples),
         "num_generations": len(generations),
+        "num_best_generations": len(best_generations),
         "output_dir": str(output_dir),
         "model_name": config.model_name,
         "num_samples": config.num_samples,
+        "temperature": config.temperature,
+        "top_p": config.top_p,
+        "top_k": config.top_k,
+        "best_generation_temperature": best_generation_temperature,
+        "best_generation_top_p": config.top_p if best_generation_top_p is None else best_generation_top_p,
+        "best_generation_top_k": config.top_k if best_generation_top_k is None else best_generation_top_k,
         "device": config.device,
         "torch_dtype": config.torch_dtype or "",
         "local_files_only": config.local_files_only,
@@ -375,8 +409,13 @@ def format_summary(result: dict[str, Any]) -> str:
         f"data_path: {result['data_path']}",
         f"examples: {result['num_examples']}",
         f"generations: {result['num_generations']}",
+        f"best_generations: {result['num_best_generations']}",
         f"model_name: {result['model_name']}",
         f"num_samples: {result['num_samples']}",
+        f"sampling_temperature: {result['temperature']}",
+        f"sampling_top_p: {result['top_p']}",
+        f"sampling_top_k: {result['top_k']}",
+        f"best_generation_temperature: {result['best_generation_temperature']}",
         f"device: {result['device']}",
         f"torch_dtype: {result['torch_dtype']}",
         f"local_files_only: {result['local_files_only']}",

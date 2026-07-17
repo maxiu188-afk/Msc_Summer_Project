@@ -1,6 +1,6 @@
 # Dataset Pivot Status
 
-Last updated: 2026-07-15
+Last updated: 2026-07-17
 
 ## Decision
 
@@ -236,8 +236,17 @@ question/context/reference answer/evidence labels/factuality or correctness labe
 
 ## Current Next Step
 
-The matched BioASQ seed validation is complete. Before SEP, verify the current
-summary metric with a standard/official implementation and diagnose the weak,
+The matched BioASQ validation and no-evidence ablation are complete. The
+high-temperature samples have now been separated explicitly from the
+low-temperature main answer, following the Semantic Entropy reference protocol.
+Four Isambard backfill jobs (5692776/5692777 evidence; 5692779/5692780 direct)
+are producing those main answers. After they finish, use the local Claude Sonnet
+5 three-class text comparison and calculate AUROC/AURAC using only `poor` as
+the positive outcome. The prior deterministic bottom-30% label and the Claude
+labels of high-temperature samples remain diagnostics, not the primary target.
+
+Before SEP, report this corrected outcome together with both seeds, uncertainty
+intervals, and rejection curves, and continue to diagnose the weak,
 seed-sensitive SE discrimination. In parallel, continue to explore replacement
 datasets and record, for each candidate:
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import redirect_stdout
 from io import StringIO
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -34,45 +35,49 @@ class FakeEntailmentScorer:
 
 class PipelineLevel4Tests(unittest.TestCase):
     def test_level4_static_generator_artifacts(self) -> None:
-        output_dir = Path(__file__).resolve().parents[1] / "outputs" / "test_level4_static"
-        result = run_level4(
-            dataset="fake",
-            output_dir=output_dir,
-            config=GenerationConfig(model_name="static-test", num_samples=3),
-            limit_examples=2,
-            generator=StaticGenerator(["same answer", "same answer", "different answer"]),
-            clustering_method="nli",
-            nli_config=NLIConfig(model_name="fake-nli"),
-            nli_scorer=FakeEntailmentScorer(),
-            overwrite=True,
-        )
-        self.assertEqual(result["level"], "level4")
-        self.assertEqual(result["dataset"], "fake")
-        self.assertEqual(result["num_examples"], 2)
-        self.assertEqual(result["num_generations"], 6)
-        self.assertTrue((output_dir / "examples.jsonl").exists())
-        self.assertTrue((output_dir / "generations.jsonl").exists())
-        self.assertTrue((output_dir / "generation_uq.csv").exists())
-        self.assertTrue((output_dir / "example_uq.csv").exists())
-        self.assertTrue((output_dir / "se_scores.csv").exists())
-        self.assertEqual(result["clustering_method"], "nli_bidirectional_entailment")
-
-    def test_level4_progress_reports_generation_and_nli(self) -> None:
-        output_dir = Path(__file__).resolve().parents[1] / "outputs" / "test_level4_progress"
-        captured = StringIO()
-        with redirect_stdout(captured):
-            run_level4(
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir) / "test_level4_static"
+            result = run_level4(
                 dataset="fake",
                 output_dir=output_dir,
-                config=GenerationConfig(model_name="static-test", num_samples=2),
-                limit_examples=1,
-                generator=StaticGenerator(["same answer", "different answer"]),
+                config=GenerationConfig(model_name="static-test", num_samples=3),
+                limit_examples=2,
+                generator=StaticGenerator(["same answer", "same answer", "different answer"]),
                 clustering_method="nli",
                 nli_config=NLIConfig(model_name="fake-nli"),
                 nli_scorer=FakeEntailmentScorer(),
-                show_progress=True,
                 overwrite=True,
             )
+            self.assertEqual(result["level"], "level4")
+            self.assertEqual(result["dataset"], "fake")
+            self.assertEqual(result["num_examples"], 2)
+            self.assertEqual(result["num_generations"], 6)
+            self.assertEqual(result["num_best_generations"], 2)
+            self.assertTrue((output_dir / "examples.jsonl").exists())
+            self.assertTrue((output_dir / "generations.jsonl").exists())
+            self.assertTrue((output_dir / "best_generations.jsonl").exists())
+            self.assertTrue((output_dir / "generation_uq.csv").exists())
+            self.assertTrue((output_dir / "example_uq.csv").exists())
+            self.assertTrue((output_dir / "se_scores.csv").exists())
+            self.assertEqual(result["clustering_method"], "nli_bidirectional_entailment")
+
+    def test_level4_progress_reports_generation_and_nli(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir) / "test_level4_progress"
+            captured = StringIO()
+            with redirect_stdout(captured):
+                run_level4(
+                    dataset="fake",
+                    output_dir=output_dir,
+                    config=GenerationConfig(model_name="static-test", num_samples=2),
+                    limit_examples=1,
+                    generator=StaticGenerator(["same answer", "different answer"]),
+                    clustering_method="nli",
+                    nli_config=NLIConfig(model_name="fake-nli"),
+                    nli_scorer=FakeEntailmentScorer(),
+                    show_progress=True,
+                    overwrite=True,
+                )
         progress_output = captured.getvalue()
         self.assertIn("[generation]", progress_output)
         self.assertIn("[nli]", progress_output)

@@ -18,10 +18,30 @@ Queueing time is excluded: elapsed time is measured from Slurm start to end.
 
 ## Submitted runs awaiting result collection
 
+### BioASQ low-temperature main-answer backfill
+
+```text
+submitted: 2026-07-17
+jobs: 5692776/5692777 (evidence, seeds 31/47); 5692779/5692780 (direct, seeds 31/47)
+purpose: add one paper-protocol accuracy-target answer to each completed 100x10 run
+model: google/gemma-3-12b-it
+temperature / top_p / top_k: 0.1 / 0.9 / 50
+examples / answers: 100 / 100 per job
+max new tokens: 192
+generation: reads each existing prompts.jsonl; does not rerun high-temperature samples, NLI, self-report UQ, or deterministic evaluation
+```
+
+Each job writes `best_generations.jsonl` and `best_generation_timing.txt`.
+After retrieval, Claude Sonnet 5 will label the 400 low-temperature main answers
+locally; no API call is submitted through Slurm.
+
+## Completed runs
+
 ### BioASQ training summary 100x10 - no-evidence direct-answer pair
 
 ```text
 submitted: 2026-07-16
+status: COMPLETED, exit 0:0; both Level 4 health checks PASS
 jobs: 5684358 (seed 31), 5684360 (seed 47)
 purpose: controlled evidence-ablation with direct biomedical answering
 model: google/gemma-3-12b-it
@@ -31,13 +51,16 @@ max new tokens: 192
 prompt evidence: omitted (`INCLUDE_EVIDENCE=0`, `bioasq_direct_v1`)
 clustering: microsoft/deberta-v2-xlarge-mnli, bidirectional entailment
 self-report UQ: enabled
+elapsed: 01:59:42 (seed 31) and 01:59:20 (seed 47), excluding queue time
+nodes: nid010486 (seed 31) and nid010568 (seed 47)
+driver/environment: 565.57.01 / cuda127-cu126, torch 2.6.0+cu126
 ```
 
 The evaluator retains ideal-answer metadata but treats the citation axis as not
-applicable, producing the ROUGE + ideal-answer-NLI two-axis fallback. Record
-job states, health checks, and timing after completion.
-
-## Completed runs
+applicable, producing the ROUGE + ideal-answer-NLI two-axis fallback. Its saved
+bottom-30%-within-type deterministic labels are historical diagnostics; the
+primary UQ outcome will use the separate low-temperature Claude label after the
+backfill jobs complete.
 
 ### Isambard jobs 5683932 and 5683933 - three-axis NLI re-evaluation
 

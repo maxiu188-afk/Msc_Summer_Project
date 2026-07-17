@@ -26,6 +26,7 @@ class GenerationConfig:
     max_new_tokens: int = 48
     temperature: float = 0.8
     top_p: float = 0.9
+    top_k: int = 50
     seed: int = 13
     device: str = "cpu"
     max_input_tokens: int = 512
@@ -42,6 +43,8 @@ class GenerationConfig:
             raise ValueError("temperature must be positive.")
         if not 0 < self.top_p <= 1:
             raise ValueError("top_p must be in (0, 1].")
+        if self.top_k <= 0:
+            raise ValueError("top_k must be positive.")
         if self.max_input_tokens <= 0:
             raise ValueError("max_input_tokens must be positive.")
 
@@ -193,7 +196,15 @@ class HuggingFaceCausalLMGenerator:
         false_weight = math.exp(false_logprob - maximum)
         return true_weight / (true_weight + false_weight)
 
-    def generate_with_scores(self, prompt: str, *, sample_index: int = 0) -> dict[str, Any]:
+    def generate_with_scores(
+        self,
+        prompt: str,
+        *,
+        sample_index: int = 0,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        top_k: int | None = None,
+    ) -> dict[str, Any]:
         self._set_seed(self.config.seed + sample_index)
         encoded = self._encode_prompt(prompt)
         input_length = encoded["input_ids"].shape[-1]
@@ -202,8 +213,9 @@ class HuggingFaceCausalLMGenerator:
             outputs = self.model.generate(
                 **encoded,
                 do_sample=True,
-                temperature=self.config.temperature,
-                top_p=self.config.top_p,
+                temperature=self.config.temperature if temperature is None else temperature,
+                top_p=self.config.top_p if top_p is None else top_p,
+                top_k=self.config.top_k if top_k is None else top_k,
                 max_new_tokens=self.config.max_new_tokens,
                 pad_token_id=self._pad_token_id(),
                 return_dict_in_generate=True,
@@ -333,7 +345,7 @@ class StaticGenerator:
         del prompt
         return self.answers[sample_index % len(self.answers)]
 
-    def generate_with_scores(self, prompt: str, *, sample_index: int = 0) -> dict[str, Any]:
+    def generate_with_scores(self, prompt: str, *, sample_index: int = 0, **_: Any) -> dict[str, Any]:
         answer = self.generate(prompt, sample_index=sample_index)
         tokens = answer.split() or ["[EMPTY_GENERATION]"]
         token_logprobs = [-0.5 for _ in tokens]
@@ -386,6 +398,9 @@ def generate_answer_records(
     model_name: str,
     generation_level: str = "generation",
     include_token_scores: bool = False,
+    temperature: float | None = None,
+    top_p: float | None = None,
+    top_k: int | None = None,
     progress_callback: Callable[[int, int, str, int], None] | None = None,
 ) -> list[dict[str, Any]]:
     if num_samples <= 0:
@@ -396,11 +411,17 @@ def generate_answer_records(
     for prompt_record in prompt_records:
         for sample_id in range(num_samples):
             generation_details: dict[str, Any] = {}
-            if include_token_scores and hasattr(generator, "generate_with_scores"):
+            use_scored_generation = include_token_scores or any(
+                value is not None for value in (temperature, top_p, top_k)
+            )
+            if use_scored_generation and hasattr(generator, "generate_with_scores"):
                 generation_details = generator.generate_with_scores(  # type: ignore[attr-defined]
-                    prompt_record["prompt"], sample_index=sample_id
+                    prompt_record["prompt"], sample_index=sample_id,
+                    temperature=temperature, top_p=top_p, top_k=top_k,
                 )
                 raw_answer = generation_details.pop("raw_answer")
+                if not include_token_scores:
+                    generation_details = {}
             else:
                 raw_answer = generator.generate(prompt_record["prompt"], sample_index=sample_id)
             record = {
@@ -409,6 +430,9 @@ def generate_answer_records(
                 "raw_answer": raw_answer,
                 "model_name": model_name,
                 "generation_level": generation_level,
+                "temperature": temperature,
+                "top_p": top_p,
+                "top_k": top_k,
                 **generation_details,
             }
             if prompt_record.get("dataset") is not None:

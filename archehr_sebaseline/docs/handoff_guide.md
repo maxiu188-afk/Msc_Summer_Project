@@ -1,6 +1,6 @@
 ﻿# ArchEHR-QA UQ Code Handoff Guide
 
-Last updated: 2026-07-16
+Last updated: 2026-07-17
 
 The active project is `archehr_sebaseline`. The package now contains:
 
@@ -44,12 +44,19 @@ fixed 30-question Qwen judge, but the judge ceiling effect produced zero
 low-quality labels. The baseline is complete; do not present SE as a robustly
 superior UQ method or the Qwen judge as external validation.
 
-Two further paired Isambard runs are awaiting result collection. They use the
-same 100 questions, ten samples, seeds 31/47, model, NLI clustering, and
-192-token cap as the historical baseline, but set `temperature=1.0` (with
-`top_p=0.9`). Their purpose is to test whether an intentionally broader
-sampling distribution changes UQ behaviour consistently across seeds. The
-batch script records both sampling parameters in `run_timing.txt`.
+The temperature-1.0 evidence pair and the matched no-evidence direct pair are
+complete. Their high-temperature samples use `top_p=0.9`; current code also
+records `top_k=50`. The Semantic Entropy protocol was then corrected so those
+ten samples are used only for UQ and a separate `T=0.1` answer is used for the
+quality outcome. Jobs 5692776/5692777 (evidence) and 5692779/5692780 (direct)
+are queued to add 100 low-temperature main answers to each run without
+regenerating samples, NLI, or UQ.
+
+After retrieval, Claude Sonnet 5 runs locally, not on Isambard, as a
+three-class (`good`/`partial`/`poor`) text comparison against BioASQ ideal
+answers. Only `poor` is positive for the final UQ AUROC/AURAC. The historical
+4,000 high-temperature Claude labels are exploratory only and must not replace
+this target.
 
 The active reference evaluation now separates answer-reference coverage from
 document-level cited-evidence overlap and uses their geometric combination when
@@ -150,6 +157,10 @@ token_scores: True
 - `scripts/evaluate_bioasq_quality.py`
 - `scripts/run_bioasq_llm_judge.py`
 - `scripts/run_bioasq_isambard.sbatch`
+- `scripts/generate_bioasq_best_generations.py`
+- `scripts/run_bioasq_best_isambard.sbatch`
+- `scripts/run_bioasq_claude_judge.py`
+- `scripts/evaluate_bioasq_claude_judge.py`
 
 ## Tests
 
@@ -176,11 +187,10 @@ label_heuristic_eval.md
 
 ## Next Work
 
-1. Collect both temperature-1.0 runs, verify health checks and `run_timing.txt`,
-   then compare their UQ rankings to the matched temperature-0.8 runs.
-2. Calibrate the citation-aware quality threshold on manual review; retain
-   coverage and citation overlap as separate reported axes.
-3. Diagnose SE failure cases and clustering/sample sensitivity using all
-   matched runs; report bootstrap intervals and rejection curves.
-4. Keep a stricter closed-model API judge as a later validation step, and decide
-   on SEP hidden-state probes only after the quality target is stable.
+1. Collect the four low-temperature main-answer files and their timing records.
+2. Submit/download the four local Claude batches with low effort and the
+   32-token cap, then calculate AUROC/AURAC against `poor` only.
+3. Diagnose SE failure cases and clustering/sample sensitivity using both seeds
+   and both evidence conditions; report bootstrap intervals and rejection curves.
+4. Decide on SEP hidden-state probes only after the corrected quality target is
+   stable and reported.
