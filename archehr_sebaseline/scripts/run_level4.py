@@ -53,6 +53,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--strict_entailment", action="store_true")
     parser.add_argument("--no_condition_on_question", action="store_true")
     parser.add_argument(
+        "--without_evidence",
+        action="store_true",
+        help="For BioASQ, omit snippets from the generation prompt while retaining gold metadata for evaluation.",
+    )
+    parser.add_argument(
         "--show_progress",
         action="store_true",
         help="Print generation and NLI progress with elapsed time and estimated remaining time.",
@@ -99,6 +104,7 @@ def main() -> int:
             clustering_method=args.clustering_method,
             nli_config=nli_config,
             show_progress=args.show_progress,
+            include_evidence=not args.without_evidence,
         )
     except MissingGenerationDependency as exc:
         print(str(exc), file=sys.stderr)

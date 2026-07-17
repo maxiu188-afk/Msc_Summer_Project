@@ -63,6 +63,11 @@ GENERATION_QUALITY_FIELDS = [
     "reference_coverage_score",
     "reference_completeness_score",
     "reference_conciseness_score",
+    "nli_reference_label",
+    "nli_reference_score",
+    "nli_reference_forward_label",
+    "nli_reference_reverse_label",
+    "nli_reference_reference_index",
     "citation_document_precision",
     "citation_document_recall",
     "citation_document_f1",
@@ -124,6 +129,7 @@ EXAMPLE_QUALITY_FIELDS = [
     "mean_reference_quality_score",
     "mean_reference_coverage_score",
     "mean_reference_completeness_score",
+    "mean_nli_reference_score",
     "mean_grounded_quality_score",
     "mean_citation_document_precision",
     "mean_citation_document_recall",
@@ -360,6 +366,9 @@ def citation_document_overlap(
     claim-entailment judgment.
     """
 
+    if str(example.get("prompt_evidence_mode") or "provided").lower() == "none":
+        return None, None, None, 0, 0
+
     snippet_ids = [str(value).strip() for value in example.get("evidence_sentence_ids") or []]
     snippet_documents = [str(value).strip() for value in example.get("snippet_documents") or []]
     snippet_to_document = {
@@ -400,6 +409,49 @@ def _answer_claims(answer: str, *, max_claims: int) -> list[str]:
     parts = re.split(r"(?<=[.!?])\s+|\n+", str(answer or "").strip())
     claims = [part.strip() for part in parts if tokenize(part)]
     return claims[:max_claims]
+
+
+def _score_reference_nli(
+    answer: str,
+    references: list[str],
+    example: dict[str, Any],
+    *,
+    scorer: EntailmentScorer | None,
+) -> dict[str, str | float | int | None]:
+    """Assign a transparent three-class NLI score for ideal/exact-answer coverage."""
+
+    unavailable = {
+        "nli_reference_label": None,
+        "nli_reference_score": None,
+        "nli_reference_forward_label": None,
+        "nli_reference_reverse_label": None,
+        "nli_reference_reference_index": None,
+    }
+    if scorer is None or not references:
+        return unavailable
+
+    question = str(example.get("question") or "").strip() or None
+    answer_without_citations = re.sub(r"\s+([.,;:!?])", r"\1", strip_snippet_citations(answer)).strip()
+    best: dict[str, str | float | int] | None = None
+    for index, reference in enumerate(references):
+        forward = scorer.check_implication(answer_without_citations, reference, question=question)
+        reverse = scorer.check_implication(reference, answer_without_citations, question=question)
+        if forward == ENTAILMENT:
+            label, score = "good", 1.0
+        elif forward != CONTRADICTION and reverse == ENTAILMENT:
+            label, score = "partial", 0.5
+        else:
+            label, score = "poor", 0.0
+        candidate = {
+            "nli_reference_label": label,
+            "nli_reference_score": score,
+            "nli_reference_forward_label": forward,
+            "nli_reference_reverse_label": reverse,
+            "nli_reference_reference_index": index,
+        }
+        if best is None or float(candidate["nli_reference_score"]) > float(best["nli_reference_score"]):
+            best = candidate
+    return best or unavailable
 
 
 def _score_evidence_grounding(
@@ -477,16 +529,18 @@ def _finalize_quality(
     example: dict[str, Any],
     quality_mode: str,
     grounding_scorer: EntailmentScorer | None,
+    reference_nli_scorer: EntailmentScorer | None,
+    references: list[str],
     max_claims: int,
     max_evidence_sentences: int,
     citation_document_f1: float | None,
     reference_completeness: float | None = None,
     reference_conciseness: float | None = None,
 ) -> dict[str, Any]:
-    """Attach reference and evidence axes and choose the requested target."""
+    """Attach quality axes and choose the requested composite target."""
 
-    if quality_mode not in {"reference", "grounded"}:
-        raise ValueError("quality_mode must be 'reference' or 'grounded'.")
+    if quality_mode not in {"reference", "grounded", "three_axis"}:
+        raise ValueError("quality_mode must be 'reference', 'grounded', or 'three_axis'.")
     coverage_score = float(row["quality_score"])
     citation_aware_score = (
         math.sqrt(coverage_score * citation_document_f1)
@@ -508,12 +562,39 @@ def _finalize_quality(
         grounded_score = math.sqrt(citation_aware_score * support)
     if quality_mode == "grounded" and grounded_score is None:
         raise ValueError("quality_mode='grounded' requires an NLI grounding scorer and non-empty evidence.")
-    chosen_score = grounded_score if quality_mode == "grounded" else citation_aware_score
+    reference_nli = _score_reference_nli(
+        answer,
+        references,
+        example,
+        scorer=reference_nli_scorer,
+    )
+    nli_reference_score = reference_nli["nli_reference_score"]
+    if quality_mode == "three_axis" and nli_reference_score is None:
+        raise ValueError("quality_mode='three_axis' requires an NLI reference scorer and at least one reference answer.")
+    three_axis_score = (
+        (coverage_score * citation_document_f1 * float(nli_reference_score)) ** (1.0 / 3.0)
+        if nli_reference_score is not None and citation_document_f1 is not None
+        else math.sqrt(coverage_score * float(nli_reference_score)) if nli_reference_score is not None
+        else None
+    )
+    chosen_score = (
+        grounded_score if quality_mode == "grounded"
+        else three_axis_score if quality_mode == "three_axis"
+        else citation_aware_score
+    )
     coverage_metric = row["quality_metric"]
     citation_metric = f"citation_document_geometric_mean_{coverage_metric}"
-    chosen_metric = f"grounded_{citation_metric}" if quality_mode == "grounded" else citation_metric
+    chosen_metric = (
+        f"grounded_{citation_metric}" if quality_mode == "grounded"
+        else f"three_axis_geometric_mean_{coverage_metric}" if quality_mode == "three_axis"
+        else citation_metric
+    )
     if citation_document_f1 is None:
-        chosen_metric = f"grounded_{coverage_metric}" if quality_mode == "grounded" else coverage_metric
+        chosen_metric = (
+            f"grounded_{coverage_metric}" if quality_mode == "grounded"
+            else f"two_axis_reference_nli_geometric_mean_{coverage_metric}" if quality_mode == "three_axis"
+            else coverage_metric
+        )
     return {
         **row,
         "quality_metric": chosen_metric,
@@ -523,6 +604,7 @@ def _finalize_quality(
         "reference_coverage_score": coverage_score,
         "reference_completeness_score": reference_completeness,
         "reference_conciseness_score": reference_conciseness,
+        **reference_nli,
         "grounded_quality_score": grounded_score,
         **grounding,
     }
@@ -542,6 +624,7 @@ def evaluate_generation_quality(
     *,
     quality_mode: str = "reference",
     grounding_scorer: EntailmentScorer | None = None,
+    reference_nli_scorer: EntailmentScorer | None = None,
     max_claims: int = 4,
     max_evidence_sentences: int = 10,
 ) -> dict[str, Any]:
@@ -568,6 +651,11 @@ def evaluate_generation_quality(
         "reference_coverage_score": None,
         "reference_completeness_score": None,
         "reference_conciseness_score": None,
+        "nli_reference_label": None,
+        "nli_reference_score": None,
+        "nli_reference_forward_label": None,
+        "nli_reference_reverse_label": None,
+        "nli_reference_reference_index": None,
         "citation_document_precision": citation_document_precision,
         "citation_document_recall": citation_document_recall,
         "citation_document_f1": citation_document_f1,
@@ -614,14 +702,14 @@ def evaluate_generation_quality(
             "rouge_su4_precision": su4[0] if su4 else None,
             "rouge_su4_recall": su4[1] if su4 else None,
             "rouge_su4_f1": su4[2] if su4 else None,
-        }, answer=answer, example=example, quality_mode=quality_mode, grounding_scorer=grounding_scorer, citation_document_f1=citation_document_f1,
+        }, answer=answer, example=example, quality_mode=quality_mode, grounding_scorer=grounding_scorer, reference_nli_scorer=reference_nli_scorer, references=ideal_answers, citation_document_f1=citation_document_f1,
             max_claims=max_claims, max_evidence_sentences=max_evidence_sentences,
             reference_completeness=((rouge2[1] + su4[1]) / 2 if rouge2 and su4 else 0.0),
             reference_conciseness=((rouge2[0] + su4[0]) / 2 if rouge2 and su4 else 0.0))
     if question_type == "yesno":
         gold = _normalize_entity(exact_answers[0]) if exact_answers else ""
         accuracy = float(extract_yesno(answer) == gold) if gold else 0.0
-        return _finalize_quality({**base, "quality_metric": "yesno_accuracy", "quality_score": accuracy, "yesno_accuracy": accuracy}, answer=answer, example=example, quality_mode=quality_mode, grounding_scorer=grounding_scorer, citation_document_f1=citation_document_f1, max_claims=max_claims, max_evidence_sentences=max_evidence_sentences, reference_completeness=accuracy, reference_conciseness=accuracy)
+        return _finalize_quality({**base, "quality_metric": "yesno_accuracy", "quality_score": accuracy, "yesno_accuracy": accuracy}, answer=answer, example=example, quality_mode=quality_mode, grounding_scorer=grounding_scorer, reference_nli_scorer=reference_nli_scorer, references=exact_answers, citation_document_f1=citation_document_f1, max_claims=max_claims, max_evidence_sentences=max_evidence_sentences, reference_completeness=accuracy, reference_conciseness=accuracy)
     if question_type == "factoid":
         aliases = {_normalize_entity(item) for item in exact_answers if _normalize_entity(item)}
         strict = float(_normalize_factoid_candidate(answer) in aliases) if aliases else 0.0
@@ -634,12 +722,12 @@ def evaluate_generation_quality(
             "factoid_strict_accuracy": strict,
             "factoid_answer_first_accuracy": answer_first,
             "factoid_lenient_accuracy": lenient,
-        }, answer=answer, example=example, quality_mode=quality_mode, grounding_scorer=grounding_scorer, citation_document_f1=citation_document_f1, max_claims=max_claims, max_evidence_sentences=max_evidence_sentences, reference_completeness=answer_first, reference_conciseness=answer_first)
+        }, answer=answer, example=example, quality_mode=quality_mode, grounding_scorer=grounding_scorer, reference_nli_scorer=reference_nli_scorer, references=exact_answers, citation_document_f1=citation_document_f1, max_claims=max_claims, max_evidence_sentences=max_evidence_sentences, reference_completeness=answer_first, reference_conciseness=answer_first)
     if question_type == "list":
         gold = {_normalize_entity(item) for item in exact_answers if _normalize_entity(item)}
         precision, recall, f1 = _set_prf(_robust_list_items(answer), gold)
-        return _finalize_quality({**base, "quality_metric": "list_f1", "quality_score": f1, "list_precision": precision, "list_recall": recall, "list_f1": f1}, answer=answer, example=example, quality_mode=quality_mode, grounding_scorer=grounding_scorer, citation_document_f1=citation_document_f1, max_claims=max_claims, max_evidence_sentences=max_evidence_sentences, reference_completeness=recall, reference_conciseness=precision)
-    return _finalize_quality({**base, "quality_metric": "unsupported", "quality_score": 0.0}, answer=answer, example=example, quality_mode=quality_mode, grounding_scorer=grounding_scorer, citation_document_f1=citation_document_f1, max_claims=max_claims, max_evidence_sentences=max_evidence_sentences)
+        return _finalize_quality({**base, "quality_metric": "list_f1", "quality_score": f1, "list_precision": precision, "list_recall": recall, "list_f1": f1}, answer=answer, example=example, quality_mode=quality_mode, grounding_scorer=grounding_scorer, reference_nli_scorer=reference_nli_scorer, references=exact_answers, citation_document_f1=citation_document_f1, max_claims=max_claims, max_evidence_sentences=max_evidence_sentences, reference_completeness=recall, reference_conciseness=precision)
+    return _finalize_quality({**base, "quality_metric": "unsupported", "quality_score": 0.0}, answer=answer, example=example, quality_mode=quality_mode, grounding_scorer=grounding_scorer, reference_nli_scorer=reference_nli_scorer, references=[], citation_document_f1=citation_document_f1, max_claims=max_claims, max_evidence_sentences=max_evidence_sentences)
 
 
 def _mean(rows: list[dict[str, Any]], field: str) -> float | None:
@@ -710,6 +798,7 @@ def build_quality_rows(
     relative_risk_fraction: float = DEFAULT_RELATIVE_RISK_FRACTION,
     quality_mode: str = "reference",
     grounding_scorer: EntailmentScorer | None = None,
+    reference_nli_scorer: EntailmentScorer | None = None,
     max_claims: int = 4,
     max_evidence_sentences: int = 10,
 ) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
@@ -727,6 +816,7 @@ def build_quality_rows(
                 example,
                 quality_mode=quality_mode,
                 grounding_scorer=grounding_scorer,
+                reference_nli_scorer=reference_nli_scorer,
                 max_claims=max_claims,
                 max_evidence_sentences=max_evidence_sentences,
             )
@@ -762,6 +852,7 @@ def build_quality_rows(
             "mean_reference_quality_score": _mean(raw_rows, "reference_quality_score"),
             "mean_reference_coverage_score": _mean(raw_rows, "reference_coverage_score"),
             "mean_reference_completeness_score": _mean(raw_rows, "reference_completeness_score"),
+            "mean_nli_reference_score": _mean(raw_rows, "nli_reference_score"),
             "mean_grounded_quality_score": _mean(raw_rows, "grounded_quality_score"),
             "mean_citation_document_precision": _mean(raw_rows, "citation_document_precision"),
             "mean_citation_document_recall": _mean(raw_rows, "citation_document_recall"),
@@ -1078,6 +1169,7 @@ def evaluate_level4_bioasq(
     bootstrap_seed: int = DEFAULT_BOOTSTRAP_SEED,
     quality_mode: str = "reference",
     grounding_scorer: EntailmentScorer | None = None,
+    reference_nli_scorer: EntailmentScorer | None = None,
     max_claims: int = 4,
     max_evidence_sentences: int = 10,
     overwrite: bool = False,
@@ -1122,6 +1214,7 @@ def evaluate_level4_bioasq(
         relative_risk_fraction=relative_risk_fraction,
         quality_mode=quality_mode,
         grounding_scorer=grounding_scorer,
+        reference_nli_scorer=reference_nli_scorer,
         max_claims=max_claims,
         max_evidence_sentences=max_evidence_sentences,
     )

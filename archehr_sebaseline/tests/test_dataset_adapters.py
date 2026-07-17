@@ -160,6 +160,14 @@ class DatasetAdapterTests(unittest.TestCase):
         self.assertIn("comma-separated list", prompt)
         self.assertEqual(build_prompt_records([example])[0]["prompt_version"], "bioasq_grounded_v1")
 
+        direct_prompt = build_prompt(example, include_evidence=False)
+        direct_record = build_prompt_records([example], include_evidence=False)[0]
+        self.assertIn("directly from your biomedical knowledge", direct_prompt)
+        self.assertNotIn("Evidence snippets:", direct_prompt)
+        self.assertNotIn("[S1]", direct_prompt)
+        self.assertEqual(direct_record["prompt_version"], "bioasq_direct_v1")
+        self.assertEqual(direct_record["evidence_mode"], "none")
+
     def test_archehr_records_to_common_preserves_sentence_ids(self) -> None:
         examples = archehr_records_to_common(
             [

@@ -217,6 +217,7 @@ def run_level4(
     nli_config: NLIConfig | None = None,
     nli_scorer: EntailmentScorer | None = None,
     show_progress: bool = False,
+    include_evidence: bool = True,
 ) -> dict[str, Any]:
     """Run a Level 4 pilot with token-level baseline uncertainty outputs."""
 
@@ -232,7 +233,9 @@ def run_level4(
         split=split,
         limit=limit_examples,
     )
-    prompt_records = build_prompt_records(examples)
+    if not include_evidence:
+        examples = [{**example, "prompt_evidence_mode": "none"} for example in examples]
+    prompt_records = build_prompt_records(examples, include_evidence=include_evidence)
 
     if generator is None:
         try:
@@ -345,6 +348,7 @@ def run_level4(
         "device": config.device,
         "torch_dtype": config.torch_dtype or "",
         "local_files_only": config.local_files_only,
+        "prompt_evidence_mode": "provided" if include_evidence else "none",
         "clustering_method": cluster_records[0]["clustering_method"] if cluster_records else clustering_method,
         "requested_clustering_method": clustering_method,
         "nli_model_name": nli_config.model_name if nli_config and clustering_method == "nli" else "",
@@ -376,6 +380,7 @@ def format_summary(result: dict[str, Any]) -> str:
         f"device: {result['device']}",
         f"torch_dtype: {result['torch_dtype']}",
         f"local_files_only: {result['local_files_only']}",
+        f"prompt_evidence_mode: {result['prompt_evidence_mode']}",
         f"requested_clustering_method: {result['requested_clustering_method']}",
         f"clustering_method: {result['clustering_method']}",
         f"nli_model_name: {result['nli_model_name']}",

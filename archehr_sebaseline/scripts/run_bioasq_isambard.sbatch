@@ -16,13 +16,46 @@ set -euo pipefail
 
 WORKDIR="${SCRATCHDIR}/final_project"
 PROJECT_DIR="${PROJECT_DIR:-${WORKDIR}/archehr_sebaseline}"
-VENV_PATH="${VENV_PATH:-${PROJECT_DIR}/.venv_isambard}"
+VENV_PATH_ORIGINAL="${PROJECT_DIR}/.venv_isambard"
+VENV_PATH_CUDA127="${PROJECT_DIR}/.venv_isambard_cuda127"
 OUTPUT_DIR="${OUTPUT_DIR:-${PROJECT_DIR}/outputs/bioasq_summary_gemma3_12b_100x10}"
 HF_CACHE_DIR="${WORKDIR}/hf_cache"
 TORCH_CACHE_DIR="${WORKDIR}/torch_cache"
 
 module load cray-python || true
+
+# CUDA 13 PyTorch requires an NVIDIA R580-or-newer driver.  Older CUDA 12.x
+# nodes use the separate cu126 build, which is compatible with a CUDA 12.7
+# driver.  VENV_PATH remains an explicit escape hatch for diagnostics.
+GPU_DRIVER_VERSION="$(nvidia-smi --query-gpu=driver_version --format=csv,noheader,nounits | sed -n '1p')"
+GPU_DRIVER_MAJOR="${GPU_DRIVER_VERSION%%.*}"
+if [[ ! "${GPU_DRIVER_MAJOR}" =~ ^[0-9]+$ ]]; then
+  echo "Could not determine an NVIDIA driver version from nvidia-smi: ${GPU_DRIVER_VERSION:-<empty>}" >&2
+  exit 3
+fi
+
+if [[ -n "${VENV_PATH:-}" ]]; then
+  VENV_SELECTION="override"
+elif (( GPU_DRIVER_MAJOR >= 580 )); then
+  VENV_PATH="${VENV_PATH_ORIGINAL}"
+  VENV_SELECTION="original-cuda13"
+else
+  VENV_PATH="${VENV_PATH_CUDA127}"
+  VENV_SELECTION="cuda127-cu126"
+fi
+
+if [[ ! -f "${VENV_PATH}/bin/activate" ]]; then
+  echo "Selected virtual environment is missing: ${VENV_PATH}" >&2
+  exit 3
+fi
 source "${VENV_PATH}/bin/activate"
+TORCH_VERSION="$(python -c 'import torch; print(torch.__version__)')"
+TORCH_CUDA_VERSION="$(python -c 'import torch; print(torch.version.cuda or "none")')"
+if ! python -c 'import torch, sys; print(f"cuda_available={torch.cuda.is_available()}"); sys.exit(0 if torch.cuda.is_available() else 1)'; then
+  echo "Selected environment cannot access the allocated GPU." >&2
+  exit 3
+fi
+echo "[environment] driver=${GPU_DRIVER_VERSION} selection=${VENV_SELECTION} venv=${VENV_PATH} torch=${TORCH_VERSION} torch_cuda=${TORCH_CUDA_VERSION}"
 mkdir -p "${OUTPUT_DIR}" "${HF_CACHE_DIR}" "${TORCH_CACHE_DIR}"
 
 export HF_HOME="${HF_CACHE_DIR}"
@@ -45,6 +78,11 @@ LOCAL_FILES_ONLY="${LOCAL_FILES_ONLY:-0}"
 NLI_LOCAL_FILES_ONLY="${NLI_LOCAL_FILES_ONLY:-${LOCAL_FILES_ONLY}}"
 RUN_SELF_REPORT_UQ="${RUN_SELF_REPORT_UQ:-1}"
 SEED="${SEED:-31}"
+QUALITY_MODE="${QUALITY_MODE:-three_axis}"
+REFERENCE_NLI_MODEL="${REFERENCE_NLI_MODEL:-${NLI_MODEL_NAME}}"
+REFERENCE_NLI_DEVICE="${REFERENCE_NLI_DEVICE:-cuda}"
+REFERENCE_NLI_LOCAL_FILES_ONLY="${REFERENCE_NLI_LOCAL_FILES_ONLY:-${NLI_LOCAL_FILES_ONLY}}"
+INCLUDE_EVIDENCE="${INCLUDE_EVIDENCE:-1}"
 
 RUN_STARTED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 RUN_STARTED_EPOCH="$(date +%s)"
@@ -69,6 +107,11 @@ record_run_timing() {
     "slurm_job_id: ${SLURM_JOB_ID:-manual}" \
     "slurm_job_name: ${SLURM_JOB_NAME:-bioasq-se-uq}" \
     "host: $(hostname)" \
+    "gpu_driver_version: ${GPU_DRIVER_VERSION}" \
+    "environment_selection: ${VENV_SELECTION}" \
+    "environment_path: ${VENV_PATH}" \
+    "torch_version: ${TORCH_VERSION}" \
+    "torch_cuda_version: ${TORCH_CUDA_VERSION}" \
     "started_at_utc: ${RUN_STARTED_AT_UTC}" \
     "ended_at_utc: ${ended_at_utc}" \
     "elapsed_seconds: ${elapsed_seconds}" \
@@ -82,6 +125,7 @@ record_run_timing() {
     "max_new_tokens: ${MAX_NEW_TOKENS}" \
     "temperature: ${TEMPERATURE}" \
     "top_p: ${TOP_P}" \
+    "include_evidence: ${INCLUDE_EVIDENCE}" \
     "seed: ${SEED}" \
     "clustering_method: nli" \
     "run_self_report_uq: ${RUN_SELF_REPORT_UQ}" \
@@ -105,6 +149,23 @@ NLI_LOCAL_FILES_ARG=()
 if [[ "${NLI_LOCAL_FILES_ONLY}" == "1" ]]; then
   NLI_LOCAL_FILES_ARG=(--nli_local_files_only)
 fi
+PROMPT_EVIDENCE_ARGS=()
+if [[ "${INCLUDE_EVIDENCE}" == "0" ]]; then
+  PROMPT_EVIDENCE_ARGS=(--without_evidence)
+elif [[ "${INCLUDE_EVIDENCE}" != "1" ]]; then
+  echo "INCLUDE_EVIDENCE must be 0 or 1, got: ${INCLUDE_EVIDENCE}" >&2
+  exit 2
+fi
+QUALITY_ARGS=(--quality_mode "${QUALITY_MODE}")
+if [[ "${QUALITY_MODE}" == "three_axis" ]]; then
+  QUALITY_ARGS+=(
+    --reference_nli_model "${REFERENCE_NLI_MODEL}"
+    --reference_nli_device "${REFERENCE_NLI_DEVICE}"
+  )
+  if [[ "${REFERENCE_NLI_LOCAL_FILES_ONLY}" == "1" ]]; then
+    QUALITY_ARGS+=(--reference_nli_local_files_only)
+  fi
+fi
 
 cd "${PROJECT_DIR}"
 python scripts/run_level4.py \
@@ -119,6 +180,7 @@ python scripts/run_level4.py \
   --max_input_tokens "${MAX_INPUT_TOKENS}" \
   --temperature "${TEMPERATURE}" \
   --top_p "${TOP_P}" \
+  "${PROMPT_EVIDENCE_ARGS[@]}" \
   --seed "${SEED}" \
   --device cuda \
   --torch_dtype "${TORCH_DTYPE}" \
@@ -142,7 +204,7 @@ python scripts/check_level4_outputs.py "${OUTPUT_DIR}" \
 
 python scripts/evaluate_bioasq_quality.py \
   --run_dir "${OUTPUT_DIR}" \
-  --quality_mode reference \
+  "${QUALITY_ARGS[@]}" \
   --bootstrap_samples 1000 \
   --overwrite
 
@@ -156,7 +218,7 @@ if [[ "${RUN_SELF_REPORT_UQ}" == "1" ]]; then
     --overwrite
   python scripts/evaluate_bioasq_quality.py \
     --run_dir "${OUTPUT_DIR}" \
-    --quality_mode reference \
+    "${QUALITY_ARGS[@]}" \
     --bootstrap_samples 1000 \
     --overwrite
 fi

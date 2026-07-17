@@ -11,8 +11,8 @@ ArchEHR-QA final evaluation/training target: paused because no usable gold label
 BioASQ Task B: baseline complete; two matched Isambard summary 100x10 runs passed
 Current compute host: Isambard (Runpod was a completed temporary recovery path)
 Main result: historical lexical-quality scores replicate strongly, but SE AUROC is modest and seed-sensitive
-Active run: paired temperature-sensitivity repeat at temperature 1.0 (seeds 31 and 47), results pending
-Next work: compare that controlled repeat using the citation-aware quality target, then calibrate against manual review
+Active run: no-evidence direct-answer temperature-1.0 paired repeat submitted; evidence-conditioned NLI evaluation complete
+Next work: retrieve the direct-answer pair, compare it with the evidence-conditioned result, then calibrate the final target against manual review
 Deferred work: larger closed-model judge study and SEP supervision
 ```
 
@@ -33,16 +33,24 @@ discrete-SE AUROC changes from 0.687 to 0.609 and the repeat confidence interval
 includes chance. This supports a cautious baseline result, not a robust claim
 that SE is the strongest uncertainty method.
 The previous ROUGE-only operational target is retained as historical evidence,
-but the active local evaluator now reports reference-answer coverage separately
-and combines it with document-level overlap between answer citations and
-BioASQ's standard documents. Its fixed low-quality threshold must be calibrated
-against the manually reviewed set rather than treated as a pass mark.
+but the active local evaluator now reports three quality axes: lexical
+reference-answer coverage, document-level overlap between answer citations and
+BioASQ's standard documents, and a three-class NLI ideal-answer coverage score
+(good/partial/poor = 1.0/0.5/0.0). New runs combine the available axes with a
+geometric mean. Its fixed low-quality threshold must be calibrated against the
+manually reviewed set rather than treated as a pass mark.
 
-On 2026-07-16, a paired temperature-sensitivity repeat was submitted with
-`temperature=1.0`, `top_p=0.9`, and the original 192-token output limit. It
-uses the same 100 questions, ten samples, model, NLI clustering, and seeds 31
-and 47 as the completed baseline. Results are pending; do not infer an effect
-before both runs pass health checks and are re-evaluated.
+On 2026-07-16, the paired temperature-sensitivity repeat at `temperature=1.0`
+and `top_p=0.9` completed for both seeds (jobs 5679663 and 5679664). Both
+100x10 outputs passed their Level 4 health checks. A same-config local
+citation-aware reference evaluation found virtually unchanged mean answer
+quality versus temperature 0.8, while within-question semantic variation rose
+slightly. The final three-axis NLI re-evaluation completed in 01:31 and 01:26
+for seeds 31 and 47, giving mean three-axis scores of 0.1968 and 0.1864. A
+matched no-evidence direct-answer ablation (jobs 5684358 and 5684360) is now
+submitted with the same temperature, seeds, and generation settings. Do not
+compare the direct-answer condition on the citation axis: its final target uses
+the valid ROUGE + ideal-answer-NLI two-axis fallback.
 Simpson's recommendation to continue exploring candidate datasets is retained
 as a parallel validation activity, not as a reversal of the BioASQ direction.
 See `archehr_sebaseline/docs/bioasq_isambard_results_20260715.md` for the latest

@@ -18,6 +18,11 @@ BIOASQ_SYSTEM_INSTRUCTION = (
     "PubMed evidence snippets."
 )
 
+BIOASQ_DIRECT_SYSTEM_INSTRUCTION = (
+    "You are answering a BioASQ biomedical question directly from your "
+    "biomedical knowledge."
+)
+
 
 def format_evidence(evidence: list[dict[str, Any]]) -> str:
     lines = []
@@ -28,9 +33,9 @@ def format_evidence(evidence: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def build_prompt(example: dict[str, Any]) -> str:
+def build_prompt(example: dict[str, Any], *, include_evidence: bool = True) -> str:
     if str(example.get("dataset") or "").lower() == "bioasq":
-        return build_bioasq_prompt(example)
+        return build_bioasq_prompt(example, include_evidence=include_evidence)
 
     if is_common_example(example):
         example = common_to_prompt_example(example)
@@ -69,8 +74,8 @@ def build_prompt(example: dict[str, Any]) -> str:
     return "\n".join(prompt_parts)
 
 
-def build_bioasq_prompt(example: dict[str, Any]) -> str:
-    """Build a grounded biomedical prompt for BioASQ Task B examples."""
+def build_bioasq_prompt(example: dict[str, Any], *, include_evidence: bool = True) -> str:
+    """Build a grounded or direct biomedical prompt for BioASQ Task B examples."""
 
     if is_common_example(example):
         prompt_example = common_to_prompt_example(example)
@@ -87,39 +92,58 @@ def build_bioasq_prompt(example: dict[str, Any]) -> str:
     }.get(bioasq_type, "Write a concise biomedical answer.")
 
     prompt_parts = [
-        f"System instruction: {BIOASQ_SYSTEM_INSTRUCTION}",
+        "System instruction: "
+        + (BIOASQ_SYSTEM_INSTRUCTION if include_evidence else BIOASQ_DIRECT_SYSTEM_INSTRUCTION),
         "",
         f"Question type: {bioasq_type or 'unknown'}",
         f"Question: {question}",
         "",
-        "Evidence snippets:",
-        format_evidence(prompt_example["evidence"]),
-        "",
-        "Task:",
-        type_instruction,
-        "Use only the evidence snippets above.",
-        "Cite every factual claim with snippet IDs like [S1].",
-        "If the evidence is insufficient, say that the evidence is insufficient.",
     ]
+    if include_evidence:
+        prompt_parts.extend(
+            [
+            "Evidence snippets:",
+            format_evidence(prompt_example["evidence"]),
+            "",
+            ]
+        )
+    prompt_parts.extend(["Task:", type_instruction])
+    if include_evidence:
+        prompt_parts.extend(
+            [
+                "Use only the evidence snippets above.",
+                "Cite every factual claim with snippet IDs like [S1].",
+                "If the evidence is insufficient, say that the evidence is insufficient.",
+            ]
+        )
+    else:
+        prompt_parts.extend(
+            [
+                "Answer directly from your biomedical knowledge.",
+                "Do not claim to have been given evidence or cite snippet IDs.",
+                "If you are uncertain, state that uncertainty briefly.",
+            ]
+        )
     return "\n".join(prompt_parts)
 
 
-def build_prompt_records(examples: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def build_prompt_records(
+    examples: list[dict[str, Any]], *, include_evidence: bool = True
+) -> list[dict[str, Any]]:
     prompt_records = []
     for example in examples:
         dataset = str(example.get("dataset") or "").lower()
-        prompt_version = (
-            "bioasq_grounded_v1"
-            if dataset == "bioasq"
-            else "grounded_qa_common_v1"
-        )
+        prompt_version = "grounded_qa_common_v1"
+        if dataset == "bioasq":
+            prompt_version = "bioasq_grounded_v1" if include_evidence else "bioasq_direct_v1"
         prompt_records.append(
             {
                 "example_id": example["id"],
                 "dataset": example.get("dataset"),
                 "split": example.get("split"),
-                "prompt": build_prompt(example),
+                "prompt": build_prompt(example, include_evidence=include_evidence),
                 "prompt_version": prompt_version,
+                "evidence_mode": "provided" if include_evidence else "none",
             }
         )
     return prompt_records

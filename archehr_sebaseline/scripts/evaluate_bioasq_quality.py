@@ -31,12 +31,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--relative_risk_fraction", type=float, default=DEFAULT_RELATIVE_RISK_FRACTION, help="Within-question-type lowest-quality fraction used for threshold-sensitivity AUROC.")
     parser.add_argument("--bootstrap_samples", type=int, default=DEFAULT_BOOTSTRAP_SAMPLES, help="Number of deterministic bootstrap resamples for AUROC and rank-correlation confidence intervals; 0 disables intervals.")
     parser.add_argument("--bootstrap_seed", type=int, default=DEFAULT_BOOTSTRAP_SEED)
-    parser.add_argument("--quality_mode", choices=["reference", "grounded"], default="reference", help="Use reference agreement alone or combine it with NLI evidence support.")
+    parser.add_argument("--quality_mode", choices=["reference", "grounded", "three_axis"], default="reference", help="Use lexical reference agreement, NLI evidence grounding, or the three-axis ROUGE/citation/NLI-reference target.")
     parser.add_argument("--grounding_nli_model", default=None, help="Optional Hugging Face NLI model used by grounded quality mode.")
     parser.add_argument("--grounding_nli_device", default="cpu", help="Device for the optional grounding NLI model, for example cuda.")
     parser.add_argument("--grounding_nli_max_input_tokens", type=int, default=512)
     parser.add_argument("--grounding_max_claims", type=int, default=4)
     parser.add_argument("--grounding_max_evidence_sentences", type=int, default=10)
+    parser.add_argument("--reference_nli_model", default=None, help="Optional Hugging Face NLI model used to classify ideal/exact-answer coverage for three-axis mode.")
+    parser.add_argument("--reference_nli_device", default="cpu", help="Device for the ideal-answer NLI classifier, for example cuda.")
+    parser.add_argument("--reference_nli_max_input_tokens", type=int, default=512)
+    parser.add_argument("--reference_nli_local_files_only", action="store_true")
     parser.add_argument("--overwrite", action="store_true")
     return parser.parse_args()
 
@@ -45,6 +49,8 @@ def main() -> int:
     args = parse_args()
     if args.quality_mode == "grounded" and not args.grounding_nli_model:
         raise ValueError("--quality_mode grounded requires --grounding_nli_model.")
+    if args.quality_mode == "three_axis" and not args.reference_nli_model:
+        raise ValueError("--quality_mode three_axis requires --reference_nli_model.")
     grounding_scorer = None
     if args.grounding_nli_model:
         grounding_scorer = HuggingFaceNLIScorer(
@@ -52,6 +58,16 @@ def main() -> int:
                 model_name=args.grounding_nli_model,
                 device=args.grounding_nli_device,
                 max_input_tokens=args.grounding_nli_max_input_tokens,
+            )
+        )
+    reference_nli_scorer = None
+    if args.reference_nli_model:
+        reference_nli_scorer = HuggingFaceNLIScorer(
+            NLIConfig(
+                model_name=args.reference_nli_model,
+                device=args.reference_nli_device,
+                max_input_tokens=args.reference_nli_max_input_tokens,
+                local_files_only=args.reference_nli_local_files_only,
             )
         )
     result = evaluate_level4_bioasq(
@@ -64,6 +80,7 @@ def main() -> int:
         bootstrap_seed=args.bootstrap_seed,
         quality_mode=args.quality_mode,
         grounding_scorer=grounding_scorer,
+        reference_nli_scorer=reference_nli_scorer,
         max_claims=args.grounding_max_claims,
         max_evidence_sentences=args.grounding_max_evidence_sentences,
         overwrite=args.overwrite,

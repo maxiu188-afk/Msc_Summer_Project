@@ -18,11 +18,51 @@ Queueing time is excluded: elapsed time is measured from Slurm start to end.
 
 ## Submitted runs awaiting result collection
 
+### BioASQ training summary 100x10 - no-evidence direct-answer pair
+
+```text
+submitted: 2026-07-16
+jobs: 5684358 (seed 31), 5684360 (seed 47)
+purpose: controlled evidence-ablation with direct biomedical answering
+model: google/gemma-3-12b-it
+temperature / top_p: 1.0 / 0.9
+examples / samples: 100 / 10
+max new tokens: 192
+prompt evidence: omitted (`INCLUDE_EVIDENCE=0`, `bioasq_direct_v1`)
+clustering: microsoft/deberta-v2-xlarge-mnli, bidirectional entailment
+self-report UQ: enabled
+```
+
+The evaluator retains ideal-answer metadata but treats the citation axis as not
+applicable, producing the ROUGE + ideal-answer-NLI two-axis fallback. Record
+job states, health checks, and timing after completion.
+
+## Completed runs
+
+### Isambard jobs 5683932 and 5683933 - three-axis NLI re-evaluation
+
+```text
+status: COMPLETED, exit 0:0
+source runs: temperature-1.0 evidence-conditioned seeds 31 and 47
+elapsed: 01:38 (seed 31) and 01:34 (seed 47)
+nodes: nid010208 (seed 31) and nid010291 (seed 47)
+model: microsoft/deberta-v2-xlarge-mnli, local cached files only
+environment: cuda127-cu126, torch 2.6.0+cu126
+generation: not rerun
+final quality mode: three_axis
+```
+
+The refreshed evaluation artifacts report mean three-axis quality of 0.1968
+(seed 31) and 0.1864 (seed 47). These values are not directly comparable to
+the earlier reference-only scores, and the direct-answer ablation will use the
+two-axis fallback because citations are intentionally absent.
+
 ### BioASQ training summary 100x10 - temperature 1.0 paired repeat
 
 ```text
 submitted: 2026-07-16
-status: results pending (record Slurm job IDs and states after collection)
+status: COMPLETED, exit 0:0; both Level 4 health checks PASS
+jobs: 5679663 (seed 31), 5679664 (seed 47)
 purpose: controlled sampling-temperature sensitivity check for UQ
 model: google/gemma-3-12b-it
 temperature / top_p: 1.0 / 0.9
@@ -31,16 +71,15 @@ examples / samples: 100 / 10
 max new tokens: 192 (unchanged from the historical baseline)
 clustering: microsoft/deberta-v2-xlarge-mnli, bidirectional entailment
 self-report UQ: enabled
-expected cached runtime: approximately 3-4 hours per seed, excluding queue time
+elapsed: 02:36:46 (seed 31) and 02:28:21 (seed 47), excluding queue time
+nodes: nid010501 (seed 31) and nid010661 (seed 47)
+driver/environment: 565.57.01 / cuda127-cu126, torch 2.6.0+cu126
 ```
 
-The batch script records temperature and top-p in each `run_timing.txt`.
-After completion, add actual Slurm IDs, elapsed times, memory usage, health
-status, and result-archive checksum here. Evaluate both outputs using the
-citation-aware reference target; its fixed threshold remains provisional until
+The downloaded artifacts contain 100 examples and 1,000 generations per seed.
+Their local citation-aware reference re-evaluation is complete; separate queued
+jobs are adding the NLI axis. The fixed quality threshold remains provisional until
 manual calibration.
-
-## Completed runs
 
 ### Isambard job 5654721 - BioASQ training summary 100x10
 

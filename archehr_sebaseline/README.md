@@ -75,11 +75,18 @@ The latest Isambard results and interpretation boundary are documented in
 `docs/bioasq_isambard_results_20260715.md`; runtimes are in
 `docs/experiment_runtime_log.md`.
 
-Two paired Isambard runs are currently awaiting collection. They keep the
-100-question, ten-sample, 192-token configuration and the seed-31/seed-47
-pair, but explicitly use `temperature=1.0` and `top_p=0.9`. The batch script
-records those values in `run_timing.txt`. Their role is a controlled UQ
-sensitivity check; interpret no outcome until both health checks pass.
+The paired Isambard temperature-sensitivity runs completed on 2026-07-16. They
+keep the 100-question, ten-sample, 192-token configuration and the
+seed-31/seed-47 pair, but explicitly use `temperature=1.0` and `top_p=0.9`.
+Jobs 5679663 and 5679664 both passed Level 4 health checks. Under a common
+citation-aware reference target, mean answer quality was unchanged from the
+temperature-0.8 pair, while within-question semantic diversity increased
+slightly. The three-axis ideal-answer NLI re-evaluation then completed in
+01:31 and 01:26, with mean three-axis quality of 0.1968 and 0.1864. A matched
+no-evidence direct-answer pair (jobs 5684358 and 5684360) is submitted with
+the same temperature, seeds, generation settings, NLI clustering, and
+self-report UQ. Its citation axis is intentionally not applicable, so its
+final quality target uses the evaluator's ROUGE + ideal-answer-NLI fallback.
 
 The active reference evaluator now retains answer-reference coverage and adds
 document-level overlap between cited snippet documents and BioASQ standard
@@ -182,6 +189,7 @@ scripts/run_level4.sbatch
 scripts/check_level4_outputs.py
 scripts/evaluate_pubmedqa_labels.py
 scripts/evaluate_bioasq_quality.py
+scripts/evaluate_bioasq_nli_isambard.sbatch
 scripts/run_bioasq_llm_judge.py
 scripts/run_bioasq_llm_judge.sbatch
 scripts/run_bioasq_isambard.sbatch
