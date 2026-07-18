@@ -11,8 +11,8 @@ ArchEHR-QA final evaluation/training target: paused because no usable gold label
 BioASQ Task B: baseline complete; two matched Isambard summary 100x10 runs passed
 Current compute host: Isambard (Runpod was a completed temporary recovery path)
 Main result: historical lexical-quality scores replicate strongly, but SE AUROC is modest and seed-sensitive
-Active run: four low-temperature main-answer jobs are queued on Isambard for the completed evidence/no-evidence temperature-1.0 pair
-Next work: retrieve the four main-answer files, label only those answers locally with Claude, then compute AUROC/AURAC against `poor`
+Primary evaluation: complete for the matched evidence/no-evidence temperature-1.0 pair, using low-temperature main answers and local Claude labels
+Main result: without evidence P(True) is strongest (mean AUROC 0.921); with evidence predictive entropy/NLL is strongest (0.642)
 Deferred work: SEP supervision; the historical high-temperature Claude batch is retained only as an auxiliary analysis
 ```
 
@@ -56,13 +56,15 @@ ideal-answer NLI only.
 
 The generation protocol was corrected on 2026-07-17 to follow the Semantic
 Entropy reference implementation: ten high-temperature samples (`T=1.0`,
-`top_p=0.9`, `top_k=50`) are used only for SE and other UQ scores, while one
-separate low-temperature answer (`T=0.1`) is the accuracy target. Jobs 5692776,
-5692777, 5692779, and 5692780 are adding that missing main-answer file to the
-four completed temperature-1.0 runs without regenerating their samples. Claude
-Sonnet 5 is deliberately local-only post-processing; its three labels are
-`good`, `partial`, and `poor`, and only `poor` defines the final binary label.
-See `archehr_sebaseline/docs/semantic_entropy_generation_protocol.md`.
+`top_p=0.9`, `top_k=50`) are used for SE and token-based UQ, while one separate
+low-temperature answer (`T=0.1`) is the accuracy target. The four main-answer
+backfills and the four protocol-correct self-report jobs have completed. Claude
+Sonnet 5 is deliberately local-only post-processing; it labels only the
+low-temperature answer as `good`, `partial`, or `poor`. The direct-answer
+condition uses `poor` as the binary label, while the evidence-conditioned
+condition uses `partial + poor`; the two conditions are reported separately.
+See `archehr_sebaseline/docs/semantic_entropy_generation_protocol.md` and
+`archehr_sebaseline/docs/bioasq_isambard_results_20260715.md`.
 Simpson's recommendation to continue exploring candidate datasets is retained
 as a parallel validation activity, not as a reversal of the BioASQ direction.
 See `archehr_sebaseline/docs/bioasq_isambard_results_20260715.md` for the latest

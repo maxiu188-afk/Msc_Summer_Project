@@ -32,10 +32,25 @@ from archehr_sebaseline.evaluation.claude_judge import (
 )
 
 
-OUTPUT_DIRNAME = "claude_judge"
+# Preserve the earlier high-temperature exploratory batch in ``claude_judge``.
+# The paper-protocol low-temperature main answers are evaluated separately.
+OUTPUT_DIRNAME = "claude_main_answer_judge"
 MANIFEST_NAME = "request_manifest.jsonl"
 METADATA_NAME = "batch_metadata.json"
 LABELS_NAME = "claude_generation_labels.csv"
+RETRY_MANIFEST_NAME = "retry_request_manifest.jsonl"
+RETRY_METADATA_NAME = "retry_batch_metadata.json"
+LABEL_FIELDS = [
+    "custom_id",
+    "example_id",
+    "sample_id",
+    "prompt_sha256",
+    "result_type",
+    "label",
+    "label_valid",
+    "stop_reason",
+    "error",
+]
 
 
 def utc_now() -> str:
@@ -57,6 +72,10 @@ def judge_directory(run_dir: Path) -> Path:
 
 def metadata_path(run_dir: Path) -> Path:
     return judge_directory(run_dir) / METADATA_NAME
+
+
+def retry_metadata_path(run_dir: Path) -> Path:
+    return judge_directory(run_dir) / RETRY_METADATA_NAME
 
 
 def load_generation_requests(run_dir: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -152,6 +171,47 @@ def read_metadata(run_dir: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def configure_requests(requests: list[dict[str, Any]], args: argparse.Namespace) -> None:
+    for request in requests:
+        params = request["params"]
+        params["model"] = args.model
+        params["max_tokens"] = args.max_tokens
+        params["output_config"]["effort"] = args.effort
+
+
+def result_row(item: Any, manifest: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    base = manifest.get(item.custom_id)
+    if base is None:
+        raise KeyError(f"Result has no manifest entry: {item.custom_id}")
+    result_type = item.result.type
+    row: dict[str, Any] = {
+        **base,
+        "result_type": result_type,
+        "label": "",
+        "label_valid": False,
+        "stop_reason": "",
+        "error": "",
+    }
+    if result_type == "succeeded":
+        row["stop_reason"] = item.result.message.stop_reason
+        try:
+            row["label"] = extract_label(item.result.message)
+            row["label_valid"] = True
+        except ValueError as exc:
+            row["error"] = str(exc)
+    else:
+        row["error"] = str(getattr(item.result, "error", result_type))
+    return row
+
+
+def write_label_rows(rows: list[dict[str, Any]], path: Path) -> None:
+    rows.sort(key=lambda row: (row["example_id"], int(row["sample_id"])))
+    with path.open("w", encoding="utf-8", newline="") as outfile:
+        writer = csv.DictWriter(outfile, fieldnames=LABEL_FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
 def status(args: argparse.Namespace) -> int:
     client = load_client(args.env_file)
     for run_dir in args.run_dir:
@@ -215,49 +275,85 @@ def download(args: argparse.Namespace) -> int:
         manifest = {row["custom_id"]: row for row in read_jsonl(output_dir / MANIFEST_NAME)}
         rows: list[dict[str, Any]] = []
         for item in client.messages.batches.results(batch.id):
-            base = manifest.get(item.custom_id)
-            if base is None:
-                raise KeyError(f"Result has no manifest entry: {item.custom_id}")
-            result_type = item.result.type
-            row: dict[str, Any] = {
-                **base,
-                "result_type": result_type,
-                "label": "",
-                "label_valid": False,
-                "stop_reason": "",
-                "error": "",
-            }
-            if result_type == "succeeded":
-                row["stop_reason"] = item.result.message.stop_reason
-                try:
-                    row["label"] = extract_label(item.result.message)
-                    row["label_valid"] = True
-                except ValueError as exc:
-                    row["error"] = str(exc)
-            else:
-                row["error"] = str(getattr(item.result, "error", result_type))
-            rows.append(row)
-        rows.sort(key=lambda row: (row["example_id"], int(row["sample_id"])))
+            rows.append(result_row(item, manifest))
         if len(rows) != metadata["num_requests"]:
             raise RuntimeError(f"Expected {metadata['num_requests']} results, received {len(rows)}.")
-        with labels_path.open("w", encoding="utf-8", newline="") as outfile:
-            writer = csv.DictWriter(
-                outfile,
-                fieldnames=[
-                    "custom_id",
-                    "example_id",
-                    "sample_id",
-                    "prompt_sha256",
-                    "result_type",
-                    "label",
-                    "label_valid",
-                    "stop_reason",
-                    "error",
-                ],
-            )
-            writer.writeheader()
-            writer.writerows(rows)
+        write_label_rows(rows, labels_path)
         print(f"downloaded {run_dir.name}: {len(rows)} labels to {labels_path}")
+    return 0
+
+
+def retry(args: argparse.Namespace) -> int:
+    """Submit only labels that were blank, invalid, or otherwise unsuccessful."""
+
+    client = load_client(args.env_file)
+    for run_dir in args.run_dir:
+        run_dir = run_dir.resolve()
+        output_dir = judge_directory(run_dir)
+        labels_path = output_dir / LABELS_NAME
+        metadata_file = retry_metadata_path(run_dir)
+        if metadata_file.exists() and not args.overwrite:
+            raise FileExistsError(f"A retry batch is already recorded for {run_dir}: {metadata_file}")
+        with labels_path.open(encoding="utf-8", newline="") as infile:
+            invalid_ids = {
+                row["custom_id"]
+                for row in csv.DictReader(infile)
+                if str(row.get("label_valid")).lower() != "true"
+            }
+        if not invalid_ids:
+            print(f"retry skipped {run_dir.name}: all labels are valid")
+            continue
+        requests, manifest = load_generation_requests(run_dir)
+        requests = [row for row in requests if row["custom_id"] in invalid_ids]
+        manifest = [row for row in manifest if row["custom_id"] in invalid_ids]
+        if len(requests) != len(invalid_ids):
+            raise RuntimeError(f"Retry manifest mismatch for {run_dir}: expected {len(invalid_ids)}, got {len(requests)}.")
+        configure_requests(requests, args)
+        write_jsonl(manifest, output_dir / RETRY_MANIFEST_NAME, overwrite=True)
+        batch = client.messages.batches.create(requests=requests)
+        metadata_file.write_text(
+            json.dumps(
+                {
+                    "batch_id": batch.id,
+                    "run_dir": str(run_dir),
+                    "submitted_at_utc": utc_now(),
+                    "model": args.model,
+                    "effort": args.effort,
+                    "max_tokens": args.max_tokens,
+                    "num_requests": len(requests),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        print(f"retry submitted {run_dir.name}: {batch.id} ({len(requests)} requests)")
+    return 0
+
+
+def download_retry(args: argparse.Namespace) -> int:
+    """Merge a completed retry batch into the original label file."""
+
+    client = load_client(args.env_file)
+    for run_dir in args.run_dir:
+        run_dir = run_dir.resolve()
+        output_dir = judge_directory(run_dir)
+        labels_path = output_dir / LABELS_NAME
+        metadata = json.loads(retry_metadata_path(run_dir).read_text(encoding="utf-8"))
+        batch = client.messages.batches.retrieve(metadata["batch_id"])
+        if batch.processing_status != "ended":
+            raise RuntimeError(f"Retry batch {batch.id} is {batch.processing_status}; wait until it ends before downloading.")
+        manifest = {row["custom_id"]: row for row in read_jsonl(output_dir / RETRY_MANIFEST_NAME)}
+        retry_rows = [result_row(item, manifest) for item in client.messages.batches.results(batch.id)]
+        if len(retry_rows) != metadata["num_requests"]:
+            raise RuntimeError(f"Expected {metadata['num_requests']} retry results, received {len(retry_rows)}.")
+        with labels_path.open(encoding="utf-8", newline="") as infile:
+            original_rows = {row["custom_id"]: row for row in csv.DictReader(infile)}
+        original_rows.update({row["custom_id"]: row for row in retry_rows})
+        write_label_rows(list(original_rows.values()), labels_path)
+        valid = sum(str(row.get("label_valid")).lower() == "true" for row in original_rows.values())
+        print(f"retry downloaded {run_dir.name}: replaced {len(retry_rows)} rows; valid labels={valid}/{len(original_rows)}")
     return 0
 
 
@@ -265,11 +361,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--env_file", type=Path, default=PROJECT_ROOT / ".env")
     subparsers = parser.add_subparsers(dest="command", required=True)
-    for command in ("submit", "status", "recover", "download"):
+    for command in ("submit", "status", "recover", "download", "retry", "download-retry"):
         subparser = subparsers.add_parser(command)
         subparser.add_argument("--run_dir", type=Path, action="append", required=command != "recover")
         subparser.add_argument("--overwrite", action="store_true")
-        if command in {"submit", "recover"}:
+        if command in {"submit", "recover", "retry"}:
             subparser.add_argument("--model", default="claude-sonnet-5")
             subparser.add_argument("--effort", choices=("low", "medium", "high"), default="low")
             subparser.add_argument("--max_tokens", type=int, default=32)
@@ -284,10 +380,16 @@ def main() -> int:
         if args.max_tokens < 32:
             raise ValueError("max_tokens must be at least 32.")
         return submit(args)
+    if args.command == "retry":
+        if args.max_tokens < 32:
+            raise ValueError("max_tokens must be at least 32.")
+        return retry(args)
     if args.command == "status":
         return status(args)
     if args.command == "recover":
         return recover(args)
+    if args.command == "download-retry":
+        return download_retry(args)
     return download(args)
 
 
