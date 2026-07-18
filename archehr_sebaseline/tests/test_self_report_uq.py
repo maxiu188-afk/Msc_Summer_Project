@@ -19,7 +19,9 @@ class FakeSelfReportScorer:
 
     def binary_continuation_probability(self, prompt: str, *, true_text: str, false_text: str) -> float:
         del true_text, false_text
-        return 0.75 if "supported" in prompt.lower() else 0.25
+        if "other possible answers sampled" in prompt.lower():
+            return 0.75
+        return 0.50
 
 
 class SelfReportUQTests(unittest.TestCase):
@@ -43,10 +45,13 @@ class SelfReportUQTests(unittest.TestCase):
         self.assertEqual(len(generation_rows), 1)
         self.assertAlmostEqual(generation_rows[0]["verbalized_confidence_uncertainty"], 0.2)
         self.assertEqual(generation_rows[0]["p_true_uncertainty"], 0.25)
+        self.assertEqual(generation_rows[0]["p_true_blind_uncertainty"], 0.5)
+        self.assertEqual(generation_rows[0]["p_true_with_samples_uncertainty"], 0.25)
         self.assertEqual(generation_rows[0]["answer_source"], "best_generation_low_temperature")
         self.assertEqual(generation_rows[0]["num_high_temperature_samples"], 2)
         self.assertEqual(example_rows[0]["mean_verbalized_confidence"], 0.8)
         self.assertEqual(example_rows[0]["mean_p_true"], 0.75)
+        self.assertEqual(example_rows[0]["mean_p_true_blind"], 0.5)
 
 
 if __name__ == "__main__":

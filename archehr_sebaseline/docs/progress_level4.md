@@ -13,7 +13,7 @@ Current active planning is in:
 
 ```text
 docs/dataset_pivot_status.md
-docs/bioasq_isambard_results_20260715.md
+docs/archived_low_usability/README.md
 SE_BASELINE_LEVEL_PLAN.md
 ```
 
@@ -42,7 +42,7 @@ Health check passed for all required artifacts and row counts.
 Downloaded server results are stored under:
 
 ```text
-D:\work\FinalProject\code\server_results\level4_qwen25_7b_nli_50x5
+server_results/archived_low_usability/level4_qwen25_7b_nli_50x5
 ```
 
 Generated analysis reports:

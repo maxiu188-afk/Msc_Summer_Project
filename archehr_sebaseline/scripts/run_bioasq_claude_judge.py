@@ -32,9 +32,9 @@ from archehr_sebaseline.evaluation.claude_judge import (
 )
 
 
-# Preserve the earlier high-temperature exploratory batch in ``claude_judge``.
-# The paper-protocol low-temperature main answers are evaluated separately.
-OUTPUT_DIRNAME = "claude_main_answer_judge"
+# Preserve legacy three-level outputs. The current protocol uses independent
+# binary labels for low-temperature main answers.
+OUTPUT_DIRNAME = "claude_binary_main_answer_judge"
 MANIFEST_NAME = "request_manifest.jsonl"
 METADATA_NAME = "batch_metadata.json"
 LABELS_NAME = "claude_generation_labels.csv"
@@ -44,6 +44,8 @@ LABEL_FIELDS = [
     "custom_id",
     "example_id",
     "sample_id",
+    "bioasq_type",
+    "reference_key",
     "prompt_sha256",
     "result_type",
     "label",
@@ -94,7 +96,11 @@ def load_generation_requests(run_dir: Path) -> tuple[list[dict[str, Any]], list[
         example = examples.get(example_id)
         if example is None:
             raise KeyError(f"Generation {example_id}/{sample_id} has no matching example.")
-        references = [str(value).strip() for value in example.get("ideal_answers", []) if str(value).strip()]
+        bioasq_type = str(example.get("bioasq_type") or "").lower()
+        reference_key = "exact_answers" if bioasq_type in {"factoid", "list"} else "ideal_answers"
+        references = [str(value).strip() for value in example.get(reference_key, []) if str(value).strip()]
+        if not references and reference_key != "ideal_answers":
+            references = [str(value).strip() for value in example.get("ideal_answers", []) if str(value).strip()]
         if not references and str(example.get("gold_answer") or "").strip():
             references = [str(example["gold_answer"]).strip()]
         candidate = str(generation.get("clean_answer") or generation.get("raw_answer") or "").strip()
@@ -104,6 +110,7 @@ def load_generation_requests(run_dir: Path) -> tuple[list[dict[str, Any]], list[
             question=str(example.get("question") or "").strip(),
             references=references,
             candidate=candidate,
+            bioasq_type=bioasq_type,
         )
         custom_id = f"e{example_id}-s{sample_id}"
         requests.append(
@@ -123,6 +130,8 @@ def load_generation_requests(run_dir: Path) -> tuple[list[dict[str, Any]], list[
                 "custom_id": custom_id,
                 "example_id": example_id,
                 "sample_id": sample_id,
+                "bioasq_type": bioasq_type,
+                "reference_key": reference_key,
                 "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
             }
         )

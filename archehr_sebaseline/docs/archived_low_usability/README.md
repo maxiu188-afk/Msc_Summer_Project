@@ -1,0 +1,37 @@
+# Archived Low-Usability Results
+
+This directory holds historical result reports that are retained for
+provenance but are not active evidence for the next research decision.
+
+## Why these results are archived
+
+- They use BioASQ summary prompts, including grounded/evidence-conditioned
+  settings that are outside the current no-evidence medical-QA UQ direction.
+- Their quality targets use historical lexical, citation-aware, or three-class
+  Claude labels rather than the planned binary `correct`/`incorrect` target.
+- The generic `microsoft/deberta-v2-xlarge-mnli` clustering model does not meet
+  the planned requirement for free, biomedical, set-aware factoid/list NLI.
+- The PubMedQA Level-4 pilot is an engineering smoke test, not a suitable
+  medical free-form UQ benchmark.
+
+These materials must not be cited as current SE, P(True), or probe results.
+They remain useful for reproducing prior runs, checking artifact formats, and
+designing the next no-evidence factoid/list pipeline.
+
+## Contents
+
+- `bioasq_isambard_results_20260715.md`: historical Isambard summary results,
+  including the evidence/direct ablation and three-class Claude evaluation.
+- `bioasq_runpod_results_20260713.md`: historical grounded RunPod batch.
+- `../../../server_results/archived_low_usability/`: local raw summary outputs,
+  related analyses, manual-review material, and the PubMedQA Level-4 pilot.
+- `../../outputs/archived_low_usability/`: local downloaded BioASQ summary run
+  directories. This path is ignored by Git because it contains generated data.
+
+## Active direction
+
+The next experimental gate is a no-evidence BioASQ factoid pipeline, followed
+by list if the factoid setup produces a sufficiently usable binary outcome.
+It will use a free biomedical NLI model with set-aware equivalence, a binary
+`correct`/`incorrect` judge, and a paired P(True) ablation with versus without
+the high-temperature answers.

@@ -1,263 +1,90 @@
-# Isambard BioASQ First-Run Guide
+# Isambard BioASQ medical-UQ run guide
 
-This is the active launch guide for a fresh Isambard BioASQ run. It is not a
-rerun of the completed RunPod batch. The job generates a new BioASQ run, checks
-its Level 4 artifacts, evaluates reference quality, and (by default) computes
-the two remaining simple UQ baselines: verbalized confidence and P(True).
+The active experiment is BioASQ medical QA uncertainty estimation. It tests
+two hypotheses in one matched pipeline: whether Semantic Entropy is useful for
+medical answers, and whether P(True) improves when it sees high-temperature
+alternatives.
 
-## Upload payload and data
+The active data mix is `bioasq_medical_uq`: factoid, list, and summary only.
+Yes/no questions are excluded. Generation is no-evidence for all three types;
+summary stays no-evidence even in a future mixed evidence configuration.
 
-Upload the curated source archive to `$SCRATCHDIR/final_project/` and extract
-it there. The archive deliberately excludes model caches, outputs, virtual
-environments, and historical RunPod results.
-
-The local workspace currently has no public BioASQ data directory, so upload
-the public data separately and keep this layout:
+## Project and data
 
 ```text
 $SCRATCHDIR/final_project/
 ├── archehr_sebaseline/
-└── data/
-    ├── BioASQ-training13b/training13b.json
-    └── Task13BGoldenEnriched/
+└── data/BioASQ-training13b/training13b.json
 ```
 
-For the first run, begin with the training summary slice. The Golden directory
-is needed later for summary/factoid/list comparisons.
+The batch scripts select `.venv_isambard` on R580+ CUDA nodes and
+`.venv_isambard_cuda127` otherwise. Do not replace either environment's
+PyTorch build to diagnose an allocation issue.
 
-## First-time setup
+## Server smoke first
+
+The smoke uses three questions, three high-temperature samples, PubMedBERT
+NLI, a low-temperature target answer, and both P(True) variants. It does not
+call Claude because the binary judge is a separate local API stage.
 
 ```bash
 cd "$SCRATCHDIR/final_project/archehr_sebaseline"
-module load cray-python || true
-python -m venv .venv_isambard
-source .venv_isambard/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-hf auth login
-hf auth whoami
-python -m unittest discover tests
-```
-
-Before submitting a GPU job, confirm that the installed PyTorch build can see
-the allocated GPU from a short interactive allocation or a site-supported GPU
-test command. Do not replace a CUDA build with CPU PyTorch if this check fails.
-
-## GPU-driver-specific environments
-
-Keep the existing `.venv_isambard` unchanged. It is the original CUDA 13
-environment and is selected on nodes with an NVIDIA R580-or-newer driver.
-Create the separate CUDA-12.7-compatible environment once on shared scratch:
-
-```bash
-cd "$SCRATCHDIR/final_project/archehr_sebaseline"
-module load cray-python
-python -m venv .venv_isambard_cuda127
-source .venv_isambard_cuda127/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements-isambard-cuda127.txt
-```
-
-The CUDA-12.7 environment intentionally uses the official PyTorch 2.6 CUDA 12.6
-wheel. The CUDA 12 driver family supports it, while the existing CUDA 13 wheel
-does not run on the older R5xx nodes. `scripts/run_bioasq_isambard.sbatch`
-queries the allocated node's NVIDIA driver before activation: it selects
-`.venv_isambard` for R580+ and `.venv_isambard_cuda127` otherwise. The selected
-driver and PyTorch versions are recorded in `run_timing.txt`.
-
-Set `VENV_PATH=/path/to/venv` only for an explicit diagnostic override; normal
-submissions should use the automatic selection.
-
-## Submit the first BioASQ run
-
-```bash
-cd "$SCRATCHDIR/final_project/archehr_sebaseline"
-
-DATASET=bioasq_summary \
 DATA_PATH="$SCRATCHDIR/final_project/data/BioASQ-training13b/training13b.json" \
-SPLIT=train13b \
-OUTPUT_DIR="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_summary_gemma3_12b_100x10" \
-MAX_EXAMPLES=100 \
-NUM_SAMPLES=10 \
-LOCAL_FILES_ONLY=0 \
-NLI_LOCAL_FILES_ONLY=0 \
-RUN_SELF_REPORT_UQ=1 \
-sbatch scripts/run_bioasq_isambard.sbatch
+LOCAL_FILES_ONLY=0 NLI_LOCAL_FILES_ONLY=0 \
+sbatch scripts/run_bioasq_medical_uq_smoke_isambard.sbatch
 ```
 
-`LOCAL_FILES_ONLY=0` permits the first authenticated download of Gemma and the
-open NLI model. After the cache is populated, use `1` for both variables on
-later runs. The batch script prints Level 4 generation/NLI progress and stops
-on any failure. It writes the reference UQ results first, then the two
-model-backed baselines, and finally refreshes the common BioASQ comparison.
-
-## Verify and retrieve results
+After the first model downloads complete, set both cache flags to `1`. Confirm
+the job succeeded before any full run:
 
 ```bash
-squeue -u "$USER" -o "%.18i %.9P %.30j %.2t %.12M %.12l %R"
-sacct -j <JOBID> --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS,AllocTRES%80
-
-OUT="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_summary_gemma3_12b_100x10"
+OUT="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_medical_uq_smoke_<timestamp>"
 cat "$OUT/health_check.txt"
-cat "$OUT/bioasq_eval/bioasq_eval_summary.json"
 cat "$OUT/run_timing.txt"
+head -n 2 "$OUT/uq_baselines/self_report_examples.csv"
 ```
 
-The final comparison includes discrete/weighted SE, token log-probability,
-token entropy, sequence NLL, verbalized confidence, and P(True). New runs use
-the `three_axis` quality mode: lexical reference coverage, cited-document
-overlap, and NLI ideal-answer coverage. NLI assigns 1.0 when the generated
-answer entails an ideal/exact answer, 0.5 when it is a semantically incomplete
-subset, and 0.0 otherwise. Keep outputs, health checks, `run_timing.txt`, and
-Slurm logs. Record each completed formal run in `docs/experiment_runtime_log.md`;
-do not archive model caches or virtual environments as experiment evidence.
+The self-report CSV must contain `p_true_blind_uncertainty` and
+`p_true_with_samples_uncertainty`; the latter is the P(True)-10 condition.
 
-## Independent judge validation and matched repeat
+## Full paired experiment
 
-These validation runs completed on 2026-07-15:
-
-```text
-job 5660345: Qwen judge, COMPLETED, 00:20:56
-job 5660346: matched seed-47 100x10 repeat, COMPLETED, 03:18:31
-```
-
-The repeat passed the full health check. Discrete-SE AUROC was 0.609 versus
-0.687 in seed 31, while answer quality remained highly stable. The Qwen judge
-was too lenient to produce binary low-quality labels. See
-`docs/bioasq_isambard_results_20260715.md` for interpretation and
-`docs/experiment_runtime_log.md` for resource planning.
-
-The completed 100x10 run can be validated on a fixed, quality-stratified
-30-question subset with the cached independent Qwen judge. All 300 prompts,
-raw responses, rubric scores, and comparison statistics are retained:
-
-```bash
-RUN_DIR="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_summary_gemma3_12b_100x10" \
-JUDGE_MODEL_NAME=Qwen/Qwen2.5-7B-Instruct \
-sbatch scripts/run_bioasq_llm_judge.sbatch
-```
-
-For an independently sampled repeat, keep every setting unchanged except the
-generation seed and output directory:
-
-```bash
-DATASET=bioasq_summary \
-DATA_PATH="$SCRATCHDIR/final_project/data/BioASQ-training13b/training13b.json" \
-SPLIT=train13b \
-OUTPUT_DIR="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_summary_gemma3_12b_100x10_seed47" \
-MAX_EXAMPLES=100 \
-NUM_SAMPLES=10 \
-SEED=47 \
-LOCAL_FILES_ONLY=1 \
-NLI_LOCAL_FILES_ONLY=1 \
-RUN_SELF_REPORT_UQ=1 \
-sbatch scripts/run_bioasq_isambard.sbatch
-```
-
-Both scripts write their own `run_timing.txt`. The repeat is matched to the
-original seed-31 configuration; changing the model, data order, precision,
-sample count, answer length, or evaluation stages would no longer be a pure
-seed replication.
-
-## Temperature-sensitivity repeat (2026-07-16)
-
-Two completed runs extend the matched baseline with `temperature=1.0` while
-retaining `top_p=0.9`, `max_new_tokens=192`, the same data order, model,
-sample count, NLI clustering, and seeds 31/47. Their output directories are:
-
-```text
-outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed31
-outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed47
-```
-
-`scripts/run_bioasq_isambard.sbatch` passes both sampling parameters explicitly
-and records them in `run_timing.txt`. Job 5679663 (seed 31) completed in
-02:36:46 and job 5679664 (seed 47) in 02:28:21; both passed the full Level 4
-health check. Do not change the output cap in this pair: a cap change would
-confound a temperature effect with the known truncation behaviour.
-
-The downloaded outputs were re-evaluated locally with the citation-aware
-reference target. The mean quality scores were 0.3079 (seed 31) and 0.3105
-(seed 47), versus 0.3070 and 0.3111 for the matched temperature-0.8 outputs.
-This reference-only result was followed by separate GPU jobs 5683932 and
-5683933, which completed in 01:38 and 01:34 to add the ideal-answer NLI axis
-without regenerating answers. Their final mean three-axis scores were 0.1968
-(seed 31) and 0.1864 (seed 47):
-
-```bash
-for RUN in \
-  "$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed31" \
-  "$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed47"; do
-  OUTPUT_DIR="$RUN" REFERENCE_NLI_LOCAL_FILES_ONLY=1 \
-    sbatch scripts/evaluate_bioasq_nli_isambard.sbatch
-done
-```
-
-The refreshed `bioasq_eval/` directories are now available locally. Compare
-all four evidence-conditioned runs using the same three-axis target. The
-deterministic comparison label is the lowest 30% of quality scores within each
-question type; the fixed threshold remains a diagnostic. The final UQ outcome
-will instead use the low-temperature Claude `poor` label described below.
-
-## Direct-answer ablation without snippets
-
-The matched no-evidence ablation keeps all temperature-1.0 settings unchanged
-but removes BioASQ snippets from the generation prompt. It uses output
-directories `outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_direct_seed31`
-and `..._seed47`; jobs 5684358 and 5684360 were submitted on 2026-07-16.
-
-Set `INCLUDE_EVIDENCE=0` to select the `bioasq_direct_v1` prompt. The original
-BioASQ metadata remains in the artifacts for ideal-answer evaluation, but no
-snippet IDs are shown to the model. Therefore document-overlap/citation scores
-are intentionally unavailable and `three_axis` correctly falls back to the
-geometric mean of lexical reference coverage and ideal-answer NLI coverage.
-
-```bash
-for SEED in 31 47; do
-  DATASET=bioasq_summary \
-  DATA_PATH="$SCRATCHDIR/final_project/data/BioASQ-training13b/training13b.json" \
-  SPLIT=train13b \
-  OUTPUT_DIR="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_direct_seed${SEED}" \
-  MAX_EXAMPLES=100 NUM_SAMPLES=10 MAX_NEW_TOKENS=192 \
-  TEMPERATURE=1.0 TOP_P=0.9 SEED="$SEED" INCLUDE_EVIDENCE=0 \
-  LOCAL_FILES_ONLY=1 NLI_LOCAL_FILES_ONLY=1 REFERENCE_NLI_LOCAL_FILES_ONLY=1 \
-  RUN_SELF_REPORT_UQ=1 \
-  sbatch scripts/run_bioasq_isambard.sbatch
-done
-```
-
-Do not resubmit these exact completed jobs merely to reproduce their downloaded
-results. Use the commands as provenance or when an additional explicitly
-planned seed is required.
-
-## Low-temperature main answers for Semantic Entropy evaluation
-
-The original Semantic Entropy protocol separates the stochastic answers used to
-compute uncertainty from the single answer whose quality is evaluated. For a
-new run, `run_level4.py` now records both: ten `T=1.0`, `top_p=0.9`, `top_k=50`
-samples for UQ and one `T=0.1` main answer. The earlier temperature-1.0 runs
-pre-date this correction, so add their main answers with the small standalone
-job below rather than rerunning their 100x10 workload:
+After a successful smoke, use the same command with the full workload:
 
 ```bash
 cd "$SCRATCHDIR/final_project/archehr_sebaseline"
-
-for SPEC in \
-  'bioasq_summary_gemma3_12b_100x10_temp1p0_seed31 31 best-evid-s31' \
-  'bioasq_summary_gemma3_12b_100x10_temp1p0_seed47 47 best-evid-s47' \
-  'bioasq_summary_gemma3_12b_100x10_temp1p0_direct_seed31 31 best-direct-s31' \
-  'bioasq_summary_gemma3_12b_100x10_temp1p0_direct_seed47 47 best-direct-s47'; do
-  set -- $SPEC
-  PROJECT_DIR="$PWD" RUN_DIR="$PWD/outputs/$1" SEED="$2" \
-  TEMPERATURE=0.1 TOP_P=0.9 TOP_K=50 MAX_NEW_TOKENS=192 \
-  sbatch --job-name="$3" scripts/run_bioasq_best_isambard.sbatch
-done
+DATA_PATH="$SCRATCHDIR/final_project/data/BioASQ-training13b/training13b.json" \
+OUTPUT_DIR="$PWD/outputs/bioasq_medical_uq_gemma3_12b_100x10_seed31" \
+MAX_EXAMPLES=100 NUM_SAMPLES=10 SEED=31 TEMPERATURE=1.0 TOP_P=0.9 \
+LOCAL_FILES_ONLY=1 NLI_LOCAL_FILES_ONLY=1 \
+sbatch scripts/run_bioasq_isambard.sbatch
 ```
 
-The four 2026-07-17 submissions are 5692776/5692777 (evidence, seeds 31/47)
-and 5692779/5692780 (direct answers, seeds 31/47). They produce only
-`best_generations.jsonl` and `best_generation_timing.txt`; existing samples,
-NLI clusters, UQ scores, and quality files remain immutable. Retrieve these
-files, then run the Claude Sonnet 5 three-class comparison locally. Its `poor`
-label, not a fixed deterministic score threshold and not a label on one of the
-high-temperature samples, is the primary binary outcome for UQ AUROC/AURAC.
+The batch script writes generation/UQ artifacts, a health check, timing, and
+paired P(True) results. It intentionally does not run the archived
+deterministic BioASQ quality evaluator.
+
+## Local binary Claude stage
+
+Download a complete run, then submit one judge request for every
+low-temperature `best_generations.jsonl` answer. The judge returns exactly
+`correct` or `incorrect`; `incorrect` is the positive risk class. Factoid and
+list use `exact_answers`; summary uses `ideal_answers`.
+
+```bash
+cd archehr_sebaseline
+python scripts/run_bioasq_claude_judge.py submit --run_dir <run-dir>
+python scripts/run_bioasq_claude_judge.py status --run_dir <run-dir>
+python scripts/run_bioasq_claude_judge.py download --run_dir <run-dir>
+python scripts/evaluate_bioasq_claude_judge.py --run_dir <run-dir>
+```
+
+The resulting `claude_binary_main_answer_judge/claude_uq_*.csv` compares SE,
+token UQ, P(True)-blind, and P(True)-10 against the same binary labels.
+
+## Archived historical protocol
+
+The earlier summary/evidence runs, generic DeBERTa NLI, three-axis deterministic
+quality score, and three-level Claude labels are retained only as archived
+diagnostics under `docs/archived_low_usability/`. They are not comparable to
+the active protocol and must not be extended as the main experiment.

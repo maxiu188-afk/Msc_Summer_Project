@@ -1,6 +1,6 @@
 ﻿# ArchEHR-QA Semantic Entropy Baseline Plan
 
-Last updated: 2026-07-17
+Last updated: 2026-07-18
 
 ## Current Decision
 
@@ -8,32 +8,25 @@ ArchEHR-QA is no longer the planned final evaluation or SEP training dataset.
 The ArchEHR-QA pipeline is implemented and useful as an engineering baseline,
 but the available test key has no gold evidence labels or answer-quality labels.
 
-The current main replacement-dataset direction is BioASQ Task B. Its first
-grounded Gemma 3 12B / NLI batch is complete: Golden summary (80 questions),
-Golden factoid (50), Golden list (50), and a training-summary repeat (50), all
-with ten samples per question. The existing ArchEHR-QA code should be retained
-as a grounded long-form SE smoke/diagnostic pipeline.
+The current main replacement-dataset direction is no-evidence BioASQ factoid
+and list medical-QA UQ. The existing ArchEHR-QA code should be retained as a
+grounded long-form SE smoke/diagnostic pipeline.
 
 The temporary Runpod recovery path is complete. Future long-running work should
 return to Isambard; Runpod documents and scripts remain only as reproducibility
 records for this completed batch.
 
-Two matched Isambard training-summary runs are now complete: jobs 5654721
-(seed 31) and 5660346 (seed 47), each with 100 questions and ten generations.
-Answer quality is strongly replicated (paired rho 0.993; 29/30 low-quality
-examples shared), but discrete-SE AUROC falls from 0.687 to 0.609 and the repeat
-bootstrap interval includes 0.5. Job 5660345 also completed a fixed 30-question
-Qwen judge; it was too lenient to create any low-quality labels. The no-evidence
-temperature-1.0 pair then completed (jobs 5684358/5684360), and the Semantic
-Entropy generation protocol was corrected: the ten `T=1.0` samples are only for
-UQ, while a separate `T=0.1` main answer is evaluated. Four small backfill jobs
-(5692776/5692777 with evidence; 5692779/5692780 direct) are queued to create
-that main answer. See `archehr_sebaseline/docs/bioasq_isambard_results_20260715.md`.
+The completed BioASQ summary, evidence-conditioned, and three-class-judge runs
+are archived as low-usability diagnostics. They do not provide active evidence
+for the factoid/list decision because their NLI is generic, their quality target
+is not binary correct/incorrect, and their summary prompts do not match the
+current no-evidence target. See
+`archehr_sebaseline/docs/archived_low_usability/README.md`.
 
-## Active Temperature-Sensitivity Repeat (2026-07-16)
+## Archived Temperature-Sensitivity Repeat (2026-07-16)
 
-Two additional Isambard jobs have been submitted and their results are pending.
-They form a paired temperature-sensitivity check rather than a new benchmark:
+This completed summary-path check is retained only for provenance, not as a new
+benchmark:
 
 ```text
 model: google/gemma-3-12b-it
@@ -124,7 +117,7 @@ The structured health check passed. Outputs include:
 Local downloaded results and analysis are under:
 
 ```text
-D:\work\FinalProject\code\server_results\level4_qwen25_7b_nli_50x5
+server_results/archived_low_usability/level4_qwen25_7b_nli_50x5
 ```
 
 Generated local reports:
@@ -166,11 +159,11 @@ archehr_sebaseline/tests/test_pubmedqa_label_eval.py
 The local 50x5 Qwen2.5-7B pilot now has these Level 5 artifacts:
 
 ```text
-D:\work\FinalProject\code\server_results\level4_qwen25_7b_nli_50x5\pubmedqa_label_predictions.csv
-D:\work\FinalProject\code\server_results\level4_qwen25_7b_nli_50x5\pubmedqa_eval_summary.json
-D:\work\FinalProject\code\server_results\level4_qwen25_7b_nli_50x5\rejection_curve.csv
-D:\work\FinalProject\code\server_results\level4_qwen25_7b_nli_50x5\auroc_bar.svg
-D:\work\FinalProject\code\server_results\level4_qwen25_7b_nli_50x5\rejection_curve.svg
+server_results/archived_low_usability/level4_qwen25_7b_nli_50x5/pubmedqa_label_predictions.csv
+server_results/archived_low_usability/level4_qwen25_7b_nli_50x5/pubmedqa_eval_summary.json
+server_results/archived_low_usability/level4_qwen25_7b_nli_50x5/rejection_curve.csv
+server_results/archived_low_usability/level4_qwen25_7b_nli_50x5/auroc_bar.svg
+server_results/archived_low_usability/level4_qwen25_7b_nli_50x5/rejection_curve.svg
 ```
 
 Current maintained-evaluator results:

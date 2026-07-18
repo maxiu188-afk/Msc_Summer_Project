@@ -19,14 +19,20 @@ See:
 
 ```text
 docs/dataset_pivot_status.md
-docs/bioasq_isambard_results_20260715.md
-docs/bioasq_runpod_results_20260713.md
+docs/archived_low_usability/README.md
+docs/archived_low_usability/bioasq_isambard_results_20260715.md
+docs/archived_low_usability/bioasq_runpod_results_20260713.md
 docs/experiment_runtime_log.md
 docs/archehr_se_baseline_plan.md
 docs/archehr_evaluation_architecture.md
 ```
 
-## Current Stage
+## Archived Stage
+
+The summary-path stage below is retained for reproducibility only. It is not
+the current benchmark or basis for choosing an uncertainty method; see
+`docs/archived_low_usability/README.md` and the root plan for the active
+no-evidence factoid/list direction.
 
 The primary Isambard baseline and its matched seed repeat are complete:
 
@@ -178,7 +184,7 @@ python -m unittest discover archehr_sebaseline\tests
 Downloaded 50x5 server results are under:
 
 ```text
-D:\work\FinalProject\code\server_results\level4_qwen25_7b_nli_50x5
+server_results/archived_low_usability/level4_qwen25_7b_nli_50x5
 ```
 
 Analysis reports:

@@ -237,8 +237,27 @@ def run_level4(
         split=split,
         limit=limit_examples,
     )
-    if not include_evidence:
-        examples = [{**example, "prompt_evidence_mode": "none"} for example in examples]
+    # Store the effective mode per example: a mixed BioASQ run deliberately
+    # keeps summary questions evidence-free even if factoid/list use snippets.
+    from .prompting import bioasq_should_include_evidence
+
+    examples = [
+        {
+            **example,
+            "prompt_evidence_mode": (
+                "provided"
+                if (
+                    include_evidence
+                    and (
+                        str(example.get("dataset") or "").lower() != "bioasq"
+                        or bioasq_should_include_evidence(example, include_evidence=True)
+                    )
+                )
+                else "none"
+            ),
+        }
+        for example in examples
+    ]
     prompt_records = build_prompt_records(examples, include_evidence=include_evidence)
     if best_generation_temperature <= 0:
         raise ValueError("best_generation_temperature must be positive.")

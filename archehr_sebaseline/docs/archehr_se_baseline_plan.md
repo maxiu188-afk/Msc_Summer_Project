@@ -3,8 +3,9 @@
 Last updated: 2026-07-15
 
 This document preserves the historical ArchEHR-QA engineering-baseline plan.
-The active BioASQ result and next-step decision are in
-`bioasq_isambard_results_20260715.md` and `dataset_pivot_status.md`.
+The historical BioASQ result reports are in `archived_low_usability/`; the
+current no-evidence factoid/list decision is in
+`archived_low_usability/README.md` and the root `SE_BASELINE_LEVEL_PLAN.md`.
 
 ## Goal
 

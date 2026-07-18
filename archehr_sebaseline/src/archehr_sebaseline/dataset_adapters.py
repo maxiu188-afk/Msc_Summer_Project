@@ -14,6 +14,7 @@ SUPPORTED_DATASETS = [
     "fake",
     "pubmedqa",
     "bioasq",
+    "bioasq_medical_uq",
     "bioasq_summary",
     "bioasq_factoid",
     "bioasq_list",
@@ -530,6 +531,15 @@ def load_common_examples(
         if data_path is None:
             raise ValueError("--data_path is required for dataset=bioasq.")
         question_type = None
+        if dataset_name == "bioasq_medical_uq":
+            examples = load_bioasq_common_examples(data_path, split=split, limit=None)
+            selected = [
+                example
+                for example in examples
+                if str(example.get("bioasq_type") or "").lower()
+                in {"factoid", "list", "summary"}
+            ]
+            return selected[:limit] if limit is not None else selected
         if dataset_name.startswith("bioasq_"):
             question_type = dataset_name.removeprefix("bioasq_")
         return load_bioasq_common_examples(

@@ -1,13 +1,14 @@
 # Dataset Pivot Status
 
-Last updated: 2026-07-17
+Last updated: 2026-07-18
 
 ## Decision
 
-BioASQ Task B is the current main replacement-dataset direction. Immediate work
-should test its supported summary, factoid, list, and yes/no paths. Continued
-candidate-dataset exploration remains a supervisor recommendation and should be
-treated as parallel due diligence rather than a pause in BioASQ testing.
+BioASQ Task B remains the dataset family, but the active target is now
+no-evidence factoid and list medical-QA UQ. Completed summary-path results are
+archived as low-usability diagnostics because they use generic NLI and
+non-binary quality targets. Continued candidate-dataset exploration remains a
+supervisor recommendation and should be treated as parallel due diligence.
 
 ArchEHR-QA should no longer be treated as the final evaluation or SEP training
 dataset for this project.
@@ -66,7 +67,8 @@ filtering study, so no generation-prompt change is warranted merely to improve
 lexical quality.
 
 Detailed figures, provenance, and limitations are in
-`bioasq_runpod_results_20260713.md`. Future GPU runs return to Isambard.
+`archived_low_usability/bioasq_runpod_results_20260713.md`. Future GPU runs
+return to Isambard.
 
 ## Isambard Replication Update (2026-07-15)
 
@@ -87,7 +89,7 @@ The immediate decision is to keep BioASQ as the main baseline dataset, report
 both seeds without selecting the stronger result, verify summary quality once
 with a standard/official implementation, and diagnose SE failure cases. A
 larger closed-model judge is deferred rather than abandoned. Full results are
-in `bioasq_isambard_results_20260715.md`.
+in `archived_low_usability/bioasq_isambard_results_20260715.md`.
 
 ## Label Availability
 

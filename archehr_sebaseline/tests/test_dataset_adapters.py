@@ -13,6 +13,7 @@ if str(SRC_DIR) not in sys.path:
 from archehr_sebaseline.dataset_adapters import (
     load_archehr_common_examples,
     load_bioasq_common_examples,
+    load_common_examples,
     load_pubmedqa_common_examples,
     archehr_records_to_common,
     bioasq_records_to_common,
@@ -157,16 +158,46 @@ class DatasetAdapterTests(unittest.TestCase):
         self.assertIn("BioASQ biomedical question", prompt)
         self.assertIn("Question type: list", prompt)
         self.assertIn("[S1] EGF and epiregulin bind EGFR.", prompt)
-        self.assertIn("comma-separated list", prompt)
-        self.assertEqual(build_prompt_records([example])[0]["prompt_version"], "bioasq_grounded_v1")
+        self.assertIn("semicolon-separated items", prompt)
+        self.assertEqual(build_prompt_records([example])[0]["prompt_version"], "bioasq_list_grounded_v2")
 
         direct_prompt = build_prompt(example, include_evidence=False)
         direct_record = build_prompt_records([example], include_evidence=False)[0]
         self.assertIn("directly from your biomedical knowledge", direct_prompt)
         self.assertNotIn("Evidence snippets:", direct_prompt)
         self.assertNotIn("[S1]", direct_prompt)
-        self.assertEqual(direct_record["prompt_version"], "bioasq_direct_v1")
+        self.assertEqual(direct_record["prompt_version"], "bioasq_list_direct_v2")
         self.assertEqual(direct_record["evidence_mode"], "none")
+
+    def test_bioasq_medical_uq_keeps_factoid_list_and_summary_only(self) -> None:
+        output_dir = Path(__file__).resolve().parents[1] / "outputs" / "test_fixtures"
+        path = output_dir / "bioasq_medical_uq_test.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "questions": [
+                        {"id": "summary", "body": "Summarize.", "type": "summary"},
+                        {"id": "factoid", "body": "Name.", "type": "factoid"},
+                        {"id": "list", "body": "List.", "type": "list"},
+                        {"id": "yesno", "body": "Is it?", "type": "yesno"},
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        examples = load_common_examples(dataset="bioasq_medical_uq", data_path=path)
+        self.assertEqual({example["id"] for example in examples}, {"factoid", "list", "summary"})
+
+    def test_summary_prompt_never_includes_evidence(self) -> None:
+        example = bioasq_records_to_common(
+            [{"id": "summary", "body": "Summarize X.", "type": "summary", "snippets": [{"text": "X."}]}]
+        )[0]
+        prompt = build_prompt(example, include_evidence=True)
+        record = build_prompt_records([example], include_evidence=True)[0]
+        self.assertNotIn("Evidence snippets:", prompt)
+        self.assertNotIn("[S1]", prompt)
+        self.assertEqual(record["evidence_mode"], "none")
+        self.assertEqual(record["prompt_version"], "bioasq_summary_direct_v2")
 
     def test_archehr_records_to_common_preserves_sentence_ids(self) -> None:
         examples = archehr_records_to_common(

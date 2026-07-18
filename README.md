@@ -8,12 +8,11 @@ Current status:
 ```text
 ArchEHR-QA SE baseline: implemented and tested as an engineering baseline
 ArchEHR-QA final evaluation/training target: paused because no usable gold labels
-BioASQ Task B: baseline complete; two matched Isambard summary 100x10 runs passed
+BioASQ Task B: prior summary results archived as low-usability diagnostics
 Current compute host: Isambard (Runpod was a completed temporary recovery path)
-Main result: historical lexical-quality scores replicate strongly, but SE AUROC is modest and seed-sensitive
-Primary evaluation: complete for the matched evidence/no-evidence temperature-1.0 pair, using low-temperature main answers and local Claude labels
-Main result: without evidence P(True) is strongest (mean AUROC 0.921); with evidence predictive entropy/NLL is strongest (0.642)
-Deferred work: SEP supervision; the historical high-temperature Claude batch is retained only as an auxiliary analysis
+Active direction: no-evidence BioASQ factoid/list medical-QA UQ
+Next gate: set-aware free biomedical NLI, binary correct/incorrect evaluation,
+  and a paired P(True) high-temperature-answer ablation
 ```
 
 ArchEHR-QA remains useful for testing grounded long-form generation, citation
@@ -25,51 +24,20 @@ PubMedQA remains available only as an engineering smoke-test and historical
 baseline path. It is not the preferred main research target because its short
 yes/no/maybe labels do not match open long-form clinical generation.
 
-BioASQ Task B is the current main experimental direction. In addition to the
-historical RunPod Golden summary/factoid/list batch, two matched Isambard
-training-summary runs have completed with 100 questions and ten generations per
-question. Their answer-quality scores correlate at 0.993 across seeds, while
-discrete-SE AUROC changes from 0.687 to 0.609 and the repeat confidence interval
-includes chance. This supports a cautious baseline result, not a robust claim
-that SE is the strongest uncertainty method.
-The previous ROUGE-only operational target is retained as historical evidence,
-but the active local evaluator now reports three quality axes: lexical
-reference-answer coverage, document-level overlap between answer citations and
-BioASQ's standard documents, and a three-class NLI ideal-answer coverage score
-(good/partial/poor = 1.0/0.5/0.0). New runs combine the available axes with a
-geometric mean. Its fixed low-quality threshold must be calibrated against the
-manually reviewed set rather than treated as a pass mark. The deterministic
-evaluator uses the lowest 30% of quality scores within each BioASQ question
-type as a diagnostic comparator; the fixed threshold remains diagnostic only.
+BioASQ Task B remains the active dataset family, but all completed summary
+results are now archived rather than treated as active UQ evidence. They mix
+summary prompts, evidence-conditioned generation, a generic NLI clustering
+model, and non-binary quality targets. The archived results are useful only for
+provenance and artifact-format reference; they do not decide whether SE,
+P(True), or a future probe is the preferred medical-QA UQ method.
 
-On 2026-07-16, the paired temperature-sensitivity repeat at `temperature=1.0`
-and `top_p=0.9` completed for both seeds (jobs 5679663 and 5679664). Both
-100x10 outputs passed their Level 4 health checks. A same-config local
-citation-aware reference evaluation found virtually unchanged mean answer
-quality versus temperature 0.8, while within-question semantic variation rose
-slightly. The final three-axis NLI re-evaluation completed in 01:31 and 01:26
-for seeds 31 and 47, giving mean three-axis scores of 0.1968 and 0.1864. A
-matched no-evidence direct-answer ablation (jobs 5684358 and 5684360) is now
-complete (both exit 0; 01:59:42 and 01:59:20). Do not compare the direct-answer
-condition on the citation axis: its deterministic fallback uses ROUGE plus
-ideal-answer NLI only.
-
-The generation protocol was corrected on 2026-07-17 to follow the Semantic
-Entropy reference implementation: ten high-temperature samples (`T=1.0`,
-`top_p=0.9`, `top_k=50`) are used for SE and token-based UQ, while one separate
-low-temperature answer (`T=0.1`) is the accuracy target. The four main-answer
-backfills and the four protocol-correct self-report jobs have completed. Claude
-Sonnet 5 is deliberately local-only post-processing; it labels only the
-low-temperature answer as `good`, `partial`, or `poor`. The direct-answer
-condition uses `poor` as the binary label, while the evidence-conditioned
-condition uses `partial + poor`; the two conditions are reported separately.
-See `archehr_sebaseline/docs/semantic_entropy_generation_protocol.md` and
-`archehr_sebaseline/docs/bioasq_isambard_results_20260715.md`.
-Simpson's recommendation to continue exploring candidate datasets is retained
-as a parallel validation activity, not as a reversal of the BioASQ direction.
-See `archehr_sebaseline/docs/bioasq_isambard_results_20260715.md` for the latest
-results and `archehr_sebaseline/docs/bioasq_runpod_results_20260713.md` for the
-historical task-type batch.
+The next validation target is no-evidence BioASQ factoid, followed by list if
+the first pipeline yields a usable binary outcome. It will use a free,
+biomedical, set-aware NLI equivalence method; a low-temperature main answer
+judged only as `correct` or `incorrect`; ten high-temperature answers for UQ;
+and a paired P(True) comparison with and without those high-temperature
+answers. See `archehr_sebaseline/docs/archived_low_usability/README.md` for
+the retired material and its limitations.
 
 ## Active Naming Policy
 
@@ -93,7 +61,7 @@ understood.
 code/
   archehr_sebaseline/        Active maintained SE/UQ package and dataset adapters
   semantic_uncertainty/      Reference implementation from the Semantic Entropy work
-  server_results/            Downloaded or copied server outputs and analysis artifacts
+  server_results/            Active results; archived diagnostics are in archived_low_usability/
   .agents/                   Local Codex/agent state
   .git/                      Repository metadata
 ```

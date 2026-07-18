@@ -44,7 +44,8 @@ UQ_SCORE_NAMES = [
     "mean_sequence_nll",
     "avg_token_logprob_uncertainty",
     "verbalized_confidence_uncertainty",
-    "p_true_uncertainty",
+    "p_true_blind_uncertainty",
+    "p_true_with_samples_uncertainty",
 ]
 
 
@@ -55,13 +56,6 @@ def parse_args() -> argparse.Namespace:
         "--allow_incomplete_labels",
         action="store_true",
         help="Exclude unanswered Claude cases instead of failing the evaluation.",
-    )
-    parser.add_argument(
-        "--low_quality_labels",
-        nargs="+",
-        choices=("good", "partial", "poor"),
-        default=("poor",),
-        help="Claude labels treated as low quality (default: poor).",
     )
     parser.add_argument("--overwrite", action="store_true")
     return parser.parse_args()
@@ -104,12 +98,34 @@ def build_aurac_rows(
     return results
 
 
+def load_uq_rows(run_dir: Path) -> list[dict[str, str]]:
+    """Merge the native Level 4 and post-hoc UQ artifacts by example ID."""
+
+    source_paths = [
+        run_dir / "se_scores.csv",
+        run_dir / "example_uq.csv",
+        run_dir / "uq_baselines" / "self_report_examples.csv",
+    ]
+    merged: dict[str, dict[str, str]] = {}
+    for path in source_paths:
+        if not path.exists():
+            if path.name == "self_report_examples.csv":
+                continue
+            raise FileNotFoundError(f"Required Level 4 UQ artifact is missing: {path}")
+        for row in csv.DictReader(path.open(encoding="utf-8", newline="")):
+            example_id = str(row.get("example_id") or "")
+            if not example_id:
+                raise ValueError(f"UQ artifact has an empty example_id: {path}")
+            merged.setdefault(example_id, {}).update(row)
+    if not merged:
+        raise ValueError(f"No UQ rows found under {run_dir}.")
+    return [merged[example_id] for example_id in sorted(merged)]
+
+
 def main() -> int:
     args = parse_args()
-    low_quality_labels = set(args.low_quality_labels)
-    judge_dir = args.run_dir / "claude_main_answer_judge"
+    judge_dir = args.run_dir / "claude_binary_main_answer_judge"
     labels_path = judge_dir / "claude_generation_labels.csv"
-    se_path = args.run_dir / "bioasq_eval" / "bioasq_se_eval_examples.csv"
     labels = list(csv.DictReader(labels_path.open(encoding="utf-8")))
     by_example: dict[str, dict[str, str]] = {}
     for row in labels:
@@ -121,14 +137,14 @@ def main() -> int:
         if example_id in by_example:
             raise ValueError(f"More than one Claude label for {example_id}; expected one best generation.")
         by_example[example_id] = row
-    se_rows = list(csv.DictReader(se_path.open(encoding="utf-8")))
+    se_rows = load_uq_rows(args.run_dir)
     if not args.allow_incomplete_labels and len(by_example) != len(se_rows):
         raise ValueError(f"Claude labels ({len(by_example)}) do not match UQ rows ({len(se_rows)}).")
     rows = []
     excluded_example_ids = []
     for row in se_rows:
         label = by_example.get(str(row["example_id"]), {}).get("label")
-        if label not in {"good", "partial", "poor"}:
+        if label not in {"correct", "incorrect"}:
             if args.allow_incomplete_labels:
                 excluded_example_ids.append(str(row["example_id"]))
                 continue
@@ -137,7 +153,7 @@ def main() -> int:
             {
                 **row,
                 "claude_label": label,
-                "is_low_quality": str(label in low_quality_labels).lower(),
+                "is_low_quality": str(label == "incorrect").lower(),
             }
         )
     if not rows:
@@ -158,7 +174,7 @@ def main() -> int:
         "num_evaluated_questions": len(rows),
         "num_excluded_questions": len(excluded_example_ids),
         "excluded_example_ids": excluded_example_ids,
-        "positive_labels": sorted(low_quality_labels),
+        "positive_labels": ["incorrect"],
         "aurac_coverage_range": [0.5, 1.0],
     }
     (judge_dir / "claude_uq_summary.json").write_text(

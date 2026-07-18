@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 
-VALID_LABELS = frozenset({"good", "partial", "poor"})
+VALID_LABELS = frozenset({"correct", "incorrect"})
 
 CLAUDE_JUDGE_SYSTEM_PROMPT = (
     "You are performing an offline academic dataset annotation task. "
@@ -20,8 +20,9 @@ def build_semantic_quality_prompt(
     question: str,
     references: list[str],
     candidate: str,
+    bioasq_type: str | None = None,
 ) -> str:
-    """Build a three-level adaptation of the Semantic Entropy paper's judge prompt."""
+    """Build the binary correctness judge used for the current BioASQ protocol."""
 
     expected = "\n".join(f"- {reference}" for reference in references if reference.strip())
     if not expected:
@@ -38,11 +39,13 @@ def build_semantic_quality_prompt(
             f"Proposed answer: {candidate}",
             "",
             "Within the context of the question, classify the proposed answer against the expected answer(s):",
-            "- good: semantically correct and adequately answers the central question, with no material error.",
-            "- partial: the central answer is substantially correct but has a material omission or limitation, with no material contradiction.",
-            "- poor: incorrect, contradictory, misleading, or does not substantively answer the central question.",
+            "- correct: fully answers the question, agrees with the reference answer(s), and has no material error or missing required answer item.",
+            "- incorrect: any material error, contradiction, missing required item, wrong extra item, or non-answer. There is no partial-credit label.",
+            "- For factoid and list questions, compare answer items as a set: accept harmless ordering or wording changes, but reject missing or incorrect items.",
+            "- For summary questions, accept concise paraphrases that preserve the reference answer's material claims.",
             "",
-            "Ignore citation markers and wording differences. Think internally, then output exactly one token: good, partial, or poor.",
+            f"BioASQ question type: {(bioasq_type or 'unknown').lower()}",
+            "Ignore citation markers and wording differences. Think internally, then output exactly one token: correct or incorrect.",
         ]
     )
 

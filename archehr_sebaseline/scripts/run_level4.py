@@ -14,7 +14,7 @@ if str(SRC_DIR) not in sys.path:
 
 from archehr_sebaseline.dataset_adapters import SUPPORTED_DATASETS
 from archehr_sebaseline.generation import GenerationConfig, MissingGenerationDependency
-from archehr_sebaseline.nli_clustering import NLIConfig
+from archehr_sebaseline.nli_clustering import NLIConfig, PUBMEDBERT_MNLI_MODEL
 from archehr_sebaseline.pipeline_level4 import format_summary, run_level4
 
 
@@ -48,7 +48,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--local_files_only", action="store_true")
     parser.add_argument("--trust_remote_code", action="store_true")
     parser.add_argument("--clustering_method", choices=["nli", "exact"], default="nli")
-    parser.add_argument("--nli_model_name", default="microsoft/deberta-v2-xlarge-mnli")
+    parser.add_argument("--nli_model_name", default=PUBMEDBERT_MNLI_MODEL)
     parser.add_argument("--nli_device", default=None)
     parser.add_argument("--nli_max_input_tokens", type=int, default=512)
     parser.add_argument("--nli_torch_dtype", default=None)

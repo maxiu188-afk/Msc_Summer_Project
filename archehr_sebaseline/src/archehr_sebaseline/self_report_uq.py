@@ -16,6 +16,10 @@ SELF_REPORT_GENERATION_FIELDS = [
     "verbalized_confidence_uncertainty",
     "p_true",
     "p_true_uncertainty",
+    "p_true_blind",
+    "p_true_blind_uncertainty",
+    "p_true_with_samples",
+    "p_true_with_samples_uncertainty",
     "confidence_response",
     "answer_source",
     "num_high_temperature_samples",
@@ -30,6 +34,10 @@ SELF_REPORT_EXAMPLE_FIELDS = [
     "verbalized_confidence_uncertainty",
     "mean_p_true",
     "p_true_uncertainty",
+    "mean_p_true_blind",
+    "p_true_blind_uncertainty",
+    "mean_p_true_with_samples",
+    "p_true_with_samples_uncertainty",
     "answer_source",
     "num_high_temperature_samples",
 ]
@@ -52,7 +60,22 @@ def _evidence_text(example: dict[str, Any], *, max_characters: int = 5000) -> st
     return "\n".join(f"[S{index}] {snippet}" for index, snippet in enumerate(snippets, start=1))[:max_characters]
 
 
+def _uses_evidence(example: dict[str, Any]) -> bool:
+    """Use the generation prompt's evidence mode, never the stored metadata alone."""
+
+    return str(example.get("prompt_evidence_mode") or "provided").lower() == "provided"
+
+
 def build_verbalized_confidence_prompt(example: dict[str, Any], answer: str) -> str:
+    if not _uses_evidence(example):
+        return (
+            "You are checking a biomedical answer. Using the question and your biomedical knowledge, "
+            "estimate the probability that the proposed answer is fully correct. "
+            "Reply with one number from 0 to 100 and no other text.\n\n"
+            f"Question: {example.get('question', '')}\n"
+            f"Proposed answer: {answer}\n"
+            "Confidence (0-100):"
+        )
     return (
         "You are checking a grounded biomedical answer. Using only the question and evidence below, "
         "estimate the probability that the proposed answer is fully correct and supported. "
@@ -77,12 +100,14 @@ def build_p_true_prompt(
         if sampled_answer_text
         else ""
     )
+    evidence_section = (
+        f"Evidence:\n{_evidence_text(example)}\n\n" if _uses_evidence(example) else ""
+    )
+    basis = "the question, supplied evidence, and possible sampled answers" if _uses_evidence(example) else "the question and possible sampled answers"
     return (
-        "Using the question, supplied evidence, and possible sampled answers, "
-        "is the proposed answer fully correct and supported? "
-        "Reply True or False.\n\n"
+        f"Using {basis}, is the proposed answer fully correct? Reply True or False.\n\n"
         f"Question: {example.get('question', '')}\n"
-        f"Evidence:\n{_evidence_text(example)}\n\n"
+        f"{evidence_section}"
         f"Proposed answer: {answer}\n"
         f"{possible_answers_section}"
         "Verdict:"
@@ -204,7 +229,12 @@ def score_self_report_best_answers(
         )
         confidence = parse_verbalized_confidence(confidence_response)
         sampled_answers = sampled_by_id[example_id]
-        p_true = scorer.binary_continuation_probability(
+        p_true_blind = scorer.binary_continuation_probability(
+            build_p_true_prompt(example, answer),
+            true_text=" True",
+            false_text=" False",
+        )
+        p_true_with_samples = scorer.binary_continuation_probability(
             build_p_true_prompt(example, answer, sampled_answers),
             true_text=" True",
             false_text=" False",
@@ -216,8 +246,14 @@ def score_self_report_best_answers(
             "sample_id": generation.get("sample_id", 0),
             "verbalized_confidence": confidence,
             "verbalized_confidence_uncertainty": 1.0 - confidence if confidence is not None else None,
-            "p_true": p_true,
-            "p_true_uncertainty": 1.0 - p_true,
+            # Keep the historical names as aliases for P(True)-10 so legacy
+            # readers remain usable; use the explicit names for comparisons.
+            "p_true": p_true_with_samples,
+            "p_true_uncertainty": 1.0 - p_true_with_samples,
+            "p_true_blind": p_true_blind,
+            "p_true_blind_uncertainty": 1.0 - p_true_blind,
+            "p_true_with_samples": p_true_with_samples,
+            "p_true_with_samples_uncertainty": 1.0 - p_true_with_samples,
             "confidence_response": confidence_response,
             "answer_source": "best_generation_low_temperature",
             "num_high_temperature_samples": len(sampled_answers),
@@ -231,8 +267,12 @@ def score_self_report_best_answers(
                 "num_generations": 1,
                 "mean_verbalized_confidence": confidence,
                 "verbalized_confidence_uncertainty": generation_row["verbalized_confidence_uncertainty"],
-                "mean_p_true": p_true,
+                "mean_p_true": p_true_with_samples,
                 "p_true_uncertainty": generation_row["p_true_uncertainty"],
+                "mean_p_true_blind": p_true_blind,
+                "p_true_blind_uncertainty": generation_row["p_true_blind_uncertainty"],
+                "mean_p_true_with_samples": p_true_with_samples,
+                "p_true_with_samples_uncertainty": generation_row["p_true_with_samples_uncertainty"],
                 "answer_source": generation_row["answer_source"],
                 "num_high_temperature_samples": len(sampled_answers),
             }
