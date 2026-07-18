@@ -222,6 +222,8 @@ def run_level4(
     best_generation_temperature: float = 0.1,
     best_generation_top_p: float | None = None,
     best_generation_top_k: int | None = None,
+    bioasq_type_limits: dict[str, int] | None = None,
+    selection_seed: int = 20260718,
 ) -> dict[str, Any]:
     """Run a Level 4 pilot with token-level baseline uncertainty outputs."""
 
@@ -236,6 +238,8 @@ def run_level4(
         data_path=data_path,
         split=split,
         limit=limit_examples,
+        bioasq_type_limits=bioasq_type_limits,
+        selection_seed=selection_seed,
     )
     # Store the effective mode per example: a mixed BioASQ run deliberately
     # keeps summary questions evidence-free even if factoid/list use snippets.
@@ -386,6 +390,8 @@ def run_level4(
         "dataset": dataset,
         "split": split,
         "data_path": str(data_path) if data_path is not None else "",
+        "bioasq_type_limits": bioasq_type_limits or {},
+        "selection_seed": selection_seed,
         "num_examples": len(examples),
         "num_generations": len(generations),
         "num_best_generations": len(best_generations),

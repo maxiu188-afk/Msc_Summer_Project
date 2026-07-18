@@ -9,9 +9,9 @@ The active project is `archehr_sebaseline`. The package now contains:
 - lightweight uncertainty/evaluation utilities,
 - documentation for the current dataset pivot.
 
-Current research direction: review the completed type-stratified BioASQ Task B
-binary evaluation before selecting the next method, while continuing to compare
-credible candidates as Simpson advised.
+Current research direction: complete the larger Phase-1 BioASQ baseline, then
+use it as the direct comparator for a narrow P(True)-Probe, while continuing to
+compare credible candidates as Simpson advised.
 ArchEHR-QA remains useful as an engineering diagnostic, but it is not the final
 evaluation or SEP training dataset because its test key does not include gold
 evidence labels or answer-quality labels.
@@ -37,7 +37,10 @@ The 200 Claude binary judgments produced 98 valid labels per seed (56
 incorrect, 42 correct); two blank labels per seed are excluded without further
 retry. Overall discrete SE AUROC is 0.729/0.759 and P(True)-blind is
 0.781/0.824. SE is useful for factoid/list but not summary; P(True)-10 is worse
-than blind P(True), so do not begin a P(True)-probe. See
+than blind P(True). The current Phase-1 closing baseline is in smoke
+validation: 1,000 fixed stratified questions (480 factoid, 320 list, 200
+summary), all SE/token UQ and verbal confidence, and blind P(True) only. It
+must complete before a P(True)-Probe begins. See
 `docs/bioasq_medical_uq_protocol.md` for all UQ methods and per-type values.
 
 ## Archived Stage

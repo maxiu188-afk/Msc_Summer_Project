@@ -8,7 +8,7 @@
 #SBATCH --mem=64G
 #SBATCH --time=12:00:00
 
-# Full BioASQ medical-UQ run: SE plus paired P(True) baselines.
+# Full BioASQ medical-UQ run: SE, token UQ, verbal confidence, and blind P(True).
 set -euo pipefail
 
 : "${SCRATCHDIR:?SCRATCHDIR is not set. Submit this on Isambard.}"
@@ -18,7 +18,7 @@ WORKDIR="${SCRATCHDIR}/final_project"
 PROJECT_DIR="${PROJECT_DIR:-${WORKDIR}/archehr_sebaseline}"
 VENV_PATH_ORIGINAL="${PROJECT_DIR}/.venv_isambard"
 VENV_PATH_CUDA127="${PROJECT_DIR}/.venv_isambard_cuda127"
-OUTPUT_DIR="${OUTPUT_DIR:-${PROJECT_DIR}/outputs/bioasq_medical_uq_gemma3_12b_100x10}"
+OUTPUT_DIR="${OUTPUT_DIR:-${PROJECT_DIR}/outputs/bioasq_medical_uq_gemma3_12b_1000x10_phase1}"
 HF_CACHE_DIR="${WORKDIR}/hf_cache"
 TORCH_CACHE_DIR="${WORKDIR}/torch_cache"
 
@@ -66,7 +66,13 @@ export PYTHONUNBUFFERED=1
 DATASET="${DATASET:-bioasq_medical_uq}"
 SPLIT="${SPLIT:-train13b}"
 MODEL_NAME="${MODEL_NAME:-google/gemma-3-12b-it}"
-MAX_EXAMPLES="${MAX_EXAMPLES:-100}"
+MAX_EXAMPLES="${MAX_EXAMPLES:-1000}"
+if [[ "${BIOASQ_TYPE_LIMITS+x}" == "x" ]]; then
+  BIOASQ_TYPE_LIMITS="${BIOASQ_TYPE_LIMITS}"
+else
+  BIOASQ_TYPE_LIMITS="factoid=480,list=320,summary=200"
+fi
+SELECTION_SEED="${SELECTION_SEED:-20260718}"
 NUM_SAMPLES="${NUM_SAMPLES:-10}"
 MAX_NEW_TOKENS="${MAX_NEW_TOKENS:-192}"
 MAX_INPUT_TOKENS="${MAX_INPUT_TOKENS:-4096}"
@@ -119,6 +125,8 @@ record_run_timing() {
     "split: ${SPLIT}" \
     "model_name: ${MODEL_NAME}" \
     "max_examples: ${MAX_EXAMPLES}" \
+    "bioasq_type_limits: ${BIOASQ_TYPE_LIMITS}" \
+    "selection_seed: ${SELECTION_SEED}" \
     "num_samples: ${NUM_SAMPLES}" \
     "max_new_tokens: ${MAX_NEW_TOKENS}" \
     "temperature: ${TEMPERATURE}" \
@@ -157,6 +165,17 @@ elif [[ "${INCLUDE_EVIDENCE}" != "1" ]]; then
   echo "INCLUDE_EVIDENCE must be 0 or 1, got: ${INCLUDE_EVIDENCE}" >&2
   exit 2
 fi
+BIOASQ_TYPE_LIMIT_ARGS=()
+if [[ -n "${BIOASQ_TYPE_LIMITS}" ]]; then
+  IFS=',' read -r -a BIOASQ_TYPE_LIMIT_ENTRIES <<< "${BIOASQ_TYPE_LIMITS}"
+  for type_limit in "${BIOASQ_TYPE_LIMIT_ENTRIES[@]}"; do
+    if [[ -z "${type_limit}" ]]; then
+      echo "BIOASQ_TYPE_LIMITS must be a comma-separated TYPE=COUNT list without empty entries." >&2
+      exit 2
+    fi
+    BIOASQ_TYPE_LIMIT_ARGS+=(--bioasq_type_limit "${type_limit}")
+  done
+fi
 cd "${PROJECT_DIR}"
 python scripts/run_level4.py \
   --dataset "${DATASET}" \
@@ -166,6 +185,8 @@ python scripts/run_level4.py \
   --model_name "${MODEL_NAME}" \
   --num_samples "${NUM_SAMPLES}" \
   --max_examples "${MAX_EXAMPLES}" \
+  "${BIOASQ_TYPE_LIMIT_ARGS[@]}" \
+  --selection_seed "${SELECTION_SEED}" \
   --max_new_tokens "${MAX_NEW_TOKENS}" \
   --max_input_tokens "${MAX_INPUT_TOKENS}" \
   --temperature "${TEMPERATURE}" \

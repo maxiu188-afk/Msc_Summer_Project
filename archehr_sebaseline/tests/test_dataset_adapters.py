@@ -188,6 +188,39 @@ class DatasetAdapterTests(unittest.TestCase):
         examples = load_common_examples(dataset="bioasq_medical_uq", data_path=path)
         self.assertEqual({example["id"] for example in examples}, {"factoid", "list", "summary"})
 
+    def test_bioasq_medical_uq_stratified_limits_are_reproducible(self) -> None:
+        output_dir = Path(__file__).resolve().parents[1] / "outputs" / "test_fixtures"
+        path = output_dir / "bioasq_medical_uq_quotas_test.json"
+        questions = []
+        for question_type, count in (("factoid", 4), ("list", 3), ("summary", 2)):
+            questions.extend(
+                {
+                    "id": f"{question_type}-{index}",
+                    "body": f"{question_type} question {index}",
+                    "type": question_type,
+                }
+                for index in range(count)
+            )
+        questions.append({"id": "yesno-0", "body": "yes/no", "type": "yesno"})
+        path.write_text(json.dumps({"questions": questions}), encoding="utf-8")
+
+        kwargs = {
+            "dataset": "bioasq_medical_uq",
+            "data_path": path,
+            "limit": 6,
+            "bioasq_type_limits": {"factoid": 3, "list": 2, "summary": 1},
+            "selection_seed": 7,
+        }
+        first = load_common_examples(**kwargs)
+        second = load_common_examples(**kwargs)
+        self.assertEqual([example["id"] for example in first], [example["id"] for example in second])
+        self.assertEqual(
+            {question_type: sum(example["bioasq_type"] == question_type for example in first)
+             for question_type in ("factoid", "list", "summary")},
+            {"factoid": 3, "list": 2, "summary": 1},
+        )
+        self.assertNotIn("yesno-0", {example["id"] for example in first})
+
     def test_summary_prompt_never_includes_evidence(self) -> None:
         example = bioasq_records_to_common(
             [{"id": "summary", "body": "Summarize X.", "type": "summary", "snippets": [{"text": "X."}]}]

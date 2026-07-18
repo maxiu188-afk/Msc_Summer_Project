@@ -59,13 +59,12 @@ evidence-conditioned generation, generic NLI clustering, and non-binary quality
 targets. Their reports and raw outputs remain available for provenance under
 `docs/archived_low_usability/` and `../../server_results/archived_low_usability/`.
 
-The no-evidence biomedical UQ gate is complete: factoid, list, and summary are
-run with free biomedical set-aware NLI, binary `correct`/`incorrect` judging of
-the low-temperature main answer, and paired P(True) with versus without ten
-high-temperature answers. The two-seed evidence supports SE analysis for
-factoid/list, but not summary, and does not support P(True)-10. SE remains a
-candidate UQ method rather than the assumed project outcome; the next direction
-is deliberately deferred for review. See `docs/bioasq_medical_uq_protocol.md`.
+The no-evidence biomedical UQ gate is complete. The Phase-1 closing experiment
+uses 1,000 stratified BioASQ questions with free biomedical set-aware NLI,
+binary `correct`/`incorrect` judging of the low-temperature main answer, all
+SE/token UQ baselines, verbal confidence, and blind P(True). P(True)-10 is
+retired because the two-seed evidence did not support it. This run is the
+baseline for a future P(True)-Probe; see `docs/bioasq_medical_uq_protocol.md`.
 
 New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
 `archehr` prefixes. This does not rename the package, Python imports, or
@@ -322,10 +321,9 @@ compares all three with SE; negative average token log-probability is the same
 quantity as normalized NLL, and sequence NLL is retained separately to expose
 its answer-length sensitivity.
 
-Verbalized confidence and paired P(True) are implemented as one optional
-model-backed post-processing pass over each low-temperature main answer. It
-writes blind and high-temperature-sample conditions separately; the binary
-Claude evaluator merges them with SE and token UQ:
+Verbalized confidence and blind P(True) are implemented as one optional
+model-backed post-processing pass over each low-temperature main answer. The
+binary Claude evaluator merges them with SE and token UQ:
 
 ```bash
 python scripts/run_self_report_uq.py \
@@ -342,9 +340,9 @@ python scripts/evaluate_bioasq_claude_judge.py \
 ```
 
 The post-processing script uses the `T=0.1` answer as the object under
-evaluation. P(True)-blind receives no stochastic answers; P(True)-10 receives
-the ten high-temperature answers only as context. It uses neither retrieval nor
-NLI, but it does load the answer model once.
+evaluation. P(True) receives only the question and proposed answer (plus
+evidence if that generation prompt used evidence). It uses neither retrieval
+nor NLI, but it does load the answer model once.
 
 ## Local Tests
 

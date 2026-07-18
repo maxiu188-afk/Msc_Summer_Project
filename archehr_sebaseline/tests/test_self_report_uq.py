@@ -19,9 +19,13 @@ class FakeSelfReportScorer:
 
     def binary_continuation_probability(self, prompt: str, *, true_text: str, false_text: str) -> float:
         del true_text, false_text
-        if "other possible answers sampled" in prompt.lower():
-            return 0.75
+        self.assert_not_sampled_answer_context(prompt)
         return 0.50
+
+    @staticmethod
+    def assert_not_sampled_answer_context(prompt: str) -> None:
+        if "other possible answers sampled" in prompt.lower():
+            raise AssertionError("P(True) must not receive high-temperature answers.")
 
 
 class SelfReportUQTests(unittest.TestCase):
@@ -30,27 +34,21 @@ class SelfReportUQTests(unittest.TestCase):
         self.assertEqual(parse_verbalized_confidence("Confidence: 100.0"), 1.0)
         self.assertIsNone(parse_verbalized_confidence("high"))
 
-    def test_scores_low_temperature_answer_with_high_temperature_p_true_context(self) -> None:
+    def test_scores_low_temperature_answer_with_blind_p_true(self) -> None:
         examples = [{"id": "a", "dataset": "bioasq", "split": "test", "question": "Q", "evidence_sentences": ["Evidence"]}]
         best_generations = [
             {"example_id": "a", "sample_id": 0, "clean_answer": "Supported answer."},
         ]
-        sampled_generations = [
-            {"example_id": "a", "sample_id": 0, "clean_answer": "Alternative one."},
-            {"example_id": "a", "sample_id": 1, "clean_answer": "Supported answer."},
-        ]
         generation_rows, example_rows = score_self_report_best_answers(
-            examples, best_generations, sampled_generations, FakeSelfReportScorer()
+            examples, best_generations, FakeSelfReportScorer()
         )
         self.assertEqual(len(generation_rows), 1)
         self.assertAlmostEqual(generation_rows[0]["verbalized_confidence_uncertainty"], 0.2)
-        self.assertEqual(generation_rows[0]["p_true_uncertainty"], 0.25)
+        self.assertEqual(generation_rows[0]["p_true_uncertainty"], 0.5)
         self.assertEqual(generation_rows[0]["p_true_blind_uncertainty"], 0.5)
-        self.assertEqual(generation_rows[0]["p_true_with_samples_uncertainty"], 0.25)
         self.assertEqual(generation_rows[0]["answer_source"], "best_generation_low_temperature")
-        self.assertEqual(generation_rows[0]["num_high_temperature_samples"], 2)
         self.assertEqual(example_rows[0]["mean_verbalized_confidence"], 0.8)
-        self.assertEqual(example_rows[0]["mean_p_true"], 0.75)
+        self.assertEqual(example_rows[0]["mean_p_true"], 0.5)
         self.assertEqual(example_rows[0]["mean_p_true_blind"], 0.5)
 
 

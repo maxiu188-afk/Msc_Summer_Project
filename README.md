@@ -13,8 +13,10 @@ Current compute host: Isambard (Runpod was a completed temporary recovery path)
 Active direction: no-evidence BioASQ medical-QA UQ, stratified by answer type
 Latest validated run: 100x10 at seeds 31/47; PubMedBERT set-aware NLI and
   binary Claude labels completed for factoid/list/summary
-Current decision: retain SE analysis for factoid/list; do not use P(True)-10
-  or begin a P(True)-probe until the next direction is reviewed
+Current run in smoke validation: Phase-1 closing / P(True)-Probe baseline,
+  1,000 stratified questions (480 factoid, 320 list, 200 summary)
+Current decision: retain all SE/token/verbal-confidence UQ baselines and blind
+  P(True); P(True)-10 is retired
 ```
 
 ArchEHR-QA remains useful for testing grounded long-form generation, citation
@@ -33,15 +35,16 @@ model, and non-binary quality targets. The archived results are useful only for
 provenance and artifact-format reference; they do not decide whether SE,
 P(True), or a future probe is the preferred medical-QA UQ method.
 
-The completed no-evidence BioASQ run uses a free biomedical, set-aware NLI
-equivalence method; a low-temperature main answer judged only as `correct` or
-`incorrect`; ten high-temperature answers for UQ; and paired P(True) with and
-without those samples. Overall, normalized discrete SE is 0.729/0.759 AUROC
-for seeds 31/47, while P(True)-blind is 0.781/0.824 and P(True)-10 is
-0.717/0.758. These are descriptive two-seed results, not a final method choice.
-See `archehr_sebaseline/docs/bioasq_medical_uq_protocol.md` for the full
-per-type outcome and `archehr_sebaseline/docs/archived_low_usability/README.md`
-for retired material.
+The completed 100-question no-evidence BioASQ run uses a free biomedical,
+set-aware NLI equivalence method and a low-temperature main answer judged only
+as `correct` or `incorrect`. Overall, normalized discrete SE is 0.729/0.759
+AUROC for seeds 31/47, while P(True)-blind is 0.781/0.824 and P(True)-10 is
+0.717/0.758. The Phase-1 closing experiment therefore retains all SE/token UQ
+and verbal-confidence baselines, but evaluates blind P(True) only; its 1,000
+questions are fixed at 480 factoid, 320 list, and 200 summary. It is also the
+direct baseline for a future P(True)-Probe. See
+`archehr_sebaseline/docs/bioasq_medical_uq_protocol.md` for the protocol and
+`archehr_sebaseline/docs/archived_low_usability/README.md` for retired material.
 
 ## Active Naming Policy
 

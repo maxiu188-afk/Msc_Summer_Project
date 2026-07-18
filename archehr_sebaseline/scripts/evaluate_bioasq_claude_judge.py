@@ -45,7 +45,6 @@ UQ_SCORE_NAMES = [
     "avg_token_logprob_uncertainty",
     "verbalized_confidence_uncertainty",
     "p_true_blind_uncertainty",
-    "p_true_with_samples_uncertainty",
 ]
 
 

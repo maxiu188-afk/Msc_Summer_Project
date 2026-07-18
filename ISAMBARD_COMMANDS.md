@@ -15,14 +15,16 @@ clifton ssh-config write
 ssh b6u.aip2.isambard
 ```
 
-## Active result and pause point (2026-07-18)
+## Active result and Phase-1 closing baseline (2026-07-18)
 
 The active no-evidence BioASQ medical-UQ protocol is complete: jobs 5702970
 and 5702980 ran 100 questions x 10 samples at seeds 31/47 with PubMedBERT
 set-aware NLI and binary Claude evaluation. Both health checks passed. SE is
 useful for factoid/list but not summary; P(True)-blind outperforms P(True)-10.
-Do not submit a follow-up job until the next research direction is reviewed.
-The full protocol and per-type results are in
+The next experiment is the Phase-1 closing / P(True)-Probe baseline: 1,000
+fixed stratified questions (480 factoid, 320 list, 200 summary), all SE/token
+UQ and verbal-confidence baselines, and blind P(True) only. Its GPU smoke must
+pass before submitting the two full seeds. The full protocol is in
 `archehr_sebaseline/docs/bioasq_medical_uq_protocol.md`.
 
 To upload a source archive or a data directory, run `scp` from the local
@@ -66,12 +68,12 @@ PY
 
 Do not replace the existing PyTorch build while applying this repair.
 
-## Submit the BioASQ Summary main run
+## Submit the Phase-1 closing BioASQ baseline
 
 Use the complete command in `archehr_sebaseline/ISAMBARD_BIOASQ.md`. Its
-important settings are 100 questions, 10 generations per question, NLI SE,
-reference-quality evaluation, verbalized confidence, and P(True). The command
-returns a Slurm job ID:
+important settings are 1,000 stratified questions, 10 generations per question,
+PubMedBERT set-aware NLI SE, token UQ, verbalized confidence, and blind
+P(True). The command returns a Slurm job ID:
 
 ```bash
 sbatch scripts/run_bioasq_isambard.sbatch

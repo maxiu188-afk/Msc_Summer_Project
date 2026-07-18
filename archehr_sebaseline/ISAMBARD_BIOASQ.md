@@ -44,24 +44,25 @@ cat "$OUT/run_timing.txt"
 head -n 2 "$OUT/uq_baselines/self_report_examples.csv"
 ```
 
-The self-report CSV must contain `p_true_blind_uncertainty` and
-`p_true_with_samples_uncertainty`; the latter is the P(True)-10 condition.
+The self-report CSV must contain `p_true_blind_uncertainty`; it must not
+contain a P(True)-10 / `p_true_with_samples_uncertainty` column.
 
-## Full paired experiment
+## Phase-1 closing / P(True)-Probe baseline
 
 After a successful smoke, use the same command with the full workload:
 
 ```bash
 cd "$SCRATCHDIR/final_project/archehr_sebaseline"
 DATA_PATH="$SCRATCHDIR/final_project/data/BioASQ-training13b/training13b.json" \
-OUTPUT_DIR="$PWD/outputs/bioasq_medical_uq_gemma3_12b_100x10_seed31" \
-MAX_EXAMPLES=100 NUM_SAMPLES=10 SEED=31 TEMPERATURE=1.0 TOP_P=0.9 \
+OUTPUT_DIR="$PWD/outputs/bioasq_medical_uq_gemma3_12b_1000x10_phase1_seed31" \
+MAX_EXAMPLES=1000 BIOASQ_TYPE_LIMITS="factoid=480,list=320,summary=200" \
+SELECTION_SEED=20260718 NUM_SAMPLES=10 SEED=31 TEMPERATURE=1.0 TOP_P=0.9 \
 LOCAL_FILES_ONLY=1 NLI_LOCAL_FILES_ONLY=1 \
 sbatch scripts/run_bioasq_isambard.sbatch
 ```
 
-The batch script writes generation/UQ artifacts, a health check, timing, and
-paired P(True) results. It intentionally does not run the archived
+The batch script writes all SE variants, token UQ, verbal confidence, blind
+P(True), a health check, and timing. It intentionally does not run the archived
 deterministic BioASQ quality evaluator.
 
 ## Local binary Claude stage
@@ -79,8 +80,9 @@ python scripts/run_bioasq_claude_judge.py download --run_dir <run-dir>
 python scripts/evaluate_bioasq_claude_judge.py --run_dir <run-dir>
 ```
 
-The resulting `claude_binary_main_answer_judge/claude_uq_*.csv` compares SE,
-token UQ, P(True)-blind, and P(True)-10 against the same binary labels.
+The resulting `claude_binary_main_answer_judge/claude_uq_*.csv` compares all
+SE variants, token UQ, verbal confidence, and blind P(True) against the same
+binary labels.
 
 ## Completed reference run (2026-07-18)
 

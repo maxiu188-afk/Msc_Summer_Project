@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import random
 from pathlib import Path
 from typing import Any
 import xml.etree.ElementTree as ET
@@ -21,6 +22,9 @@ SUPPORTED_DATASETS = [
     "bioasq_yesno",
     "archehr_qa",
 ]
+
+
+BIOASQ_MEDICAL_UQ_TYPES = ("factoid", "list", "summary")
 
 
 FAKE_COMMON_FIXTURES = [
@@ -517,6 +521,8 @@ def load_common_examples(
     data_path: str | Path | None = None,
     split: str = "dev",
     limit: int | None = None,
+    bioasq_type_limits: dict[str, int] | None = None,
+    selection_seed: int = 20260718,
 ) -> list[dict[str, Any]]:
     """Load a supported dataset into the common schema."""
 
@@ -537,8 +543,49 @@ def load_common_examples(
                 example
                 for example in examples
                 if str(example.get("bioasq_type") or "").lower()
-                in {"factoid", "list", "summary"}
+                in BIOASQ_MEDICAL_UQ_TYPES
             ]
+            if bioasq_type_limits is not None:
+                normalized_limits: dict[str, int] = {}
+                for question_type, type_limit in bioasq_type_limits.items():
+                    normalized_type = str(question_type).lower()
+                    if normalized_type not in BIOASQ_MEDICAL_UQ_TYPES:
+                        allowed = ", ".join(BIOASQ_MEDICAL_UQ_TYPES)
+                        raise ValueError(
+                            f"Unsupported BioASQ medical-UQ type limit: {question_type}. "
+                            f"Allowed types: {allowed}."
+                        )
+                    if not isinstance(type_limit, int) or isinstance(type_limit, bool) or type_limit < 0:
+                        raise ValueError(
+                            f"BioASQ type limit for {normalized_type} must be a non-negative integer."
+                        )
+                    normalized_limits[normalized_type] = type_limit
+                if limit is not None and sum(normalized_limits.values()) != limit:
+                    raise ValueError(
+                        "When --bioasq_type_limit is used, --max_examples must equal "
+                        "the sum of the type limits."
+                    )
+
+                selected_by_type: dict[str, list[dict[str, Any]]] = {
+                    question_type: [] for question_type in BIOASQ_MEDICAL_UQ_TYPES
+                }
+                for example in selected:
+                    selected_by_type[str(example["bioasq_type"]).lower()].append(example)
+
+                quota_selected: list[dict[str, Any]] = []
+                for offset, question_type in enumerate(BIOASQ_MEDICAL_UQ_TYPES):
+                    requested = normalized_limits.get(question_type, 0)
+                    available = selected_by_type[question_type]
+                    if requested > len(available):
+                        raise ValueError(
+                            f"Requested {requested} {question_type} BioASQ questions, "
+                            f"but only {len(available)} are available."
+                        )
+                    sampler = random.Random(selection_seed + offset)
+                    sampled = list(available)
+                    sampler.shuffle(sampled)
+                    quota_selected.extend(sampled[:requested])
+                return sorted(quota_selected, key=lambda example: str(example["id"]))
             return selected[:limit] if limit is not None else selected
         if dataset_name.startswith("bioasq_"):
             question_type = dataset_name.removeprefix("bioasq_")

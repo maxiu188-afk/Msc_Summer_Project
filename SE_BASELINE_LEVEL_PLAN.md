@@ -36,9 +36,12 @@ The active evidence is type-dependent. Normalized discrete SE AUROC is
 0.729/0.759 overall, 0.682/0.758 for factoid, 0.704/0.712 for list, and
 0.500/0.462 for summary. P(True)-blind is strongest overall (0.781/0.824),
 but showing the ten high-temperature answers lowers it to 0.717/0.758 and is
-especially harmful for summary (0.484/0.484). Therefore retain SE analysis for
-factoid/list, do not use P(True)-10 as the main method, and defer SEP or a
-P(True)-probe until the next research direction has been reviewed carefully.
+especially harmful for summary (0.484/0.484). The resulting Phase-1 closing
+experiment is now in GPU smoke validation: 1,000 fixed, stratified questions
+(480 factoid, 320 list, 200 summary), two generation seeds, all SE/token UQ and
+verbal-confidence baselines, and blind P(True) only. It is the direct baseline
+for a later P(True)-Probe. P(True)-10 is retired and must not be generated or
+evaluated in this run.
 
 ## Archived Temperature-Sensitivity Repeat (2026-07-16)
 
