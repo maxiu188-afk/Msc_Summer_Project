@@ -119,7 +119,54 @@ def load_uq_rows(run_dir: Path) -> list[dict[str, str]]:
             merged.setdefault(example_id, {}).update(row)
     if not merged:
         raise ValueError(f"No UQ rows found under {run_dir}.")
-    return [merged[example_id] for example_id in sorted(merged)]
+    examples_path = run_dir / "examples.jsonl"
+    types_by_id: dict[str, str] = {}
+    with examples_path.open(encoding="utf-8") as infile:
+        for line in infile:
+            example = json.loads(line)
+            example_id = str(example.get("id") or "")
+            question_type = str(example.get("bioasq_type") or "unknown").lower()
+            if not example_id or example_id in types_by_id:
+                raise ValueError(f"Invalid or duplicate BioASQ example ID in {examples_path}.")
+            types_by_id[example_id] = question_type
+    if set(merged) != set(types_by_id):
+        raise ValueError("UQ artifact example IDs do not match examples.jsonl.")
+    return [
+        {**merged[example_id], "bioasq_type": types_by_id[example_id]}
+        for example_id in sorted(merged)
+    ]
+
+
+def write_evaluation_artifacts(
+    rows: list[dict[str, str]],
+    *,
+    output_dir: Path,
+    overwrite: bool,
+) -> dict[str, object]:
+    """Write one coherent set of UQ metrics for all rows or one BioASQ type."""
+
+    auroc_rows = build_auroc_rows(rows, score_names=UQ_SCORE_NAMES)
+    rejection_rows = build_rejection_curve_rows(rows, score_names=UQ_SCORE_NAMES)
+    num_positive = sum(row["is_low_quality"] == "true" for row in rows)
+    aurac_rows = build_aurac_rows(
+        rejection_rows,
+        num_examples=len(rows),
+        num_positive=num_positive,
+    )
+    write_csv(rows, output_dir / "claude_uq_examples.csv", list(rows[0]), overwrite=overwrite)
+    write_csv(auroc_rows, output_dir / "claude_uq_auroc.csv", AUROC_FIELDS, overwrite=overwrite)
+    write_csv(
+        rejection_rows,
+        output_dir / "claude_uq_rejection_curve.csv",
+        REJECTION_CURVE_FIELDS,
+        overwrite=overwrite,
+    )
+    write_csv(aurac_rows, output_dir / "claude_uq_aurac.csv", AURAC_FIELDS, overwrite=overwrite)
+    return {
+        "num_examples": len(rows),
+        "num_incorrect": num_positive,
+        "num_correct": len(rows) - num_positive,
+    }
 
 
 def main() -> int:
@@ -158,17 +205,15 @@ def main() -> int:
         )
     if not rows:
         raise ValueError("No valid Claude labels are available for evaluation.")
-    auroc_rows = build_auroc_rows(rows, score_names=UQ_SCORE_NAMES)
-    rejection_rows = build_rejection_curve_rows(rows, score_names=UQ_SCORE_NAMES)
-    aurac_rows = build_aurac_rows(
-        rejection_rows,
-        num_examples=len(rows),
-        num_positive=sum(row["is_low_quality"] == "true" for row in rows),
-    )
-    write_csv(rows, judge_dir / "claude_uq_examples.csv", list(rows[0]), overwrite=args.overwrite)
-    write_csv(auroc_rows, judge_dir / "claude_uq_auroc.csv", AUROC_FIELDS, overwrite=args.overwrite)
-    write_csv(rejection_rows, judge_dir / "claude_uq_rejection_curve.csv", REJECTION_CURVE_FIELDS, overwrite=args.overwrite)
-    write_csv(aurac_rows, judge_dir / "claude_uq_aurac.csv", AURAC_FIELDS, overwrite=args.overwrite)
+    overall_summary = write_evaluation_artifacts(rows, output_dir=judge_dir, overwrite=args.overwrite)
+    by_type_summary: dict[str, dict[str, object]] = {}
+    for bioasq_type in sorted({str(row["bioasq_type"]) for row in rows}):
+        type_rows = [row for row in rows if row["bioasq_type"] == bioasq_type]
+        by_type_summary[bioasq_type] = write_evaluation_artifacts(
+            type_rows,
+            output_dir=judge_dir / "by_type" / bioasq_type,
+            overwrite=args.overwrite,
+        )
     summary = {
         "num_total_questions": len(se_rows),
         "num_evaluated_questions": len(rows),
@@ -176,13 +221,15 @@ def main() -> int:
         "excluded_example_ids": excluded_example_ids,
         "positive_labels": ["incorrect"],
         "aurac_coverage_range": [0.5, 1.0],
+        "overall": overall_summary,
+        "by_bioasq_type": by_type_summary,
     }
     (judge_dir / "claude_uq_summary.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     print(
         f"wrote Claude-label UQ evaluation for {len(rows)}/{len(se_rows)} questions "
-        f"to {judge_dir}"
+        f"to {judge_dir}, including {len(by_type_summary)} BioASQ type splits"
     )
     return 0
 

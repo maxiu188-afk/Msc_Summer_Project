@@ -157,7 +157,16 @@ def submit(args: argparse.Namespace) -> int:
             params["max_tokens"] = args.max_tokens
             params["output_config"]["effort"] = args.effort
         output_dir.mkdir(parents=True, exist_ok=True)
-        write_jsonl(manifest, output_dir / MANIFEST_NAME, overwrite=args.overwrite)
+        manifest_path = output_dir / MANIFEST_NAME
+        if manifest_path.exists() and not args.overwrite:
+            existing_manifest = read_jsonl(manifest_path)
+            if existing_manifest != manifest:
+                raise ValueError(
+                    f"Prepared manifest differs from the current requests for {run_dir}; "
+                    "review it or pass --overwrite deliberately."
+                )
+        else:
+            write_jsonl(manifest, manifest_path, overwrite=args.overwrite)
         batch = client.messages.batches.create(requests=requests)
         metadata = {
             "batch_id": batch.id,
@@ -170,6 +179,22 @@ def submit(args: argparse.Namespace) -> int:
         }
         metadata_file.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         print(f"submitted {run_dir.name}: {batch.id} ({len(requests)} requests)")
+    return 0
+
+
+def prepare(args: argparse.Namespace) -> int:
+    """Write reviewable request manifests without contacting the Claude API."""
+
+    for run_dir in args.run_dir:
+        run_dir = run_dir.resolve()
+        output_dir = judge_directory(run_dir)
+        manifest_path = output_dir / MANIFEST_NAME
+        if manifest_path.exists() and not args.overwrite:
+            raise FileExistsError(f"Prepared manifest already exists: {manifest_path}")
+        requests, manifest = load_generation_requests(run_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        write_jsonl(manifest, manifest_path, overwrite=args.overwrite)
+        print(f"prepared {run_dir.name}: {len(requests)} binary Claude requests at {manifest_path}")
     return 0
 
 
@@ -370,7 +395,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--env_file", type=Path, default=PROJECT_ROOT / ".env")
     subparsers = parser.add_subparsers(dest="command", required=True)
-    for command in ("submit", "status", "recover", "download", "retry", "download-retry"):
+    for command in ("prepare", "submit", "status", "recover", "download", "retry", "download-retry"):
         subparser = subparsers.add_parser(command)
         subparser.add_argument("--run_dir", type=Path, action="append", required=command != "recover")
         subparser.add_argument("--overwrite", action="store_true")
@@ -385,6 +410,8 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    if args.command == "prepare":
+        return prepare(args)
     if args.command == "submit":
         if args.max_tokens < 32:
             raise ValueError("max_tokens must be at least 32.")
