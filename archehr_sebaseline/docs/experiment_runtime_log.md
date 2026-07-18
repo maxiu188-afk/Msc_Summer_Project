@@ -16,24 +16,44 @@ Queueing time is excluded: elapsed time is measured from Slurm start to end.
 - Estimates should include a safety margin and should not silently substitute a
   different model, device, precision, sample count, or evaluation stage.
 
-## Submitted runs awaiting result collection
+## Protocol-correction runs
 
 ### BioASQ low-temperature main-answer backfill
 
 ```text
 submitted: 2026-07-17
+status: COMPLETED, exit 0:0
 jobs: 5692776/5692777 (evidence, seeds 31/47); 5692779/5692780 (direct, seeds 31/47)
 purpose: add one paper-protocol accuracy-target answer to each completed 100x10 run
 model: google/gemma-3-12b-it
 temperature / top_p / top_k: 0.1 / 0.9 / 50
 examples / answers: 100 / 100 per job
 max new tokens: 192
-generation: reads each existing prompts.jsonl; does not rerun high-temperature samples, NLI, self-report UQ, or deterministic evaluation
+generation: reads each existing prompts.jsonl; does not rerun high-temperature samples or NLI
+elapsed: 00:14:30 / 00:15:23 (evidence seeds 31/47); 00:11:30 / 00:11:30 (direct seeds 31/47)
 ```
 
-Each job writes `best_generations.jsonl` and `best_generation_timing.txt`.
-After retrieval, Claude Sonnet 5 will label the 400 low-temperature main answers
-locally; no API call is submitted through Slurm.
+Each job wrote `best_generations.jsonl` and `best_generation_timing.txt`.
+Claude Sonnet 5 subsequently labelled the 400 low-temperature main answers
+locally; no API call was submitted through Slurm.
+
+### BioASQ protocol-correct self-report UQ
+
+```text
+submitted: 2026-07-18
+status: COMPLETED, exit 0:0
+jobs: 5696576/5696577 (evidence, seeds 31/47); 5696578/5696579 (direct, seeds 31/47)
+purpose: compute verbalized confidence and P(True) for each low-temperature main answer
+model: google/gemma-3-12b-it
+examples / answers: 100 / 100 per job
+P(True) context: the existing ten high-temperature cleaned generations
+driver/environment: cuda127-cu126
+elapsed: 00:01:20 / 00:01:33 (evidence seeds 31/47); 00:01:27 / 00:01:27 (direct seeds 31/47)
+```
+
+The downloaded tables were verified at 100 questions per run with
+`answer_source=best_generation_low_temperature` and ten high-temperature
+samples recorded as P(True) context.
 
 ## Completed runs
 

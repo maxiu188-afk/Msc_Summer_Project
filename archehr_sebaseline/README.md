@@ -90,14 +90,18 @@ final quality target uses the evaluator's ROUGE + ideal-answer-NLI fallback.
 
 The main-answer protocol was corrected on 2026-07-17 to match the Semantic
 Entropy reference implementation. Ten samples at `T=1.0`, `top_p=0.9`, and
-`top_k=50` are reserved for SE and other UQ scores. A separately generated
-single `T=0.1` answer is the only answer used to establish quality. Four
-supplemental Isambard jobs (5692776, 5692777, 5692779, and 5692780) are adding
-these files to the completed temperature-1.0 evidence/no-evidence pair. The
-final label source will be a local Claude Sonnet 5 three-way text comparison;
-`poor` is the binary error label. The prior 4,000 high-temperature Claude
-labels remain an auxiliary, non-primary analysis. Details and commands are in
-`docs/semantic_entropy_generation_protocol.md`.
+`top_k=50` are reserved for SE and token-based UQ scores. A separately generated
+single `T=0.1` answer is the only answer used to establish quality. The four
+main-answer backfill jobs (5692776, 5692777, 5692779, and 5692780) and four
+protocol-correct self-report jobs (5696576--5696579) completed successfully.
+Claude Sonnet 5 labels only the low-temperature main answer locally. The
+direct-answer condition treats `poor` as low quality; the evidence condition
+treats `partial` and `poor` as low quality, so their AUROC/AURAC results are
+reported separately. Across the two seeds, P(True) is strongest without
+evidence (AUROC 0.921, AURAC 0.0458); with evidence, predictive entropy/
+normalized NLL is strongest (AUROC 0.642, AURAC 0.0592). The prior 4,000
+high-temperature Claude labels remain an auxiliary, non-primary analysis.
+Details and commands are in `docs/semantic_entropy_generation_protocol.md`.
 
 The active reference evaluator now retains answer-reference coverage and adds
 document-level overlap between cited snippet documents and BioASQ standard
@@ -343,13 +347,17 @@ python scripts/run_bioasq_claude_judge.py download \
 
 python scripts/evaluate_bioasq_claude_judge.py \
   --run_dir outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed31 \
+  --allow_incomplete_labels \
+  --low_quality_labels partial poor \
   --overwrite
 ```
 
-The final command writes isolated `claude_judge/claude_uq_*.csv` artifacts;
-only `poor` is positive for AUROC and AURAC. Do not feed Claude labels into the
-earlier deterministic quality evaluator or use the historical high-temperature
-sample labels as a substitute for the low-temperature main answer.
+The final command writes isolated `claude_main_answer_judge/claude_uq_*.csv`
+artifacts. Use `--low_quality_labels poor` for a direct-answer run and
+`--low_quality_labels partial poor` for an evidence-conditioned run. Do not feed
+Claude labels into the earlier deterministic quality evaluator or use the
+historical high-temperature sample labels as a substitute for the
+low-temperature main answer.
 
 ### Simple UQ baselines
 

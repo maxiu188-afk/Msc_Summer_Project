@@ -1,4 +1,4 @@
-"""Run verbalized-confidence and P(True) UQ over completed Level 4 answers."""
+"""Run paper-protocol confidence and P(True) UQ for completed Level 4 runs."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from archehr_sebaseline.generation import GenerationConfig, HuggingFaceCausalLMG
 from archehr_sebaseline.self_report_uq import (
     SELF_REPORT_EXAMPLE_FIELDS,
     SELF_REPORT_GENERATION_FIELDS,
-    score_self_report_generations,
+    score_self_report_best_answers,
 )
 
 
@@ -47,8 +47,9 @@ def main() -> int:
             local_files_only=args.local_files_only,
         )
     )
-    generation_rows, example_rows = score_self_report_generations(
+    generation_rows, example_rows = score_self_report_best_answers(
         read_jsonl(run_dir / "examples.jsonl"),
+        read_jsonl(run_dir / "best_generations.jsonl"),
         read_jsonl(run_dir / "cleaned_generations.jsonl"),
         generator,
     )

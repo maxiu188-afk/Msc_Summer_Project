@@ -44,19 +44,22 @@ fixed 30-question Qwen judge, but the judge ceiling effect produced zero
 low-quality labels. The baseline is complete; do not present SE as a robustly
 superior UQ method or the Qwen judge as external validation.
 
-The temperature-1.0 evidence pair and the matched no-evidence direct pair are
-complete. Their high-temperature samples use `top_p=0.9`; current code also
-records `top_k=50`. The Semantic Entropy protocol was then corrected so those
-ten samples are used only for UQ and a separate `T=0.1` answer is used for the
-quality outcome. Jobs 5692776/5692777 (evidence) and 5692779/5692780 (direct)
-are queued to add 100 low-temperature main answers to each run without
-regenerating samples, NLI, or UQ.
+The temperature-1.0 evidence pair and matched no-evidence direct pair are
+complete. Their high-temperature samples use `top_p=0.9` and `top_k=50`. The
+Semantic Entropy protocol is now corrected: those ten samples calculate SE and
+token UQ, while a separate `T=0.1` answer is the quality outcome. Jobs
+5692776/5692777 (evidence) and 5692779/5692780 (direct) completed the four
+100-answer backfills; jobs 5696576--5696579 completed the corresponding
+protocol-correct self-report UQ.
 
-After retrieval, Claude Sonnet 5 runs locally, not on Isambard, as a
-three-class (`good`/`partial`/`poor`) text comparison against BioASQ ideal
-answers. Only `poor` is positive for the final UQ AUROC/AURAC. The historical
-4,000 high-temperature Claude labels are exploratory only and must not replace
-this target.
+Claude Sonnet 5 runs locally, not on Isambard, as a three-class
+(`good`/`partial`/`poor`) text comparison of only the low-temperature answer
+against BioASQ ideal answers. Direct answers use `poor` as low quality;
+evidence-conditioned answers use `partial + poor`. The primary two-seed result
+is P(True) AUROC 0.921 for direct answers and predictive entropy/normalized
+NLL AUROC 0.642 for evidence-conditioned answers. The historical 4,000
+high-temperature Claude labels are exploratory only and must not replace this
+target.
 
 The active reference evaluation now separates answer-reference coverage from
 document-level cited-evidence overlap and uses their geometric combination when
@@ -187,10 +190,9 @@ label_heuristic_eval.md
 
 ## Next Work
 
-1. Collect the four low-temperature main-answer files and their timing records.
-2. Submit/download the four local Claude batches with low effort and the
-   32-token cap, then calculate AUROC/AURAC against `poor` only.
-3. Diagnose SE failure cases and clustering/sample sensitivity using both seeds
-   and both evidence conditions; report bootstrap intervals and rejection curves.
-4. Decide on SEP hidden-state probes only after the corrected quality target is
-   stable and reported.
+1. Review semantic-entropy failure cases and clustering/sample sensitivity using
+   both seeds and both evidence conditions.
+2. Report both seed-level values, label prevalence, and rejection curves rather
+   than pooling the two evidence conditions.
+3. Decide on SEP hidden-state probes only after the corrected quality target is
+   stable and reviewed.

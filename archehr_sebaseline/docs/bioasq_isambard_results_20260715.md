@@ -1,6 +1,6 @@
 # BioASQ Isambard Baseline and Replication Results
 
-Last updated: 2026-07-17
+Last updated: 2026-07-18
 
 ## Scope
 
@@ -94,12 +94,45 @@ per question were generated at `T=1.0` for UQ, but an accuracy target must be a
 separate `T=0.1` answer. This distinction matters: `sample_id=0` from the
 high-temperature set is not the paper-protocol main answer.
 
-Jobs 5692776/5692777 (evidence) and 5692779/5692780 (direct) were submitted on
-2026-07-17 to add 100 `T=0.1`, `top_p=0.9`, `top_k=50` answers to each run.
-They do not regenerate samples, NLI clusters, self-report UQ, or deterministic
-metrics. Once downloaded, these 400 answers will be judged locally with Claude
-Sonnet 5 at low effort. It returns `good`, `partial`, or `poor`; only `poor` is
-positive for the final UQ AUROC and AURAC.
+Jobs 5692776/5692777 (evidence) and 5692779/5692780 (direct) completed on
+2026-07-17, adding 100 `T=0.1`, `top_p=0.9`, `top_k=50` answers to each run
+without regenerating the high-temperature samples or NLI clusters. Jobs
+5696576--5696579 then recomputed verbalized confidence and P(True): confidence
+sees only the low-temperature answer, while P(True) scores that answer using
+the ten high-temperature answers as brainstorming context, as in the reference
+implementation.
+
+Claude Sonnet 5 at low effort compared each low-temperature answer with its
+BioASQ ideal answer locally. It emitted `good`, `partial`, or `poor`. The
+direct-answer target treats only `poor` as low quality; the evidence target
+treats `partial + poor` as low quality. These condition-specific targets are
+not pooled.
+
+### Primary Claude-labelled UQ results
+
+All values below are the arithmetic mean of the two seeds. AUROC is higher
+better; AURAC is the area under retained-risk versus coverage from 0.5 to 1.0,
+so lower is better.
+
+| Condition | Valid questions / low-quality questions | Best AUROC | Best AURAC |
+|---|---:|---:|---:|
+| Evidence-conditioned | 99/14 and 100/15 | Predictive entropy / normalized NLL: 0.6423 | Predictive entropy / normalized NLL: 0.0592 |
+| Direct answer | 100/22 and 100/24 | P(True): 0.9210 | P(True): 0.0458 |
+
+| UQ score | Evidence-conditioned AUROC | Direct-answer AUROC |
+|---|---:|---:|
+| Normalized discrete SE | 0.4763 | 0.6090 |
+| Normalized weighted SE | 0.4729 | 0.6092 |
+| Predictive entropy / normalized NLL | 0.6423 | 0.6157 |
+| Mean token entropy | 0.6375 | 0.6183 |
+| Verbalized-confidence uncertainty | 0.5754 | 0.8155 |
+| P(True) uncertainty | 0.6200 | 0.9210 |
+
+The direct condition shows a clear P(True) advantage. In the evidence condition
+there are only 14--15 low-quality cases per seed, so rank estimates are less
+stable; token-probability baselines outperform both semantic-entropy variants.
+The field called predictive entropy is the mean negative per-token log
+probability and is rank-equivalent to normalized NLL in this implementation.
 
 Before that correction, a local Claude batch labelled all 4,000 existing
 high-temperature samples for an exploratory comparison (about US$2.60). It
@@ -120,6 +153,14 @@ main answer.
 | 5679664 | seed-47 temperature-1.0 repeat | completed, exit 0 | 02:28:21 |
 | 5684358 | seed-31 direct-answer ablation | completed, exit 0 | 01:59:42 |
 | 5684360 | seed-47 direct-answer ablation | completed, exit 0 | 01:59:20 |
+| 5692776 | seed-31 evidence low-temperature main answer | completed, exit 0 | 00:14:30 |
+| 5692777 | seed-47 evidence low-temperature main answer | completed, exit 0 | 00:15:23 |
+| 5692779 | seed-31 direct low-temperature main answer | completed, exit 0 | 00:11:30 |
+| 5692780 | seed-47 direct low-temperature main answer | completed, exit 0 | 00:11:30 |
+| 5696576 | seed-31 evidence self-report correction | completed, exit 0 | 00:01:20 |
+| 5696577 | seed-47 evidence self-report correction | completed, exit 0 | 00:01:33 |
+| 5696578 | seed-31 direct self-report correction | completed, exit 0 | 00:01:27 |
+| 5696579 | seed-47 direct self-report correction | completed, exit 0 | 00:01:27 |
 
 The two matched 100x10 runs average about 03:31:12. Plan approximately 04:20
 for the same cached configuration, excluding queue time, while retaining the
@@ -207,19 +248,18 @@ manual calibration rather than reusing the lenient 0.5 aggregate threshold.
 ## Current conclusion and next work
 
 The BioASQ SE/UQ baseline is complete as a reproducible engineering and
-experimental baseline. Answer quality is strongly replicated across seeds; SE
-ranking is not strong enough to support a robust superiority claim.
+experimental baseline. Under the primary Claude-labelled target, semantic
+entropy is not the strongest method in either condition: P(True) is best for
+direct answers, while token-probability uncertainty is best with evidence.
 
 Immediate priorities are:
 
-1. Verify the local summary scores once with a standard or official BioASQ
-   evaluation implementation.
-2. Report both seeds, bootstrap intervals, continuous association, and
-   rejection curves; do not select only the stronger seed-31 AUROC.
-3. Diagnose SE failure cases and clustering/sample sensitivity before spending
-   effort on a larger LLM-judge study or SEP supervision.
-4. Keep closed-model judge evaluation as a later validation step after the
-   conventional target and baseline behaviour are better understood.
+1. Report both seeds, label prevalence, and coverage-risk curves; do not select
+   only the stronger seed or pool evidence with direct answers.
+2. Diagnose semantic-entropy failure cases and clustering/sample sensitivity,
+   especially in the evidence-conditioned setting.
+3. Decide on SEP hidden-state probes only after this condition-specific target
+   and its uncertainty baselines have been reviewed.
 
 Downloaded raw outputs and Slurm logs are retained locally under the ignored
 `outputs/` run directories. They remain excluded from Git because they contain

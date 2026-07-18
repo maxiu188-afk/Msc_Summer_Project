@@ -9,7 +9,7 @@ SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from archehr_sebaseline.self_report_uq import parse_verbalized_confidence, score_self_report_generations
+from archehr_sebaseline.self_report_uq import parse_verbalized_confidence, score_self_report_best_answers
 
 
 class FakeSelfReportScorer:
@@ -28,16 +28,23 @@ class SelfReportUQTests(unittest.TestCase):
         self.assertEqual(parse_verbalized_confidence("Confidence: 100.0"), 1.0)
         self.assertIsNone(parse_verbalized_confidence("high"))
 
-    def test_scores_and_aggregates_each_generation(self) -> None:
+    def test_scores_low_temperature_answer_with_high_temperature_p_true_context(self) -> None:
         examples = [{"id": "a", "dataset": "bioasq", "split": "test", "question": "Q", "evidence_sentences": ["Evidence"]}]
-        generations = [
+        best_generations = [
             {"example_id": "a", "sample_id": 0, "clean_answer": "Supported answer."},
+        ]
+        sampled_generations = [
+            {"example_id": "a", "sample_id": 0, "clean_answer": "Alternative one."},
             {"example_id": "a", "sample_id": 1, "clean_answer": "Supported answer."},
         ]
-        generation_rows, example_rows = score_self_report_generations(examples, generations, FakeSelfReportScorer())
-        self.assertEqual(len(generation_rows), 2)
+        generation_rows, example_rows = score_self_report_best_answers(
+            examples, best_generations, sampled_generations, FakeSelfReportScorer()
+        )
+        self.assertEqual(len(generation_rows), 1)
         self.assertAlmostEqual(generation_rows[0]["verbalized_confidence_uncertainty"], 0.2)
         self.assertEqual(generation_rows[0]["p_true_uncertainty"], 0.25)
+        self.assertEqual(generation_rows[0]["answer_source"], "best_generation_low_temperature")
+        self.assertEqual(generation_rows[0]["num_high_temperature_samples"], 2)
         self.assertEqual(example_rows[0]["mean_verbalized_confidence"], 0.8)
         self.assertEqual(example_rows[0]["mean_p_true"], 0.75)
 
