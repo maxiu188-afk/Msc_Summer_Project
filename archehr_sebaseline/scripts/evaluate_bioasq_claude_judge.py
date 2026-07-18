@@ -40,9 +40,11 @@ UQ_SCORE_NAMES = [
     "predictive_entropy",
     "num_clusters",
     "mean_token_entropy",
+    "max_token_entropy",
     "mean_normalized_nll",
     "mean_sequence_nll",
     "avg_token_logprob_uncertainty",
+    "sample_consistency_exact_uncertainty",
     "verbalized_confidence_uncertainty",
     "p_true_blind_uncertainty",
 ]
@@ -111,13 +113,21 @@ def load_uq_rows(run_dir: Path) -> list[dict[str, str]]:
             if path.name == "self_report_examples.csv":
                 continue
             raise FileNotFoundError(f"Required Level 4 UQ artifact is missing: {path}")
-        for row in csv.DictReader(path.open(encoding="utf-8", newline="")):
-            example_id = str(row.get("example_id") or "")
-            if not example_id:
-                raise ValueError(f"UQ artifact has an empty example_id: {path}")
-            merged.setdefault(example_id, {}).update(row)
+        with path.open(encoding="utf-8", newline="") as infile:
+            for row in csv.DictReader(infile):
+                example_id = str(row.get("example_id") or "")
+                if not example_id:
+                    raise ValueError(f"UQ artifact has an empty example_id: {path}")
+                merged.setdefault(example_id, {}).update(row)
     if not merged:
         raise ValueError(f"No UQ rows found under {run_dir}.")
+    for row in merged.values():
+        mean_logprob = _finite_float(row.get("mean_token_logprob"))
+        if mean_logprob is not None:
+            row["avg_token_logprob_uncertainty"] = str(-mean_logprob)
+        sample_consistency = _finite_float(row.get("sample_consistency_exact"))
+        if sample_consistency is not None:
+            row["sample_consistency_exact_uncertainty"] = str(1.0 - sample_consistency)
     examples_path = run_dir / "examples.jsonl"
     types_by_id: dict[str, str] = {}
     with examples_path.open(encoding="utf-8") as infile:
@@ -134,6 +144,14 @@ def load_uq_rows(run_dir: Path) -> list[dict[str, str]]:
         {**merged[example_id], "bioasq_type": types_by_id[example_id]}
         for example_id in sorted(merged)
     ]
+
+
+def _finite_float(value: object) -> float | None:
+    try:
+        converted = float(str(value))
+    except (TypeError, ValueError):
+        return None
+    return converted if converted == converted and abs(converted) != float("inf") else None
 
 
 def write_evaluation_artifacts(

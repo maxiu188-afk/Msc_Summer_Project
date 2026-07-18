@@ -20,6 +20,10 @@ larger scale while preserving a direct blind P(True) reference.
   `p_true_blind_uncertainty` sees only the question and answer. The concise
   `p_true_uncertainty` field is an alias of this blind condition. P(True)-10
   is retired and must not be generated or evaluated.
+- Evaluate all remaining question-level UQ baselines: discrete and
+  likelihood-weighted SE, cluster count, predictive entropy, mean/max token
+  entropy, normalized and sequence NLL, negative mean token log-probability,
+  exact-sample disagreement, and verbalized-confidence uncertainty.
 - The Phase-1 closing sample has exactly 1,000 questions: 480 factoid, 320
   list, and 200 summary. A fixed selection seed makes both generation seeds
   use the same stratified question set.
