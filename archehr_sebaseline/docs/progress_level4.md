@@ -1,6 +1,6 @@
 ﻿# Level 4 Progress
 
-Last updated: 2026-07-15
+Last updated: 2026-07-18
 
 ## Current Note
 
@@ -16,6 +16,13 @@ docs/dataset_pivot_status.md
 docs/archived_low_usability/README.md
 SE_BASELINE_LEVEL_PLAN.md
 ```
+
+The active BioASQ medical-UQ two-seed run is now complete. It uses 100
+questions, ten samples, no evidence, PubMedBERT-MNLI-MedNLI, and binary Claude
+labels. Discrete SE is useful for factoid/list but not summary; blind P(True)
+is stronger than the version that sees ten high-temperature answers. The next
+research direction is intentionally paused for review; see
+`docs/bioasq_medical_uq_protocol.md`.
 
 ## Completed Pilot
 

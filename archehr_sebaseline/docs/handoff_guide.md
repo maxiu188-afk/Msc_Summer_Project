@@ -1,6 +1,6 @@
 ﻿# ArchEHR-QA UQ Code Handoff Guide
 
-Last updated: 2026-07-17
+Last updated: 2026-07-18
 
 The active project is `archehr_sebaseline`. The package now contains:
 
@@ -9,8 +9,9 @@ The active project is `archehr_sebaseline`. The package now contains:
 - lightweight uncertainty/evaluation utilities,
 - documentation for the current dataset pivot.
 
-Current research direction: validate BioASQ Task B answer-quality supervision
-for SE, while continuing to compare credible candidates as Simpson advised.
+Current research direction: review the completed type-stratified BioASQ Task B
+binary evaluation before selecting the next method, while continuing to compare
+credible candidates as Simpson advised.
 ArchEHR-QA remains useful as an engineering diagnostic, but it is not the final
 evaluation or SEP training dataset because its test key does not include gold
 evidence labels or answer-quality labels.
@@ -26,6 +27,18 @@ docs/experiment_runtime_log.md
 docs/archehr_se_baseline_plan.md
 docs/archehr_evaluation_architecture.md
 ```
+
+## Active BioASQ medical-UQ result (2026-07-18)
+
+Jobs 5702970/5702980 completed a 100x10 no-evidence run at seeds 31/47 with
+Gemma 3 12B, a separate `T=0.1` target answer, PubMedBERT-MNLI-MedNLI, and
+set-aware list/factoid matching. Both passed health checks in 49:14/53:25.
+The 200 Claude binary judgments produced 98 valid labels per seed (56
+incorrect, 42 correct); two blank labels per seed are excluded without further
+retry. Overall discrete SE AUROC is 0.729/0.759 and P(True)-blind is
+0.781/0.824. SE is useful for factoid/list but not summary; P(True)-10 is worse
+than blind P(True), so do not begin a P(True)-probe. See
+`docs/bioasq_medical_uq_protocol.md` for all UQ methods and per-type values.
 
 ## Archived Stage
 
@@ -58,14 +71,11 @@ token UQ, while a separate `T=0.1` answer is the quality outcome. Jobs
 100-answer backfills; jobs 5696576--5696579 completed the corresponding
 protocol-correct self-report UQ.
 
-Claude Sonnet 5 runs locally, not on Isambard, as a three-class
-(`good`/`partial`/`poor`) text comparison of only the low-temperature answer
-against BioASQ ideal answers. Direct answers use `poor` as low quality;
-evidence-conditioned answers use `partial + poor`. The primary two-seed result
-is P(True) AUROC 0.921 for direct answers and predictive entropy/normalized
-NLL AUROC 0.642 for evidence-conditioned answers. The historical 4,000
-high-temperature Claude labels are exploratory only and must not replace this
-target.
+The text in this archived section describes the old three-class Claude setup.
+The active setup is local binary `correct`/`incorrect` judging of only the
+low-temperature answer, with exact-answer references for factoid/list and ideal
+references for summary. Use the 2026-07-18 result above, not the historical
+three-class AUROCs, for any current decision.
 
 The active reference evaluation now separates answer-reference coverage from
 document-level cited-evidence overlap and uses their geometric combination when

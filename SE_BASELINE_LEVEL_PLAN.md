@@ -23,6 +23,23 @@ is not binary correct/incorrect, and their summary prompts do not match the
 current no-evidence target. See
 `archehr_sebaseline/docs/archived_low_usability/README.md`.
 
+## Current BioASQ Result (2026-07-18)
+
+The active no-evidence `bioasq_medical_uq` protocol has completed on Isambard
+with Gemma 3 12B, 100 questions, ten `T=1.0` samples, one `T=0.1` target
+answer, PubMedBERT-MNLI-MedNLI, and seeds 31/47. Both jobs passed the health
+check in 49:14 and 53:25. The type mix is 44 factoid, 35 list, and 21 summary.
+Claude binary judging yielded 98 valid labels per seed (56 incorrect, 42
+correct); two blank judge outputs per seed were excluded without further retry.
+
+The active evidence is type-dependent. Normalized discrete SE AUROC is
+0.729/0.759 overall, 0.682/0.758 for factoid, 0.704/0.712 for list, and
+0.500/0.462 for summary. P(True)-blind is strongest overall (0.781/0.824),
+but showing the ten high-temperature answers lowers it to 0.717/0.758 and is
+especially harmful for summary (0.484/0.484). Therefore retain SE analysis for
+factoid/list, do not use P(True)-10 as the main method, and defer SEP or a
+P(True)-probe until the next research direction has been reviewed carefully.
+
 ## Archived Temperature-Sensitivity Repeat (2026-07-16)
 
 This completed summary-path check is retained only for provenance, not as a new
@@ -203,15 +220,11 @@ After the replacement dataset and its baseline evaluation are stable:
 
 ## Current Next Step
 
-The historical baseline, the matched temperature repeat, and the no-evidence
-ablation are complete. Wait for the four `T=0.1` main-answer backfill jobs,
-retrieve `best_generations.jsonl`, and use the local Claude Sonnet 5
-three-class comparison with low effort and a short response cap. Compute UQ
-AUROC/AURAC only against `poor`; do not replace this target with the earlier
-fixed threshold, the bottom-30% deterministic proxy, or labels on the
-high-temperature samples. Then report both seeds and both evidence conditions,
-including uncertainty intervals and rejection curves, before deciding whether
-SEP supervision is justified.
+No further experiment is scheduled today. Before choosing SEP, a P(True)-probe,
+or a different UQ direction, review the completed type-stratified results,
+including error cases and uncertainty intervals. The next design must preserve
+the binary Claude target and report factoid/list/summary separately rather than
+pooling them as one homogeneous task.
 
 ## BioASQ Batch Update (2026-07-13)
 

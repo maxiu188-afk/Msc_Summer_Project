@@ -15,6 +15,16 @@ clifton ssh-config write
 ssh b6u.aip2.isambard
 ```
 
+## Active result and pause point (2026-07-18)
+
+The active no-evidence BioASQ medical-UQ protocol is complete: jobs 5702970
+and 5702980 ran 100 questions x 10 samples at seeds 31/47 with PubMedBERT
+set-aware NLI and binary Claude evaluation. Both health checks passed. SE is
+useful for factoid/list but not summary; P(True)-blind outperforms P(True)-10.
+Do not submit a follow-up job until the next research direction is reviewed.
+The full protocol and per-type results are in
+`archehr_sebaseline/docs/bioasq_medical_uq_protocol.md`.
+
 To upload a source archive or a data directory, run `scp` from the local
 machine, not from an Isambard login shell:
 

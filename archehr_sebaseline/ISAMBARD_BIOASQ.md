@@ -82,6 +82,16 @@ python scripts/evaluate_bioasq_claude_judge.py --run_dir <run-dir>
 The resulting `claude_binary_main_answer_judge/claude_uq_*.csv` compares SE,
 token UQ, P(True)-blind, and P(True)-10 against the same binary labels.
 
+## Completed reference run (2026-07-18)
+
+Jobs 5702970 (seed 31) and 5702980 (seed 47) completed the full 100x10
+no-evidence protocol in 49:14 and 53:25. Both health checks passed. Local
+Claude binary batches supplied 98 valid labels per seed; see
+`docs/bioasq_medical_uq_protocol.md` for the type-stratified AUROC results.
+The result supports continuing SE analysis for factoid/list, but not using the
+ten high-temperature answers as a P(True) context. No new Isambard job is
+scheduled pending a review of the next research direction.
+
 ## Archived historical protocol
 
 The earlier summary/evidence runs, generic DeBERTa NLI, three-axis deterministic

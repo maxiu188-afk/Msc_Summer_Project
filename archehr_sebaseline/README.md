@@ -59,11 +59,13 @@ evidence-conditioned generation, generic NLI clustering, and non-binary quality
 targets. Their reports and raw outputs remain available for provenance under
 `docs/archived_low_usability/` and `../../server_results/archived_low_usability/`.
 
-The next experimental gate is no-evidence factoid UQ, then list if the factoid
-outcome is usable. The new pipeline must use free biomedical set-aware NLI,
-binary `correct`/`incorrect` judging of the low-temperature main answer, and a
-paired P(True) comparison with versus without the ten high-temperature answers.
-SE remains a candidate UQ method rather than the assumed project outcome.
+The no-evidence biomedical UQ gate is complete: factoid, list, and summary are
+run with free biomedical set-aware NLI, binary `correct`/`incorrect` judging of
+the low-temperature main answer, and paired P(True) with versus without ten
+high-temperature answers. The two-seed evidence supports SE analysis for
+factoid/list, but not summary, and does not support P(True)-10. SE remains a
+candidate UQ method rather than the assumed project outcome; the next direction
+is deliberately deferred for review. See `docs/bioasq_medical_uq_protocol.md`.
 
 New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
 `archehr` prefixes. This does not rename the package, Python imports, or
@@ -284,33 +286,33 @@ reviewed subset before using it as SEP supervision.
 
 After the low-temperature `best_generations.jsonl` file has been downloaded,
 Claude is run locally as a separate post-processing stage. It does not alter
-the server pipeline or its `bioasq_eval/` artifacts. The judge compares each
-candidate only with BioASQ ideal answers and emits exactly one of `good`,
-`partial`, or `poor`; its system instruction explicitly establishes this as
-offline academic annotation rather than medical advice. Use low reasoning
-effort and a 32-token response cap:
+the server pipeline. The judge emits exactly `correct` or `incorrect`; factoid
+and list use `exact_answers`, while summary uses `ideal_answers`. Its system
+instruction explicitly establishes this as offline academic annotation rather
+than medical advice. First create a reviewable manifest, then submit it:
 
 ```bash
+python scripts/run_bioasq_claude_judge.py prepare \
+  --run_dir outputs/bioasq_medical_uq_gemma3_12b_100x10_temp1p0_seed31
+
 python scripts/run_bioasq_claude_judge.py submit \
-  --run_dir outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed31 \
+  --run_dir outputs/bioasq_medical_uq_gemma3_12b_100x10_temp1p0_seed31 \
   --model claude-sonnet-5 --effort low --max_tokens 32
 
 python scripts/run_bioasq_claude_judge.py download \
-  --run_dir outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed31
+  --run_dir outputs/bioasq_medical_uq_gemma3_12b_100x10_temp1p0_seed31
 
 python scripts/evaluate_bioasq_claude_judge.py \
-  --run_dir outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed31 \
+  --run_dir outputs/bioasq_medical_uq_gemma3_12b_100x10_temp1p0_seed31 \
   --allow_incomplete_labels \
-  --low_quality_labels partial poor \
   --overwrite
 ```
 
-The final command writes isolated `claude_main_answer_judge/claude_uq_*.csv`
-artifacts. Use `--low_quality_labels poor` for a direct-answer run and
-`--low_quality_labels partial poor` for an evidence-conditioned run. Do not feed
-Claude labels into the earlier deterministic quality evaluator or use the
-historical high-temperature sample labels as a substitute for the
-low-temperature main answer.
+The final command writes `claude_binary_main_answer_judge/claude_uq_*.csv` plus
+independent `by_type/factoid`, `by_type/list`, and `by_type/summary` artifacts.
+`incorrect` is always the risk-positive label. Do not feed Claude labels into
+the archived deterministic evaluator or use high-temperature sample labels as
+a substitute for the low-temperature main answer.
 
 ### Simple UQ baselines
 
@@ -320,27 +322,29 @@ compares all three with SE; negative average token log-probability is the same
 quantity as normalized NLL, and sequence NLL is retained separately to expose
 its answer-length sensitivity.
 
-Verbalized confidence and P(True) are implemented as one optional model-backed
-post-processing pass. Run it once for a completed output, then re-run the
-BioASQ evaluator to include both fields automatically:
+Verbalized confidence and paired P(True) are implemented as one optional
+model-backed post-processing pass over each low-temperature main answer. It
+writes blind and high-temperature-sample conditions separately; the binary
+Claude evaluator merges them with SE and token UQ:
 
 ```bash
 python scripts/run_self_report_uq.py \
-  --run_dir outputs/bioasq_summary_gemma3_12b_100x10 \
+  --run_dir outputs/bioasq_medical_uq_gemma3_12b_100x10_temp1p0_seed31 \
   --model_name google/gemma-3-12b-it \
   --device cuda \
   --torch_dtype bfloat16 \
   --overwrite
 
-python scripts/evaluate_bioasq_quality.py \
-  --run_dir outputs/bioasq_summary_gemma3_12b_100x10 \
-  --bootstrap_samples 1000 \
+python scripts/evaluate_bioasq_claude_judge.py \
+  --run_dir outputs/bioasq_medical_uq_gemma3_12b_100x10_temp1p0_seed31 \
+  --allow_incomplete_labels \
   --overwrite
 ```
 
-The post-processing script scores every sampled answer, then averages the ten
-values per question for a fair comparison with answer-level SE. It uses neither
-retrieval nor NLI, but it does load the answer model once.
+The post-processing script uses the `T=0.1` answer as the object under
+evaluation. P(True)-blind receives no stochastic answers; P(True)-10 receives
+the ten high-temperature answers only as context. It uses neither retrieval nor
+NLI, but it does load the answer model once.
 
 ## Local Tests
 

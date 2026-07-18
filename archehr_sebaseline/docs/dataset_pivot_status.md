@@ -236,21 +236,20 @@ Better target:
 question/context/reference answer/evidence labels/factuality or correctness label
 ```
 
-## Current Next Step
+## Current Result and Pause Point (2026-07-18)
 
-The matched BioASQ validation and no-evidence ablation are complete. The
-high-temperature samples have now been separated explicitly from the
-low-temperature main answer, following the Semantic Entropy reference protocol.
-Four Isambard backfill jobs (5692776/5692777 evidence; 5692779/5692780 direct)
-are producing those main answers. After they finish, use the local Claude Sonnet
-5 three-class text comparison and calculate AUROC/AURAC using only `poor` as
-the positive outcome. The prior deterministic bottom-30% label and the Claude
-labels of high-temperature samples remain diagnostics, not the primary target.
+The active no-evidence BioASQ medical-UQ run is complete: 100 questions,
+ten high-temperature samples, a low-temperature main answer, PubMedBERT
+set-aware NLI, and two seeds. Binary Claude labels yield 98 valid examples per
+seed. Discrete SE is useful for factoid/list (0.682--0.758 and 0.704--0.712
+AUROC respectively) but near chance for summary (0.500/0.462). P(True)-blind
+is the strongest overall method (0.781/0.824); seeing the high-temperature
+answers lowers P(True) and is not a viable probe target in this protocol.
 
-Before SEP, report this corrected outcome together with both seeds, uncertainty
-intervals, and rejection curves, and continue to diagnose the weak,
-seed-sensitive SE discrimination. In parallel, continue to explore replacement
-datasets and record, for each candidate:
+Before SEP, report the corrected type-stratified outcome with uncertainty
+intervals, rejection curves, and failure analysis. No next experimental method
+is selected today. Continue to explore replacement datasets and record, for
+each candidate:
 
 - access and licensing constraints,
 - task and answer format,

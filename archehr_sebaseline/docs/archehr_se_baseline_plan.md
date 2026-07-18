@@ -1,11 +1,20 @@
 # ArchEHR-QA Semantic Entropy Baseline Plan
 
-Last updated: 2026-07-15
+Last updated: 2026-07-18
+
+## Active BioASQ result (2026-07-18)
+
+The new no-evidence BioASQ run is complete: 100 questions x 10 samples at
+seeds 31/47, PubMedBERT-MNLI-MedNLI, binary Claude labels, and per-type UQ
+evaluation. Discrete SE supports factoid/list but not summary, while
+P(True)-blind is stronger than P(True) with ten high-temperature answers.
+The project is paused for a careful direction review; do not treat SEP or a
+P(True)-probe as the committed next step.
 
 This document preserves the historical ArchEHR-QA engineering-baseline plan.
 The historical BioASQ result reports are in `archived_low_usability/`; the
-current no-evidence factoid/list decision is in
-`archived_low_usability/README.md` and the root `SE_BASELINE_LEVEL_PLAN.md`.
+current no-evidence medical-UQ result is in `bioasq_medical_uq_protocol.md`
+and the root `SE_BASELINE_LEVEL_PLAN.md`.
 
 ## Goal
 

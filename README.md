@@ -10,9 +10,11 @@ ArchEHR-QA SE baseline: implemented and tested as an engineering baseline
 ArchEHR-QA final evaluation/training target: paused because no usable gold labels
 BioASQ Task B: prior summary results archived as low-usability diagnostics
 Current compute host: Isambard (Runpod was a completed temporary recovery path)
-Active direction: no-evidence BioASQ factoid/list medical-QA UQ
-Next gate: set-aware free biomedical NLI, binary correct/incorrect evaluation,
-  and a paired P(True) high-temperature-answer ablation
+Active direction: no-evidence BioASQ medical-QA UQ, stratified by answer type
+Latest validated run: 100x10 at seeds 31/47; PubMedBERT set-aware NLI and
+  binary Claude labels completed for factoid/list/summary
+Current decision: retain SE analysis for factoid/list; do not use P(True)-10
+  or begin a P(True)-probe until the next direction is reviewed
 ```
 
 ArchEHR-QA remains useful for testing grounded long-form generation, citation
@@ -31,13 +33,15 @@ model, and non-binary quality targets. The archived results are useful only for
 provenance and artifact-format reference; they do not decide whether SE,
 P(True), or a future probe is the preferred medical-QA UQ method.
 
-The next validation target is no-evidence BioASQ factoid, followed by list if
-the first pipeline yields a usable binary outcome. It will use a free,
-biomedical, set-aware NLI equivalence method; a low-temperature main answer
-judged only as `correct` or `incorrect`; ten high-temperature answers for UQ;
-and a paired P(True) comparison with and without those high-temperature
-answers. See `archehr_sebaseline/docs/archived_low_usability/README.md` for
-the retired material and its limitations.
+The completed no-evidence BioASQ run uses a free biomedical, set-aware NLI
+equivalence method; a low-temperature main answer judged only as `correct` or
+`incorrect`; ten high-temperature answers for UQ; and paired P(True) with and
+without those samples. Overall, normalized discrete SE is 0.729/0.759 AUROC
+for seeds 31/47, while P(True)-blind is 0.781/0.824 and P(True)-10 is
+0.717/0.758. These are descriptive two-seed results, not a final method choice.
+See `archehr_sebaseline/docs/bioasq_medical_uq_protocol.md` for the full
+per-type outcome and `archehr_sebaseline/docs/archived_low_usability/README.md`
+for retired material.
 
 ## Active Naming Policy
 
