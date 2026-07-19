@@ -59,12 +59,14 @@ evidence-conditioned generation, generic NLI clustering, and non-binary quality
 targets. Their reports and raw outputs remain available for provenance under
 `docs/archived_low_usability/` and `../../server_results/archived_low_usability/`.
 
-The no-evidence biomedical UQ gate is complete. The Phase-1 closing experiment
-uses 1,000 stratified BioASQ questions with free biomedical set-aware NLI,
-binary `correct`/`incorrect` judging of the low-temperature main answer, all
-SE/token UQ baselines, verbal confidence, and blind P(True). P(True)-10 is
-retired because the two-seed evidence did not support it. This run is the
-baseline for a future P(True)-Probe; see `docs/bioasq_medical_uq_protocol.md`.
+Phase 1 is complete. The 1,000-question stratified BioASQ baseline uses free
+biomedical set-aware NLI, binary `correct`/`incorrect` judging of the
+low-temperature main answer, all SE/token UQ baselines, verbal confidence, and
+blind P(True). With 991 valid labels per seed, P(True)-blind is strongest
+overall (0.811/0.821 AUROC); SE is retained as a strong list-specific baseline
+(0.845/0.881 discrete SE). P(True)-10 is retired. See
+`docs/bioasq_medical_uq_results_20260718.md` for the final table and
+`docs/bioasq_medical_uq_protocol.md` for the protocol.
 
 New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
 `archehr` prefixes. This does not rename the package, Python imports, or
@@ -292,17 +294,17 @@ than medical advice. First create a reviewable manifest, then submit it:
 
 ```bash
 python scripts/run_bioasq_claude_judge.py prepare \
-  --run_dir outputs/bioasq_medical_uq_gemma3_12b_100x10_temp1p0_seed31
+  --run_dir outputs/bioasq_medical_uq_gemma3_12b_1000x10_phase1_seed31
 
 python scripts/run_bioasq_claude_judge.py submit \
-  --run_dir outputs/bioasq_medical_uq_gemma3_12b_100x10_temp1p0_seed31 \
+  --run_dir outputs/bioasq_medical_uq_gemma3_12b_1000x10_phase1_seed31 \
   --model claude-sonnet-5 --effort low --max_tokens 32
 
 python scripts/run_bioasq_claude_judge.py download \
-  --run_dir outputs/bioasq_medical_uq_gemma3_12b_100x10_temp1p0_seed31
+  --run_dir outputs/bioasq_medical_uq_gemma3_12b_1000x10_phase1_seed31
 
 python scripts/evaluate_bioasq_claude_judge.py \
-  --run_dir outputs/bioasq_medical_uq_gemma3_12b_100x10_temp1p0_seed31 \
+  --run_dir outputs/bioasq_medical_uq_gemma3_12b_1000x10_phase1_seed31 \
   --allow_incomplete_labels \
   --overwrite
 ```
@@ -327,14 +329,14 @@ binary Claude evaluator merges them with SE and token UQ:
 
 ```bash
 python scripts/run_self_report_uq.py \
-  --run_dir outputs/bioasq_medical_uq_gemma3_12b_100x10_temp1p0_seed31 \
+  --run_dir outputs/bioasq_medical_uq_gemma3_12b_1000x10_phase1_seed31 \
   --model_name google/gemma-3-12b-it \
   --device cuda \
   --torch_dtype bfloat16 \
   --overwrite
 
 python scripts/evaluate_bioasq_claude_judge.py \
-  --run_dir outputs/bioasq_medical_uq_gemma3_12b_100x10_temp1p0_seed31 \
+  --run_dir outputs/bioasq_medical_uq_gemma3_12b_1000x10_phase1_seed31 \
   --allow_incomplete_labels \
   --overwrite
 ```

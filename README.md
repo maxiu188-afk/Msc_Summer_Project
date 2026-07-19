@@ -11,12 +11,10 @@ ArchEHR-QA final evaluation/training target: paused because no usable gold label
 BioASQ Task B: prior summary results archived as low-usability diagnostics
 Current compute host: Isambard (Runpod was a completed temporary recovery path)
 Active direction: no-evidence BioASQ medical-QA UQ, stratified by answer type
-Latest validated run: 100x10 at seeds 31/47; PubMedBERT set-aware NLI and
-  binary Claude labels completed for factoid/list/summary
-Current run in smoke validation: Phase-1 closing / P(True)-Probe baseline,
-  1,000 stratified questions (480 factoid, 320 list, 200 summary)
-Current decision: retain all SE/token/verbal-confidence UQ baselines and blind
-  P(True); P(True)-10 is retired
+Latest validated run: Phase-1 1000x10 at seeds 31/47; PubMedBERT set-aware
+  NLI, blind P(True), and binary Claude labels completed for all answer types
+Current decision: P(True)-blind is the strongest overall UQ; SE is retained as
+  a strong list-specific UQ, while P(True)-10 remains retired
 ```
 
 ArchEHR-QA remains useful for testing grounded long-form generation, citation
@@ -35,16 +33,16 @@ model, and non-binary quality targets. The archived results are useful only for
 provenance and artifact-format reference; they do not decide whether SE,
 P(True), or a future probe is the preferred medical-QA UQ method.
 
-The completed 100-question no-evidence BioASQ run uses a free biomedical,
-set-aware NLI equivalence method and a low-temperature main answer judged only
-as `correct` or `incorrect`. Overall, normalized discrete SE is 0.729/0.759
-AUROC for seeds 31/47, while P(True)-blind is 0.781/0.824 and P(True)-10 is
-0.717/0.758. The Phase-1 closing experiment therefore retains all SE/token UQ
-and verbal-confidence baselines, but evaluates blind P(True) only; its 1,000
-questions are fixed at 480 factoid, 320 list, and 200 summary. It is also the
-direct baseline for a future P(True)-Probe. See
-`archehr_sebaseline/docs/bioasq_medical_uq_protocol.md` for the protocol and
-`archehr_sebaseline/docs/archived_low_usability/README.md` for retired material.
+The completed Phase-1 no-evidence BioASQ baseline uses 1,000 fixed stratified
+questions (480 factoid, 320 list, 200 summary), free biomedical set-aware NLI,
+and a low-temperature main answer judged only as `correct` or `incorrect`.
+With 991 valid Claude labels per seed, P(True)-blind is best overall (AUROC
+0.811/0.821), while SE is especially strong on list questions (discrete SE
+0.845/0.881). It is the direct baseline for a future P(True)-Probe, whose
+target must be blind P(True), not P(True)-10. See
+`archehr_sebaseline/docs/bioasq_medical_uq_results_20260718.md` for the full
+result and `archehr_sebaseline/docs/archived_low_usability/README.md` for
+retired material.
 
 ## Active Naming Policy
 

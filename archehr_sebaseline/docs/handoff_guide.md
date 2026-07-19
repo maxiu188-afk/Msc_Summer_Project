@@ -1,6 +1,6 @@
 ﻿# ArchEHR-QA UQ Code Handoff Guide
 
-Last updated: 2026-07-18
+Last updated: 2026-07-19
 
 The active project is `archehr_sebaseline`. The package now contains:
 
@@ -9,9 +9,9 @@ The active project is `archehr_sebaseline`. The package now contains:
 - lightweight uncertainty/evaluation utilities,
 - documentation for the current dataset pivot.
 
-Current research direction: complete the larger Phase-1 BioASQ baseline, then
-use it as the direct comparator for a narrow P(True)-Probe, while continuing to
-compare credible candidates as Simpson advised.
+Current research direction: use the completed Phase-1 BioASQ baseline as the
+direct comparator for a narrow P(True)-Probe, while retaining SE as a
+list-specific baseline and continuing to compare credible candidates.
 ArchEHR-QA remains useful as an engineering diagnostic, but it is not the final
 evaluation or SEP training dataset because its test key does not include gold
 evidence labels or answer-quality labels.
@@ -28,19 +28,16 @@ docs/archehr_se_baseline_plan.md
 docs/archehr_evaluation_architecture.md
 ```
 
-## Active BioASQ medical-UQ result (2026-07-18)
+## Active BioASQ medical-UQ result — Phase 1 complete (2026-07-19)
 
-Jobs 5702970/5702980 completed a 100x10 no-evidence run at seeds 31/47 with
-Gemma 3 12B, a separate `T=0.1` target answer, PubMedBERT-MNLI-MedNLI, and
-set-aware list/factoid matching. Both passed health checks in 49:14/53:25.
-The 200 Claude binary judgments produced 98 valid labels per seed (56
-incorrect, 42 correct); two blank labels per seed are excluded without further
-retry. Overall discrete SE AUROC is 0.729/0.759 and P(True)-blind is
-0.781/0.824. SE is useful for factoid/list but not summary; P(True)-10 is worse
-than blind P(True). The current Phase-1 closing baseline is in smoke
-validation: 1,000 fixed stratified questions (480 factoid, 320 list, 200
-summary), all SE/token UQ and verbal confidence, and blind P(True) only. It
-must complete before a P(True)-Probe begins. See
+Jobs 5706186/5706187 completed the 1,000x10 no-evidence run at seeds 31/47
+with Gemma 3 12B, a separate `T=0.1` target answer, PubMedBERT-MNLI-MedNLI,
+and set-aware list/factoid matching. The repaired health check passed both
+complete artifact sets; jobs 5715701/5715703 added blind P(True) and verbal
+confidence. Claude retained 991 labels per seed after one bounded retry.
+P(True)-blind is strongest overall (0.811/0.821); SE is strongest/competitive
+for list (cluster count 0.849/0.884), but weak for summary. A P(True)-Probe
+must target blind P(True), never P(True)-10. See
 `docs/bioasq_medical_uq_protocol.md` for all UQ methods and per-type values.
 
 ## Archived Stage

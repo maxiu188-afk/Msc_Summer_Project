@@ -41,7 +41,17 @@ generation, PubMedBERT NLI, output health, and blind P(True); Claude is a
 separate local post-processing stage and is intentionally not submitted from
 the cluster.
 
-## Completed two-seed result (2026-07-18)
+## Phase 1 final result (2026-07-19)
+
+The 1,000-question Phase-1 baseline is complete at seeds 31/47. After one
+bounded retry, both seeds retain 991 valid Claude labels; the remaining nine
+blank labels per seed are excluded. P(True)-blind is best overall
+(0.811/0.821 AUROC), SE/cluster count is strongest on list questions
+(0.849/0.884 cluster count), and SE remains weak on summary (0.565/0.595).
+The full table, runtime provenance, and bootstrap comparison are in
+`bioasq_medical_uq_results_20260718.md`.
+
+## Superseded two-seed pilot (2026-07-18)
 
 The full no-evidence run completed with 100 questions, ten `T=1.0` samples,
 one `T=0.1` target answer, and seeds 31/47. Both Isambard jobs passed health
@@ -62,7 +72,5 @@ Weighted SE and number of clusters track discrete SE. On summary, sequence NLL
 (0.781 / 0.824) and token entropy (0.792 / 0.681) are more informative than
 SE. The high-temperature-answer condition does not improve P(True); it likely
 adds answer-sampling disagreement rather than reliable correctness evidence.
-This is a descriptive two-seed result, so the next research direction remains
-open. Do not start a P(True)-probe or pool types before a careful review.
-The complete recorded table and pause-point rationale are in
-`bioasq_medical_uq_results_20260718.md`.
+This pilot established the protocol only. Its local raw downloads are archived;
+the Phase-1 result above is the current decision record.

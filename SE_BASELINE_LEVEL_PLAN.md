@@ -1,6 +1,6 @@
 ﻿# ArchEHR-QA Semantic Entropy Baseline Plan
 
-Last updated: 2026-07-18
+Last updated: 2026-07-19
 
 ## Current Decision
 
@@ -23,25 +23,29 @@ is not binary correct/incorrect, and their summary prompts do not match the
 current no-evidence target. See
 `archehr_sebaseline/docs/archived_low_usability/README.md`.
 
-## Current BioASQ Result (2026-07-18)
+## Current BioASQ Result — Phase 1 complete (2026-07-19)
 
-The active no-evidence `bioasq_medical_uq` protocol has completed on Isambard
-with Gemma 3 12B, 100 questions, ten `T=1.0` samples, one `T=0.1` target
-answer, PubMedBERT-MNLI-MedNLI, and seeds 31/47. Both jobs passed the health
-check in 49:14 and 53:25. The type mix is 44 factoid, 35 list, and 21 summary.
-Claude binary judging yielded 98 valid labels per seed (56 incorrect, 42
-correct); two blank judge outputs per seed were excluded without further retry.
+The active no-evidence `bioasq_medical_uq` protocol completed on Isambard with
+Gemma 3 12B, 1,000 fixed questions (480 factoid, 320 list, 200 summary), ten
+`T=1.0` samples, one `T=0.1` target answer, PubMedBERT-MNLI-MedNLI, and seeds
+31/47. Both runs produced all 10,000 generations and 1,000 NLI clusters; an
+old health-check string rejected the set-aware method after computation, then
+the repaired check validated both artifact sets as PASS. Blind P(True) and
+verbal confidence were completed separately without regenerating answers.
 
-The active evidence is type-dependent. Normalized discrete SE AUROC is
-0.729/0.759 overall, 0.682/0.758 for factoid, 0.704/0.712 for list, and
-0.500/0.462 for summary. P(True)-blind is strongest overall (0.781/0.824),
-but showing the ten high-temperature answers lowers it to 0.717/0.758 and is
-especially harmful for summary (0.484/0.484). The resulting Phase-1 closing
-experiment is now in GPU smoke validation: 1,000 fixed, stratified questions
-(480 factoid, 320 list, 200 summary), two generation seeds, all SE/token UQ and
-verbal-confidence baselines, and blind P(True) only. It is the direct baseline
-for a later P(True)-Probe. P(True)-10 is retired and must not be generated or
-evaluated in this run.
+Claude binary judging retained 991 valid labels per seed after one bounded
+retry (seed 31: 661 incorrect/330 correct; seed 47: 663/328); 988 shared valid
+questions have 98.4% label agreement. P(True)-blind is strongest overall
+(AUROC 0.811/0.821), with a bootstrap advantage over discrete SE of
++0.048/+0.042 (95% intervals +0.018 to +0.075 / +0.014 to +0.071). SE is not
+the global winner, but is strong and competitive on list questions (discrete
+SE 0.845/0.881; cluster count 0.849/0.884). On summary, SE remains weak
+(0.565/0.595), while P(True)-blind and sequence NLL are strong. Therefore the
+next research direction is a narrow P(True)-Probe targeting blind P(True),
+with SE retained as a type-specific list baseline. A final repeated-OOF fusion
+diagnostic on the 991 labels per seed found only +0.013/+0.014 AUROC for
+P(True)+SE with bootstrap intervals crossing zero; NLL fusion is worse in both
+seeds. Do not use a multi-target probe. P(True)-10 is retired.
 
 ## Archived Temperature-Sensitivity Repeat (2026-07-16)
 

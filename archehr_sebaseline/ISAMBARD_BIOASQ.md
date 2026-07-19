@@ -1,9 +1,8 @@
 # Isambard BioASQ medical-UQ run guide
 
-The active experiment is BioASQ medical QA uncertainty estimation. It tests
-two hypotheses in one matched pipeline: whether Semantic Entropy is useful for
-medical answers, and whether P(True) improves when it sees high-temperature
-alternatives.
+The active experiment is BioASQ medical QA uncertainty estimation. Phase 1 is
+complete: it tested Semantic Entropy and blind P(True) on a shared stratified
+question set. P(True)-10 is retired and is not part of any active command.
 
 The active data mix is `bioasq_medical_uq`: factoid, list, and summary only.
 Yes/no questions are excluded. Generation is no-evidence for all three types;
@@ -24,8 +23,8 @@ PyTorch build to diagnose an allocation issue.
 ## Server smoke first
 
 The smoke uses three questions, three high-temperature samples, PubMedBERT
-NLI, a low-temperature target answer, and both P(True) variants. It does not
-call Claude because the binary judge is a separate local API stage.
+NLI, a low-temperature target answer, and blind P(True). It does not call
+Claude because the binary judge is a separate local API stage.
 
 ```bash
 cd "$SCRATCHDIR/final_project/archehr_sebaseline"
@@ -84,15 +83,23 @@ The resulting `claude_binary_main_answer_judge/claude_uq_*.csv` compares all
 SE variants, token UQ, verbal confidence, and blind P(True) against the same
 binary labels.
 
-## Completed reference run (2026-07-18)
+## Completed Phase-1 reference run (2026-07-19)
+
+Jobs 5706186/5706187 completed the 1,000x10 no-evidence protocol at seeds
+31/47 in 8:00:08/7:14:24. Both full artifacts passed the repaired health check;
+jobs 5715701/5715703 added blind P(True) and verbal confidence. Claude retained
+991 labels per seed after one bounded retry. P(True)-blind is strongest overall
+(0.811/0.821), while list cluster count is 0.849/0.884. See
+`docs/bioasq_medical_uq_results_20260718.md`.
+
+## Superseded pilot (2026-07-18)
 
 Jobs 5702970 (seed 31) and 5702980 (seed 47) completed the full 100x10
 no-evidence protocol in 49:14 and 53:25. Both health checks passed. Local
 Claude binary batches supplied 98 valid labels per seed; see
 `docs/bioasq_medical_uq_protocol.md` for the type-stratified AUROC results.
-The result supports continuing SE analysis for factoid/list, but not using the
-ten high-temperature answers as a P(True) context. No new Isambard job is
-scheduled pending a review of the next research direction.
+The result established the blind P(True) protocol and retired P(True)-10. Its
+local raw download is archived; do not extend it as the main experiment.
 
 ## Archived historical protocol
 
