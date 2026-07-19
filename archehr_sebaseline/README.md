@@ -68,6 +68,19 @@ overall (0.811/0.821 AUROC); SE is retained as a strong list-specific baseline
 `docs/bioasq_medical_uq_results_20260718.md` for the final table and
 `docs/bioasq_medical_uq_protocol.md` for the protocol.
 
+Phase 2 uses the full eligible BioASQ training13b corpus rather than treating
+the Phase-1 1,000 questions as its complete dataset. The observed Phase-1 IDs
+are train-side reference examples; an exact-question-grouped, type-stratified
+manifest creates the remaining train/validation/test split. See
+`docs/phase2_bioasq_dataset_split.md`.
+
+The active research plan is the root `PHASE2_PROBE_PLAN.md`: P(True)-Probe
+approximates direct blind P(True), while Accuracy-Probe predicts the binary
+Claude correctness label. The initial collection contract is fixed at blocks
+`24/32/40/48` and positions `TBG/SLT/LT`; high-temperature multi-sample UQ
+remains an optional later comparison. The smoke job and dependent full
+collection are submitted on Isambard; see `docs/experiment_runtime_log.md`.
+
 New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
 `archehr` prefixes. This does not rename the package, Python imports, or
 historical ArchEHR-QA files. See `docs/naming_policy.md`.

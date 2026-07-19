@@ -16,6 +16,29 @@ Queueing time is excluded: elapsed time is measured from Slurm start to end.
 - Estimates should include a safety margin and should not silently substitute a
   different model, device, precision, sample count, or evaluation stage.
 
+## Pending Phase-2 collection
+
+```text
+submitted: 2026-07-19
+smoke job: 5719092, PENDING (scheduler priority at last check)
+full job: 5719110, PENDING with afterok:5719092 dependency
+source: complete eligible BioASQ training13b corpus, 3,930 questions
+  (train 3,144; validation 393; test 393), frozen type-stratified manifest
+model / generation: google/gemma-3-12b-it, bfloat16 CUDA, one T=0.1 answer,
+  top_p=0.9, top_k=50, max_new_tokens=192
+included UQ: blind P(True), verbalized confidence, single-answer token NLL and
+  entropy summaries
+hidden states: blocks 24/32/40/48 × TBG/SLT/LT, bf16,
+  [example, 4, 3, 3840] tensors split by manifest partition
+excluded: high-temperature generations, Semantic Entropy, NLI clustering,
+  sample disagreement, P(True)-10
+planned validation: post-run health check verifies one answer/P(True) row per
+  selected question and all hidden-state tensor/index counts and shapes
+```
+
+This is a submission record, not a completed-run record: queueing and model
+runtime are unknown until Slurm begins and writes `run_timing.txt`.
+
 ## Phase-1 final BioASQ baseline
 
 ```text

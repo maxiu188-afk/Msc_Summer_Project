@@ -1,14 +1,16 @@
 # Dataset Pivot Status
 
-Last updated: 2026-07-18
+Last updated: 2026-07-19
 
 ## Decision
 
-BioASQ Task B remains the dataset family, but the active target is now
-no-evidence factoid and list medical-QA UQ. Completed summary-path results are
-archived as low-usability diagnostics because they use generic NLI and
-non-binary quality targets. Continued candidate-dataset exploration remains a
-supervisor recommendation and should be treated as parallel due diligence.
+BioASQ Task B remains the dataset family. The active Phase-2 source is the
+full no-evidence factoid/list/summary `training13b` split, with separate
+P(True)-Probe and Claude-label Accuracy-Probe tracks. Completed historical
+summary-path results remain archived as low-usability diagnostics because they
+use generic NLI and non-binary quality targets. Continued candidate-dataset
+exploration remains a supervisor recommendation and becomes the later
+cross-dataset transfer stage.
 
 ArchEHR-QA should no longer be treated as the final evaluation or SEP training
 dataset for this project.

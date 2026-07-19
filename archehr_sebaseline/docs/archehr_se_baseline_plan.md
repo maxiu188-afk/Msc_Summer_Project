@@ -14,7 +14,7 @@ P(True)-probe as the committed next step.
 This document preserves the historical ArchEHR-QA engineering-baseline plan.
 The historical BioASQ result reports are in `archived_low_usability/`; the
 current no-evidence medical-UQ result is in `bioasq_medical_uq_protocol.md`
-and the root `SE_BASELINE_LEVEL_PLAN.md`.
+and the root `PHASE2_PROBE_PLAN.md`.
 
 ## Goal
 
