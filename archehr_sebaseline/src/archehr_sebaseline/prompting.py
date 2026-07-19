@@ -24,6 +24,12 @@ BIOASQ_DIRECT_SYSTEM_INSTRUCTION = (
 )
 
 
+def bioasq_should_include_evidence(example: dict[str, Any], *, include_evidence: bool) -> bool:
+    """Resolve prompt evidence mode while keeping summary QA deliberately unguided."""
+
+    return include_evidence and str(example.get("bioasq_type") or "").lower() != "summary"
+
+
 def format_evidence(evidence: list[dict[str, Any]]) -> str:
     lines = []
     for sentence in evidence:
@@ -85,21 +91,22 @@ def build_bioasq_prompt(example: dict[str, Any], *, include_evidence: bool = Tru
     question = str(prompt_example.get("patient_question") or "").strip()
     bioasq_type = str(example.get("bioasq_type") or "").lower()
     type_instruction = {
-        "summary": "Write a concise paragraph answer.",
-        "factoid": "Give the exact entity or short phrase first, then one brief supporting sentence.",
-        "list": "Give a comma-separated list first, then one brief supporting sentence.",
+        "summary": "Write one concise biomedical paragraph that directly answers the question.",
+        "factoid": "Return only the answer entity or entities as semicolon-separated terms. Do not add an explanation.",
+        "list": "Return only the complete requested set as semicolon-separated items. Do not add an explanation.",
         "yesno": "Start with exactly 'yes' or 'no', then add one brief supporting sentence.",
     }.get(bioasq_type, "Write a concise biomedical answer.")
 
+    use_evidence = bioasq_should_include_evidence(example, include_evidence=include_evidence)
     prompt_parts = [
         "System instruction: "
-        + (BIOASQ_SYSTEM_INSTRUCTION if include_evidence else BIOASQ_DIRECT_SYSTEM_INSTRUCTION),
+        + (BIOASQ_SYSTEM_INSTRUCTION if use_evidence else BIOASQ_DIRECT_SYSTEM_INSTRUCTION),
         "",
         f"Question type: {bioasq_type or 'unknown'}",
         f"Question: {question}",
         "",
     ]
-    if include_evidence:
+    if use_evidence:
         prompt_parts.extend(
             [
             "Evidence snippets:",
@@ -108,7 +115,7 @@ def build_bioasq_prompt(example: dict[str, Any], *, include_evidence: bool = Tru
             ]
         )
     prompt_parts.extend(["Task:", type_instruction])
-    if include_evidence:
+    if use_evidence:
         prompt_parts.extend(
             [
                 "Use only the evidence snippets above.",
@@ -134,8 +141,17 @@ def build_prompt_records(
     for example in examples:
         dataset = str(example.get("dataset") or "").lower()
         prompt_version = "grounded_qa_common_v1"
+        actual_include_evidence = include_evidence
         if dataset == "bioasq":
-            prompt_version = "bioasq_grounded_v1" if include_evidence else "bioasq_direct_v1"
+            actual_include_evidence = bioasq_should_include_evidence(
+                example, include_evidence=include_evidence
+            )
+            question_type = str(example.get("bioasq_type") or "unknown").lower()
+            prompt_version = (
+                f"bioasq_{question_type}_grounded_v2"
+                if actual_include_evidence
+                else f"bioasq_{question_type}_direct_v2"
+            )
         prompt_records.append(
             {
                 "example_id": example["id"],
@@ -143,7 +159,7 @@ def build_prompt_records(
                 "split": example.get("split"),
                 "prompt": build_prompt(example, include_evidence=include_evidence),
                 "prompt_version": prompt_version,
-                "evidence_mode": "provided" if include_evidence else "none",
+                "evidence_mode": "provided" if actual_include_evidence else "none",
             }
         )
     return prompt_records

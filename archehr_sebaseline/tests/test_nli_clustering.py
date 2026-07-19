@@ -12,6 +12,10 @@ if str(SRC_DIR) not in sys.path:
 from archehr_sebaseline.nli_clustering import (
     ENTAILMENT,
     NEUTRAL,
+    PUBMEDBERT_MNLI_MODEL,
+    HuggingFaceNLIScorer,
+    NLIConfig,
+    are_set_equivalent,
     are_bidirectionally_equivalent,
     cluster_by_bidirectional_entailment,
 )
@@ -36,6 +40,14 @@ class FakeEntailmentScorer:
 
 
 class NLIClusteringTests(unittest.TestCase):
+    def test_pubmedbert_label_mapping_uses_documented_order(self) -> None:
+        scorer = HuggingFaceNLIScorer.__new__(HuggingFaceNLIScorer)
+        scorer.config = NLIConfig(model_name=PUBMEDBERT_MNLI_MODEL)
+        scorer.id2label = {}
+        self.assertEqual(scorer._label_from_index(0), "contradiction")
+        self.assertEqual(scorer._label_from_index(1), ENTAILMENT)
+        self.assertEqual(scorer._label_from_index(2), NEUTRAL)
+
     def test_bidirectional_equivalence_uses_scorer(self) -> None:
         self.assertTrue(
             are_bidirectionally_equivalent(
@@ -59,6 +71,21 @@ class NLIClusteringTests(unittest.TestCase):
         self.assertEqual(clusters[0]["clustering_method"], "nli_bidirectional_entailment")
         self.assertEqual(clusters[0]["semantic_ids"], [0, 0, 1])
         self.assertEqual(clusters[0]["cluster_sizes"], [2, 1])
+
+    def test_factoid_and_list_answers_require_complete_set_matching(self) -> None:
+        generations = [
+            {"example_id": "ex1", "sample_id": 0, "clean_answer": "IL-6; TNF-alpha"},
+            {"example_id": "ex1", "sample_id": 1, "clean_answer": "TNF-alpha; IL-6"},
+            {"example_id": "ex1", "sample_id": 2, "clean_answer": "IL-6"},
+        ]
+        clusters = cluster_by_bidirectional_entailment(
+            generations,
+            scorer=FakeEntailmentScorer(),
+            examples_by_id={"ex1": {"question": "Which cytokines?", "bioasq_type": "list"}},
+        )
+        self.assertTrue(are_set_equivalent("IL-6; TNF-alpha", "TNF-alpha; IL-6", FakeEntailmentScorer()))
+        self.assertEqual(clusters[0]["clustering_method"], "nli_set_bidirectional_entailment")
+        self.assertEqual(clusters[0]["semantic_ids"], [0, 0, 1])
 
 
 if __name__ == "__main__":

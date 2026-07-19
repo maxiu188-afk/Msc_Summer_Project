@@ -1,13 +1,14 @@
 # Dataset Pivot Status
 
-Last updated: 2026-07-17
+Last updated: 2026-07-18
 
 ## Decision
 
-BioASQ Task B is the current main replacement-dataset direction. Immediate work
-should test its supported summary, factoid, list, and yes/no paths. Continued
-candidate-dataset exploration remains a supervisor recommendation and should be
-treated as parallel due diligence rather than a pause in BioASQ testing.
+BioASQ Task B remains the dataset family, but the active target is now
+no-evidence factoid and list medical-QA UQ. Completed summary-path results are
+archived as low-usability diagnostics because they use generic NLI and
+non-binary quality targets. Continued candidate-dataset exploration remains a
+supervisor recommendation and should be treated as parallel due diligence.
 
 ArchEHR-QA should no longer be treated as the final evaluation or SEP training
 dataset for this project.
@@ -66,7 +67,8 @@ filtering study, so no generation-prompt change is warranted merely to improve
 lexical quality.
 
 Detailed figures, provenance, and limitations are in
-`bioasq_runpod_results_20260713.md`. Future GPU runs return to Isambard.
+`archived_low_usability/bioasq_runpod_results_20260713.md`. Future GPU runs
+return to Isambard.
 
 ## Isambard Replication Update (2026-07-15)
 
@@ -87,7 +89,7 @@ The immediate decision is to keep BioASQ as the main baseline dataset, report
 both seeds without selecting the stronger result, verify summary quality once
 with a standard/official implementation, and diagnose SE failure cases. A
 larger closed-model judge is deferred rather than abandoned. Full results are
-in `bioasq_isambard_results_20260715.md`.
+in `archived_low_usability/bioasq_isambard_results_20260715.md`.
 
 ## Label Availability
 
@@ -234,21 +236,20 @@ Better target:
 question/context/reference answer/evidence labels/factuality or correctness label
 ```
 
-## Current Next Step
+## Current Result and Pause Point (2026-07-18)
 
-The matched BioASQ validation and no-evidence ablation are complete. The
-high-temperature samples have now been separated explicitly from the
-low-temperature main answer, following the Semantic Entropy reference protocol.
-Four Isambard backfill jobs (5692776/5692777 evidence; 5692779/5692780 direct)
-are producing those main answers. After they finish, use the local Claude Sonnet
-5 three-class text comparison and calculate AUROC/AURAC using only `poor` as
-the positive outcome. The prior deterministic bottom-30% label and the Claude
-labels of high-temperature samples remain diagnostics, not the primary target.
+The active no-evidence BioASQ medical-UQ run is complete: 100 questions,
+ten high-temperature samples, a low-temperature main answer, PubMedBERT
+set-aware NLI, and two seeds. Binary Claude labels yield 98 valid examples per
+seed. Discrete SE is useful for factoid/list (0.682--0.758 and 0.704--0.712
+AUROC respectively) but near chance for summary (0.500/0.462). P(True)-blind
+is the strongest overall method (0.781/0.824); seeing the high-temperature
+answers lowers P(True) and is not a viable probe target in this protocol.
 
-Before SEP, report this corrected outcome together with both seeds, uncertainty
-intervals, and rejection curves, and continue to diagnose the weak,
-seed-sensitive SE discrimination. In parallel, continue to explore replacement
-datasets and record, for each candidate:
+Before SEP, report the corrected type-stratified outcome with uncertainty
+intervals, rejection curves, and failure analysis. No next experimental method
+is selected today. Continue to explore replacement datasets and record, for
+each candidate:
 
 - access and licensing constraints,
 - task and answer format,

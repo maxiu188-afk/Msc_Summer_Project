@@ -1,17 +1,17 @@
 ﻿# ArchEHR-QA Semantic Entropy Baseline
 
-This is the active project package for grounded biomedical/clinical QA
-uncertainty baselines.
+This is the active project package for biomedical/clinical QA uncertainty
+baselines.
 
 The current main replacement dataset path is BioASQ Task B:
 
 ```text
-BioASQ questions + PubMed snippets
--> grounded biomedical prompt
+BioASQ factoid/list questions
+-> no-evidence biomedical prompt
 -> multi-sample answer generation
 -> answer-level Semantic Entropy
 -> token-level UQ
--> dataset-specific quality evaluation
+-> binary correct/incorrect evaluation
 ```
 
 ArchEHR-QA remains implemented as an engineering diagnostic baseline.
@@ -51,66 +51,22 @@ The replacement dataset direction is now BioASQ. PubMedQA remains available as
 a short-answer engineering smoke path, but it is not the preferred main SE
 dataset.
 
-### Latest BioASQ baseline evidence
+### Current BioASQ decision
 
-The baseline now includes two matched Isambard training-summary runs with Gemma
-3 12B, 100 questions, ten samples per question, token scores, self-report UQ,
-and bidirectional-entailment NLI clustering. Both health checks passed. Mean
-quality is 0.2238 versus 0.2245 and paired example-quality rho is 0.993, but
-discrete-SE AUROC changes from 0.687 to 0.609. The repeat confidence interval
-includes 0.5, and token entropy/P(True) outperform SE in seed 47. The baseline
-therefore supports a positive but modest uncertainty-quality relationship, not
-a stable SE-superiority claim.
+The completed BioASQ summary runs are archived as low-usability diagnostics.
+They are not current benchmark results because they combine summary prompts,
+evidence-conditioned generation, generic NLI clustering, and non-binary quality
+targets. Their reports and raw outputs remain available for provenance under
+`docs/archived_low_usability/` and `../../server_results/archived_low_usability/`.
 
-A fixed 30-question Qwen judge also completed. Its mean score was 0.871, but it
-assigned no example below the preregistered 0.5 threshold, making judge-label
-AUROC undefined. A larger closed-model judge remains possible but is deferred
-until conventional SE failure analysis is complete.
-
-The raw required-batch archive and a cautious result table are documented in
-`docs/bioasq_runpod_results_20260713.md`. Future experiments run on Isambard;
-`RUNPOD.md` is retained only as a reproducibility record for this batch.
-For a fresh BioASQ launch on Isambard, follow `ISAMBARD_BIOASQ.md`.
-The latest Isambard results and interpretation boundary are documented in
-`docs/bioasq_isambard_results_20260715.md`; runtimes are in
-`docs/experiment_runtime_log.md`.
-
-The paired Isambard temperature-sensitivity runs completed on 2026-07-16. They
-keep the 100-question, ten-sample, 192-token configuration and the
-seed-31/seed-47 pair, but explicitly use `temperature=1.0` and `top_p=0.9`.
-Jobs 5679663 and 5679664 both passed Level 4 health checks. Under a common
-citation-aware reference target, mean answer quality was unchanged from the
-temperature-0.8 pair, while within-question semantic diversity increased
-slightly. The three-axis ideal-answer NLI re-evaluation then completed in
-01:31 and 01:26, with mean three-axis quality of 0.1968 and 0.1864. A matched
-no-evidence direct-answer pair (jobs 5684358 and 5684360) is submitted with
-the same temperature, seeds, generation settings, NLI clustering, and
-self-report UQ. Its citation axis is intentionally not applicable, so its
-final quality target uses the evaluator's ROUGE + ideal-answer-NLI fallback.
-
-The main-answer protocol was corrected on 2026-07-17 to match the Semantic
-Entropy reference implementation. Ten samples at `T=1.0`, `top_p=0.9`, and
-`top_k=50` are reserved for SE and token-based UQ scores. A separately generated
-single `T=0.1` answer is the only answer used to establish quality. The four
-main-answer backfill jobs (5692776, 5692777, 5692779, and 5692780) and four
-protocol-correct self-report jobs (5696576--5696579) completed successfully.
-Claude Sonnet 5 labels only the low-temperature main answer locally. The
-direct-answer condition treats `poor` as low quality; the evidence condition
-treats `partial` and `poor` as low quality, so their AUROC/AURAC results are
-reported separately. Across the two seeds, P(True) is strongest without
-evidence (AUROC 0.921, AURAC 0.0458); with evidence, predictive entropy/
-normalized NLL is strongest (AUROC 0.642, AURAC 0.0592). The prior 4,000
-high-temperature Claude labels remain an auxiliary, non-primary analysis.
-Details and commands are in `docs/semantic_entropy_generation_protocol.md`.
-
-The active reference evaluator now retains answer-reference coverage and adds
-document-level overlap between cited snippet documents and BioASQ standard
-documents. It combines the two by geometric mean when gold document metadata
-is available. Its deterministic comparator uses the lowest 30% of quality
-scores within a BioASQ question type, avoiding a score-scale-dependent fixed
-cutoff. The fixed threshold remains a diagnostic and must be calibrated against
-reviewed examples; the final UQ label is the low-temperature Claude `poor`
-classification described below.
+Phase 1 is complete. The 1,000-question stratified BioASQ baseline uses free
+biomedical set-aware NLI, binary `correct`/`incorrect` judging of the
+low-temperature main answer, all SE/token UQ baselines, verbal confidence, and
+blind P(True). With 991 valid labels per seed, P(True)-blind is strongest
+overall (0.811/0.821 AUROC); SE is retained as a strong list-specific baseline
+(0.845/0.881 discrete SE). P(True)-10 is retired. See
+`docs/bioasq_medical_uq_results_20260718.md` for the final table and
+`docs/bioasq_medical_uq_protocol.md` for the protocol.
 
 New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
 `archehr` prefixes. This does not rename the package, Python imports, or
@@ -331,33 +287,33 @@ reviewed subset before using it as SEP supervision.
 
 After the low-temperature `best_generations.jsonl` file has been downloaded,
 Claude is run locally as a separate post-processing stage. It does not alter
-the server pipeline or its `bioasq_eval/` artifacts. The judge compares each
-candidate only with BioASQ ideal answers and emits exactly one of `good`,
-`partial`, or `poor`; its system instruction explicitly establishes this as
-offline academic annotation rather than medical advice. Use low reasoning
-effort and a 32-token response cap:
+the server pipeline. The judge emits exactly `correct` or `incorrect`; factoid
+and list use `exact_answers`, while summary uses `ideal_answers`. Its system
+instruction explicitly establishes this as offline academic annotation rather
+than medical advice. First create a reviewable manifest, then submit it:
 
 ```bash
+python scripts/run_bioasq_claude_judge.py prepare \
+  --run_dir outputs/bioasq_medical_uq_gemma3_12b_1000x10_phase1_seed31
+
 python scripts/run_bioasq_claude_judge.py submit \
-  --run_dir outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed31 \
+  --run_dir outputs/bioasq_medical_uq_gemma3_12b_1000x10_phase1_seed31 \
   --model claude-sonnet-5 --effort low --max_tokens 32
 
 python scripts/run_bioasq_claude_judge.py download \
-  --run_dir outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed31
+  --run_dir outputs/bioasq_medical_uq_gemma3_12b_1000x10_phase1_seed31
 
 python scripts/evaluate_bioasq_claude_judge.py \
-  --run_dir outputs/bioasq_summary_gemma3_12b_100x10_temp1p0_seed31 \
+  --run_dir outputs/bioasq_medical_uq_gemma3_12b_1000x10_phase1_seed31 \
   --allow_incomplete_labels \
-  --low_quality_labels partial poor \
   --overwrite
 ```
 
-The final command writes isolated `claude_main_answer_judge/claude_uq_*.csv`
-artifacts. Use `--low_quality_labels poor` for a direct-answer run and
-`--low_quality_labels partial poor` for an evidence-conditioned run. Do not feed
-Claude labels into the earlier deterministic quality evaluator or use the
-historical high-temperature sample labels as a substitute for the
-low-temperature main answer.
+The final command writes `claude_binary_main_answer_judge/claude_uq_*.csv` plus
+independent `by_type/factoid`, `by_type/list`, and `by_type/summary` artifacts.
+`incorrect` is always the risk-positive label. Do not feed Claude labels into
+the archived deterministic evaluator or use high-temperature sample labels as
+a substitute for the low-temperature main answer.
 
 ### Simple UQ baselines
 
@@ -367,27 +323,28 @@ compares all three with SE; negative average token log-probability is the same
 quantity as normalized NLL, and sequence NLL is retained separately to expose
 its answer-length sensitivity.
 
-Verbalized confidence and P(True) are implemented as one optional model-backed
-post-processing pass. Run it once for a completed output, then re-run the
-BioASQ evaluator to include both fields automatically:
+Verbalized confidence and blind P(True) are implemented as one optional
+model-backed post-processing pass over each low-temperature main answer. The
+binary Claude evaluator merges them with SE and token UQ:
 
 ```bash
 python scripts/run_self_report_uq.py \
-  --run_dir outputs/bioasq_summary_gemma3_12b_100x10 \
+  --run_dir outputs/bioasq_medical_uq_gemma3_12b_1000x10_phase1_seed31 \
   --model_name google/gemma-3-12b-it \
   --device cuda \
   --torch_dtype bfloat16 \
   --overwrite
 
-python scripts/evaluate_bioasq_quality.py \
-  --run_dir outputs/bioasq_summary_gemma3_12b_100x10 \
-  --bootstrap_samples 1000 \
+python scripts/evaluate_bioasq_claude_judge.py \
+  --run_dir outputs/bioasq_medical_uq_gemma3_12b_1000x10_phase1_seed31 \
+  --allow_incomplete_labels \
   --overwrite
 ```
 
-The post-processing script scores every sampled answer, then averages the ten
-values per question for a fair comparison with answer-level SE. It uses neither
-retrieval nor NLI, but it does load the answer model once.
+The post-processing script uses the `T=0.1` answer as the object under
+evaluation. P(True) receives only the question and proposed answer (plus
+evidence if that generation prompt used evidence). It uses neither retrieval
+nor NLI, but it does load the answer model once.
 
 ## Local Tests
 

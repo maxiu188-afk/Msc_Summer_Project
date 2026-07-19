@@ -16,9 +16,10 @@ SELF_REPORT_GENERATION_FIELDS = [
     "verbalized_confidence_uncertainty",
     "p_true",
     "p_true_uncertainty",
+    "p_true_blind",
+    "p_true_blind_uncertainty",
     "confidence_response",
     "answer_source",
-    "num_high_temperature_samples",
 ]
 
 SELF_REPORT_EXAMPLE_FIELDS = [
@@ -30,8 +31,9 @@ SELF_REPORT_EXAMPLE_FIELDS = [
     "verbalized_confidence_uncertainty",
     "mean_p_true",
     "p_true_uncertainty",
+    "mean_p_true_blind",
+    "p_true_blind_uncertainty",
     "answer_source",
-    "num_high_temperature_samples",
 ]
 
 _NUMBER_RE = re.compile(r"(?<!\d)(100(?:\.0+)?|\d{1,2}(?:\.\d+)?)(?!\d)")
@@ -52,7 +54,22 @@ def _evidence_text(example: dict[str, Any], *, max_characters: int = 5000) -> st
     return "\n".join(f"[S{index}] {snippet}" for index, snippet in enumerate(snippets, start=1))[:max_characters]
 
 
+def _uses_evidence(example: dict[str, Any]) -> bool:
+    """Use the generation prompt's evidence mode, never the stored metadata alone."""
+
+    return str(example.get("prompt_evidence_mode") or "provided").lower() == "provided"
+
+
 def build_verbalized_confidence_prompt(example: dict[str, Any], answer: str) -> str:
+    if not _uses_evidence(example):
+        return (
+            "You are checking a biomedical answer. Using the question and your biomedical knowledge, "
+            "estimate the probability that the proposed answer is fully correct. "
+            "Reply with one number from 0 to 100 and no other text.\n\n"
+            f"Question: {example.get('question', '')}\n"
+            f"Proposed answer: {answer}\n"
+            "Confidence (0-100):"
+        )
     return (
         "You are checking a grounded biomedical answer. Using only the question and evidence below, "
         "estimate the probability that the proposed answer is fully correct and supported. "
@@ -67,24 +84,16 @@ def build_verbalized_confidence_prompt(example: dict[str, Any], answer: str) -> 
 def build_p_true_prompt(
     example: dict[str, Any],
     answer: str,
-    sampled_answers: list[str] | None = None,
 ) -> str:
-    sampled_answer_text = "\n".join(
-        f"- {sample}" for sample in (sampled_answers or []) if sample.strip()
+    evidence_section = (
+        f"Evidence:\n{_evidence_text(example)}\n\n" if _uses_evidence(example) else ""
     )
-    possible_answers_section = (
-        f"\nOther possible answers sampled from the model:\n{sampled_answer_text}\n"
-        if sampled_answer_text
-        else ""
-    )
+    basis = "the question and supplied evidence" if _uses_evidence(example) else "the question"
     return (
-        "Using the question, supplied evidence, and possible sampled answers, "
-        "is the proposed answer fully correct and supported? "
-        "Reply True or False.\n\n"
+        f"Using {basis}, is the proposed answer fully correct? Reply True or False.\n\n"
         f"Question: {example.get('question', '')}\n"
-        f"Evidence:\n{_evidence_text(example)}\n\n"
+        f"{evidence_section}"
         f"Proposed answer: {answer}\n"
-        f"{possible_answers_section}"
         "Verdict:"
     )
 
@@ -164,23 +173,11 @@ def score_self_report_generations(
 def score_self_report_best_answers(
     examples: list[dict[str, Any]],
     best_generations: list[dict[str, Any]],
-    sampled_generations: list[dict[str, Any]],
     scorer: SelfReportScorer,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Score one low-temperature answer per question, with high-T samples for P(True).
-
-    This matches the Semantic Entropy protocol: the low-temperature answer is
-    the prediction under evaluation; stochastic answers are retained only as
-    possible alternatives in the P(True) prompt.
-    """
+    """Score one low-temperature answer per question with blind P(True)."""
 
     examples_by_id = {str(example["id"]): example for example in examples}
-    sampled_by_id: dict[str, list[str]] = defaultdict(list)
-    for generation in sorted(sampled_generations, key=lambda item: (str(item["example_id"]), int(item.get("sample_id", 0)))):
-        answer = str(generation.get("clean_answer") or generation.get("raw_answer") or "").strip()
-        if answer:
-            sampled_by_id[str(generation["example_id"])].append(answer[:800])
-
     best_by_id: dict[str, dict[str, Any]] = {}
     for generation in best_generations:
         example_id = str(generation["example_id"])
@@ -203,9 +200,8 @@ def score_self_report_best_answers(
             max_new_tokens=8,
         )
         confidence = parse_verbalized_confidence(confidence_response)
-        sampled_answers = sampled_by_id[example_id]
-        p_true = scorer.binary_continuation_probability(
-            build_p_true_prompt(example, answer, sampled_answers),
+        p_true_blind = scorer.binary_continuation_probability(
+            build_p_true_prompt(example, answer),
             true_text=" True",
             false_text=" False",
         )
@@ -216,11 +212,14 @@ def score_self_report_best_answers(
             "sample_id": generation.get("sample_id", 0),
             "verbalized_confidence": confidence,
             "verbalized_confidence_uncertainty": 1.0 - confidence if confidence is not None else None,
-            "p_true": p_true,
-            "p_true_uncertainty": 1.0 - p_true,
+            # Keep the concise names as aliases of the only active P(True)
+            # condition for legacy readers.
+            "p_true": p_true_blind,
+            "p_true_uncertainty": 1.0 - p_true_blind,
+            "p_true_blind": p_true_blind,
+            "p_true_blind_uncertainty": 1.0 - p_true_blind,
             "confidence_response": confidence_response,
             "answer_source": "best_generation_low_temperature",
-            "num_high_temperature_samples": len(sampled_answers),
         }
         generation_rows.append(generation_row)
         example_rows.append(
@@ -231,10 +230,11 @@ def score_self_report_best_answers(
                 "num_generations": 1,
                 "mean_verbalized_confidence": confidence,
                 "verbalized_confidence_uncertainty": generation_row["verbalized_confidence_uncertainty"],
-                "mean_p_true": p_true,
+                "mean_p_true": p_true_blind,
                 "p_true_uncertainty": generation_row["p_true_uncertainty"],
+                "mean_p_true_blind": p_true_blind,
+                "p_true_blind_uncertainty": generation_row["p_true_blind_uncertainty"],
                 "answer_source": generation_row["answer_source"],
-                "num_high_temperature_samples": len(sampled_answers),
             }
         )
     return generation_rows, example_rows

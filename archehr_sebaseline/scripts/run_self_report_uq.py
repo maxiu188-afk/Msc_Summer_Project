@@ -50,7 +50,6 @@ def main() -> int:
     generation_rows, example_rows = score_self_report_best_answers(
         read_jsonl(run_dir / "examples.jsonl"),
         read_jsonl(run_dir / "best_generations.jsonl"),
-        read_jsonl(run_dir / "cleaned_generations.jsonl"),
         generator,
     )
     write_csv(generation_rows, output_dir / "self_report_generations.csv", SELF_REPORT_GENERATION_FIELDS, overwrite=args.overwrite)

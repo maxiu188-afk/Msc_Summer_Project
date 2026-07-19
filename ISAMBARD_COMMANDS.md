@@ -15,6 +15,16 @@ clifton ssh-config write
 ssh b6u.aip2.isambard
 ```
 
+## Active result — Phase 1 complete (2026-07-19)
+
+Phase 1 is complete: jobs 5706186/5706187 ran 1,000 fixed stratified questions
+(480 factoid, 320 list, 200 summary) x 10 samples at seeds 31/47 with
+PubMedBERT set-aware NLI. Jobs 5715701/5715703 added blind P(True) and verbal
+confidence; Claude retained 991 labels per seed after one bounded retry.
+P(True)-blind is best overall (0.811/0.821), while list cluster count is
+0.849/0.884. The full protocol and result are in
+`archehr_sebaseline/docs/bioasq_medical_uq_protocol.md`.
+
 To upload a source archive or a data directory, run `scp` from the local
 machine, not from an Isambard login shell:
 
@@ -56,18 +66,18 @@ PY
 
 Do not replace the existing PyTorch build while applying this repair.
 
-## Submit the BioASQ Summary main run
+## Submit the Phase-1 closing BioASQ baseline
 
 Use the complete command in `archehr_sebaseline/ISAMBARD_BIOASQ.md`. Its
-important settings are 100 questions, 10 generations per question, NLI SE,
-reference-quality evaluation, verbalized confidence, and P(True). The command
-returns a Slurm job ID:
+important settings are 1,000 stratified questions, 10 generations per question,
+PubMedBERT set-aware NLI SE, token UQ, verbalized confidence, and blind
+P(True). The command returns a Slurm job ID:
 
 ```bash
 sbatch scripts/run_bioasq_isambard.sbatch
 ```
 
-## Active temperature-sensitivity repeat
+## Archived temperature-sensitivity commands — do not submit
 
 The 2026-07-16 follow-up keeps the 100x10 workload, 192-token answer cap,
 model, NLI clustering, and self-report stages unchanged. It changes only the
@@ -90,11 +100,10 @@ DATA_PATH="$DATA_PATH" LOCAL_FILES_ONLY=1 NLI_LOCAL_FILES_ONLY=1 \
 sbatch scripts/run_bioasq_isambard.sbatch
 ```
 
-These jobs are currently pending result collection. Treat them as a controlled
-UQ sensitivity check, not evidence of improvement until both seeds pass the
-health check and are evaluated with the same citation-aware target.
+These commands are historical provenance only. Their outputs are superseded by
+the Phase-1 result above.
 
-## Add paper-protocol low-temperature main answers
+## Historical protocol-correction commands — do not submit
 
 Semantic Entropy uses a separate low-temperature answer as the accuracy target:
 the 100x10 `T=1.0`, `top_p=0.9`, `top_k=50` samples remain exclusively for SE
@@ -138,12 +147,12 @@ cat "bioasq-se-uq-<JOBID>.err"
 is active. The batch script prints generation and NLI progress. A failed job
 does not continue consuming a GPU because the script uses `set -euo pipefail`.
 
-## Verify a completed run
+## Verify the Phase-1 completed run
 
 ```bash
-OUT="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_summary_gemma3_12b_100x10"
+OUT="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_medical_uq_gemma3_12b_1000x10_phase1_seed31"
 cat "$OUT/health_check.txt"
-cat "$OUT/bioasq_eval/bioasq_eval_summary.json"
+head -n 2 "$OUT/uq_baselines/self_report_examples.csv"
 cat "$OUT/run_timing.txt"
 ```
 

@@ -1,6 +1,6 @@
 ﻿# ArchEHR-QA UQ Code Handoff Guide
 
-Last updated: 2026-07-17
+Last updated: 2026-07-19
 
 The active project is `archehr_sebaseline`. The package now contains:
 
@@ -9,8 +9,9 @@ The active project is `archehr_sebaseline`. The package now contains:
 - lightweight uncertainty/evaluation utilities,
 - documentation for the current dataset pivot.
 
-Current research direction: validate BioASQ Task B answer-quality supervision
-for SE, while continuing to compare credible candidates as Simpson advised.
+Current research direction: use the completed Phase-1 BioASQ baseline as the
+direct comparator for a narrow P(True)-Probe, while retaining SE as a
+list-specific baseline and continuing to compare credible candidates.
 ArchEHR-QA remains useful as an engineering diagnostic, but it is not the final
 evaluation or SEP training dataset because its test key does not include gold
 evidence labels or answer-quality labels.
@@ -19,14 +20,32 @@ See:
 
 ```text
 docs/dataset_pivot_status.md
-docs/bioasq_isambard_results_20260715.md
-docs/bioasq_runpod_results_20260713.md
+docs/archived_low_usability/README.md
+docs/archived_low_usability/bioasq_isambard_results_20260715.md
+docs/archived_low_usability/bioasq_runpod_results_20260713.md
 docs/experiment_runtime_log.md
 docs/archehr_se_baseline_plan.md
 docs/archehr_evaluation_architecture.md
 ```
 
-## Current Stage
+## Active BioASQ medical-UQ result — Phase 1 complete (2026-07-19)
+
+Jobs 5706186/5706187 completed the 1,000x10 no-evidence run at seeds 31/47
+with Gemma 3 12B, a separate `T=0.1` target answer, PubMedBERT-MNLI-MedNLI,
+and set-aware list/factoid matching. The repaired health check passed both
+complete artifact sets; jobs 5715701/5715703 added blind P(True) and verbal
+confidence. Claude retained 991 labels per seed after one bounded retry.
+P(True)-blind is strongest overall (0.811/0.821); SE is strongest/competitive
+for list (cluster count 0.849/0.884), but weak for summary. A P(True)-Probe
+must target blind P(True), never P(True)-10. See
+`docs/bioasq_medical_uq_protocol.md` for all UQ methods and per-type values.
+
+## Archived Stage
+
+The summary-path stage below is retained for reproducibility only. It is not
+the current benchmark or basis for choosing an uncertainty method; see
+`docs/archived_low_usability/README.md` and the root plan for the active
+no-evidence factoid/list direction.
 
 The primary Isambard baseline and its matched seed repeat are complete:
 
@@ -52,14 +71,11 @@ token UQ, while a separate `T=0.1` answer is the quality outcome. Jobs
 100-answer backfills; jobs 5696576--5696579 completed the corresponding
 protocol-correct self-report UQ.
 
-Claude Sonnet 5 runs locally, not on Isambard, as a three-class
-(`good`/`partial`/`poor`) text comparison of only the low-temperature answer
-against BioASQ ideal answers. Direct answers use `poor` as low quality;
-evidence-conditioned answers use `partial + poor`. The primary two-seed result
-is P(True) AUROC 0.921 for direct answers and predictive entropy/normalized
-NLL AUROC 0.642 for evidence-conditioned answers. The historical 4,000
-high-temperature Claude labels are exploratory only and must not replace this
-target.
+The text in this archived section describes the old three-class Claude setup.
+The active setup is local binary `correct`/`incorrect` judging of only the
+low-temperature answer, with exact-answer references for factoid/list and ideal
+references for summary. Use the 2026-07-18 result above, not the historical
+three-class AUROCs, for any current decision.
 
 The active reference evaluation now separates answer-reference coverage from
 document-level cited-evidence overlap and uses their geometric combination when
@@ -178,7 +194,7 @@ python -m unittest discover archehr_sebaseline\tests
 Downloaded 50x5 server results are under:
 
 ```text
-D:\work\FinalProject\code\server_results\level4_qwen25_7b_nli_50x5
+server_results/archived_low_usability/level4_qwen25_7b_nli_50x5
 ```
 
 Analysis reports:

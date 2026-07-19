@@ -8,7 +8,7 @@
 #SBATCH --mem=48G
 #SBATCH --time=02:00:00
 
-# Recompute paper-protocol self-report UQ on existing BioASQ artifacts.
+# Recompute verbal confidence and blind P(True) on existing BioASQ artifacts.
 set -euo pipefail
 
 : "${SCRATCHDIR:?SCRATCHDIR is not set. Submit this on Isambard.}"
@@ -51,5 +51,5 @@ python scripts/run_self_report_uq.py \
 printf '%s\n' \
   "model_name: ${MODEL_NAME}" "environment_selection: ${VENV_SELECTION}" \
   "self_report_answer_source: best_generation_low_temperature" \
-  "p_true_high_temperature_context: cleaned_generations.jsonl" \
+  "p_true_context: question_and_main_answer_only" \
   > "${RUN_DIR}/self_report_timing.txt"

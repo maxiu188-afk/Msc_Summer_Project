@@ -14,8 +14,35 @@ if str(SRC_DIR) not in sys.path:
 
 from archehr_sebaseline.dataset_adapters import SUPPORTED_DATASETS
 from archehr_sebaseline.generation import GenerationConfig, MissingGenerationDependency
-from archehr_sebaseline.nli_clustering import NLIConfig
+from archehr_sebaseline.nli_clustering import NLIConfig, PUBMEDBERT_MNLI_MODEL
 from archehr_sebaseline.pipeline_level4 import format_summary, run_level4
+
+
+def parse_bioasq_type_limits(raw_limits: list[str] | None) -> dict[str, int] | None:
+    """Parse repeated ``TYPE=COUNT`` flags for a stratified BioASQ sample."""
+
+    if not raw_limits:
+        return None
+    limits: dict[str, int] = {}
+    for raw_limit in raw_limits:
+        if "=" not in raw_limit:
+            raise ValueError(
+                f"Invalid --bioasq_type_limit {raw_limit!r}; expected TYPE=COUNT."
+            )
+        question_type, raw_count = raw_limit.split("=", 1)
+        question_type = question_type.strip().lower()
+        if not question_type or question_type in limits:
+            raise ValueError(
+                f"Each --bioasq_type_limit type must appear once; got {raw_limit!r}."
+            )
+        try:
+            count = int(raw_count)
+        except ValueError as exc:
+            raise ValueError(
+                f"Invalid count in --bioasq_type_limit {raw_limit!r}; expected an integer."
+            ) from exc
+        limits[question_type] = count
+    return limits
 
 
 def parse_args() -> argparse.Namespace:
@@ -45,10 +72,25 @@ def parse_args() -> argparse.Namespace:
         default=50,
         help="Maximum number of examples to run for the Level 4 pilot.",
     )
+    parser.add_argument(
+        "--bioasq_type_limit",
+        action="append",
+        metavar="TYPE=COUNT",
+        help=(
+            "Deterministically sample an exact BioASQ quota per type; repeat for "
+            "factoid, list, and summary. The quotas must sum to --max_examples."
+        ),
+    )
+    parser.add_argument(
+        "--selection_seed",
+        type=int,
+        default=20260718,
+        help="Seed used only for deterministic dataset selection.",
+    )
     parser.add_argument("--local_files_only", action="store_true")
     parser.add_argument("--trust_remote_code", action="store_true")
     parser.add_argument("--clustering_method", choices=["nli", "exact"], default="nli")
-    parser.add_argument("--nli_model_name", default="microsoft/deberta-v2-xlarge-mnli")
+    parser.add_argument("--nli_model_name", default=PUBMEDBERT_MNLI_MODEL)
     parser.add_argument("--nli_device", default=None)
     parser.add_argument("--nli_max_input_tokens", type=int, default=512)
     parser.add_argument("--nli_torch_dtype", default=None)
@@ -72,6 +114,11 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    try:
+        bioasq_type_limits = parse_bioasq_type_limits(args.bioasq_type_limit)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 3
     config = GenerationConfig(
         model_name=args.model_name,
         num_samples=args.num_samples,
@@ -113,6 +160,8 @@ def main() -> int:
             best_generation_temperature=args.best_generation_temperature,
             best_generation_top_p=args.best_generation_top_p,
             best_generation_top_k=args.best_generation_top_k,
+            bioasq_type_limits=bioasq_type_limits,
+            selection_seed=args.selection_seed,
         )
     except MissingGenerationDependency as exc:
         print(str(exc), file=sys.stderr)

@@ -16,6 +16,26 @@ Queueing time is excluded: elapsed time is measured from Slurm start to end.
 - Estimates should include a safety margin and should not silently substitute a
   different model, device, precision, sample count, or evaluation stage.
 
+## Phase-1 final BioASQ baseline
+
+```text
+submitted: 2026-07-18
+generation/NLI jobs: 5706186 (seed 31), 5706187 (seed 47)
+generation/NLI status: completed all artifacts; initial exit 1 only because the
+  health check expected the old ordinary-NLI name after set-aware clustering
+repair: commit 7b90d54; repaired health checks PASS / PASS
+dataset: BioASQ training13b; 1,000 fixed questions (480 factoid, 320 list,
+  200 summary), ten samples per question, 10,000 generations per seed
+model / generation: google/gemma-3-12b-it, bfloat16 CUDA, T=1.0, top_p=0.9
+target answer: one T=0.1 answer per question
+NLI: pritamdeka/PubMedBERT-MNLI-MedNLI; set-aware factoid/list, ordinary summary
+elapsed: 08:00:08 (seed 31), 07:14:24 (seed 47), excluding queue time
+self-report jobs: 5715701 (seed 31), 5715703 (seed 47), completed exit 0:0
+self-report elapsed: 00:06:58 / 00:06:34; blind P(True) only
+Claude batches: 1,000 requests per seed plus 24/29 blank-response retries
+final labels: 991 valid per seed; remaining nine blanks per seed excluded
+```
+
 ## Protocol-correction runs
 
 ### BioASQ low-temperature main-answer backfill

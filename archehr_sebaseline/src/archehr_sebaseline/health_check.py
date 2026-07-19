@@ -43,6 +43,11 @@ TOKEN_SCORE_FIELDS = [
     "max_token_entropy",
 ]
 
+NLI_CLUSTERING_METHODS = {
+    "nli_bidirectional_entailment",
+    "nli_set_bidirectional_entailment",
+}
+
 
 @dataclass
 class HealthCheckResult:
@@ -246,6 +251,49 @@ def _check_token_scores(result: HealthCheckResult, generation_uq_rows: list[dict
         result.ok("generation_uq token score fields are populated")
 
 
+def _check_nli_methods(
+    result: HealthCheckResult,
+    *,
+    summary: dict[str, str],
+    cluster_rows: list[dict[str, Any]],
+    score_rows: list[dict[str, str]],
+) -> None:
+    """Accept ordinary and BioASQ set-aware bidirectional NLI clustering."""
+
+    if summary.get("requested_clustering_method") != "nli":
+        result.fail("summary requested_clustering_method is not nli")
+        return
+
+    summary_method = summary.get("clustering_method")
+    if summary_method not in NLI_CLUSTERING_METHODS:
+        result.fail(
+            "summary clustering_method is not a supported bidirectional NLI method: "
+            f"{summary_method!r}"
+        )
+
+    cluster_methods = {
+        str(row.get("clustering_method") or "") for row in cluster_rows
+    }
+    invalid_cluster_methods = cluster_methods - NLI_CLUSTERING_METHODS
+    if invalid_cluster_methods:
+        result.fail(
+            "cluster rows use unsupported NLI methods: "
+            f"{', '.join(sorted(invalid_cluster_methods))}"
+        )
+
+    score_methods = {str(row.get("clustering_method") or "") for row in score_rows}
+    invalid_score_methods = score_methods - NLI_CLUSTERING_METHODS
+    if invalid_score_methods:
+        result.fail(
+            "SE score rows use unsupported NLI methods: "
+            f"{', '.join(sorted(invalid_score_methods))}"
+        )
+
+    if not result.failures:
+        methods = ", ".join(sorted(cluster_methods))
+        result.ok(f"cluster and SE score rows use supported bidirectional NLI: {methods}")
+
+
 def check_level4_output_dir(
     output_dir: str | Path,
     *,
@@ -323,12 +371,12 @@ def check_level4_output_dir(
         result.ok("summary reports CUDA")
 
     if require_nli:
-        if summary.get("requested_clustering_method") != "nli":
-            result.fail("summary requested_clustering_method is not nli")
-        elif summary.get("clustering_method") != "nli_bidirectional_entailment":
-            result.fail("summary clustering_method is not nli_bidirectional_entailment")
-        else:
-            result.ok("summary reports NLI bidirectional-entailment clustering")
+        _check_nli_methods(
+            result,
+            summary=summary,
+            cluster_rows=clusters,
+            score_rows=score_rows,
+        )
 
     if require_token_scores:
         if summary.get("token_scores") not in {"True", "true", "1"}:

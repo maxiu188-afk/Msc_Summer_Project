@@ -4,12 +4,16 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+import re
 from typing import Any, Callable, Protocol
 
 
 ENTAILMENT = "entailment"
 NEUTRAL = "neutral"
 CONTRADICTION = "contradiction"
+PUBMEDBERT_MNLI_MODEL = "pritamdeka/PubMedBERT-MNLI-MedNLI"
+SET_AWARE_TYPES = frozenset({"factoid", "list"})
+_ITEM_PREFIX_RE = re.compile(r"^\s*(?:[-*•]|\d+[.)]|(?:exact\s+)?answer|list)\s*[:.)-]?\s*", re.IGNORECASE)
 
 
 class EntailmentScorer(Protocol):
@@ -25,7 +29,7 @@ class EntailmentScorer(Protocol):
 
 @dataclass(frozen=True)
 class NLIConfig:
-    model_name: str = "microsoft/deberta-v2-xlarge-mnli"
+    model_name: str = PUBMEDBERT_MNLI_MODEL
     device: str = "cpu"
     max_input_tokens: int = 512
     local_files_only: bool = False
@@ -93,6 +97,12 @@ class HuggingFaceNLIScorer:
         if "neutral" in label:
             return NEUTRAL
 
+        # This biomedical checkpoint documents its non-standard label order as
+        # contradiction=0, entailment=1, neutral=2. Its saved config may retain
+        # generic LABEL_n names, so do not apply the DeBERTa fallback below.
+        if self.config.model_name == PUBMEDBERT_MNLI_MODEL:
+            return {0: CONTRADICTION, 1: ENTAILMENT, 2: NEUTRAL}.get(index, NEUTRAL)
+
         # Common MNLI fallback order used by DeBERTa MNLI checkpoints.
         if index == 0:
             return CONTRADICTION
@@ -145,6 +155,80 @@ def are_bidirectionally_equivalent(
     )
 
 
+def answer_items(answer: str) -> list[str]:
+    """Extract semicolon or bullet-delimited biomedical answer items.
+
+    Factoid/list prompts require semicolons specifically so commas inside entity
+    names are not mistaken for list boundaries. A non-conforming free-text
+    answer is retained as one item rather than silently over-segmented.
+    """
+
+    raw_parts = re.split(r"[;\n]+", str(answer or ""))
+    items: list[str] = []
+    seen: set[str] = set()
+    for raw_part in raw_parts:
+        item = _ITEM_PREFIX_RE.sub("", raw_part).strip(" \t,.")
+        key = re.sub(r"\s+", " ", item).casefold()
+        if item and key not in seen:
+            seen.add(key)
+            items.append(item)
+    return items
+
+
+def _maximum_equivalent_matching(
+    left_items: list[str],
+    right_items: list[str],
+    scorer: EntailmentScorer,
+    *,
+    question: str | None,
+) -> int:
+    """Return the cardinality of one-to-one bidirectionally entailed matches."""
+
+    edges: list[list[int]] = []
+    for left in left_items:
+        compatible = [
+            right_index
+            for right_index, right in enumerate(right_items)
+            if are_bidirectionally_equivalent(
+                left, right, scorer, question=question, strict_entailment=True
+            )
+        ]
+        edges.append(compatible)
+
+    matched_left_for_right: dict[int, int] = {}
+
+    def assign(left_index: int, visited: set[int]) -> bool:
+        for right_index in edges[left_index]:
+            if right_index in visited:
+                continue
+            visited.add(right_index)
+            previous_left = matched_left_for_right.get(right_index)
+            if previous_left is None or assign(previous_left, visited):
+                matched_left_for_right[right_index] = left_index
+                return True
+        return False
+
+    return sum(assign(left_index, set()) for left_index in range(len(left_items)))
+
+
+def are_set_equivalent(
+    text1: str,
+    text2: str,
+    scorer: EntailmentScorer,
+    *,
+    question: str | None = None,
+) -> bool:
+    """Require complete one-to-one semantic coverage for factoid/list answers."""
+
+    left_items = answer_items(text1)
+    right_items = answer_items(text2)
+    if not left_items or not right_items or len(left_items) != len(right_items):
+        return False
+    return _maximum_equivalent_matching(
+        left_items, right_items, scorer, question=question
+    ) == len(left_items)
+
+
 def cluster_by_bidirectional_entailment(
     generations: list[dict[str, Any]],
     *,
@@ -165,6 +249,7 @@ def cluster_by_bidirectional_entailment(
         example_generations = sorted(grouped[example_id], key=lambda item: item["sample_id"])
         example = (examples_by_id or {}).get(example_id, {})
         question = example.get("question") or example.get("patient_question")
+        bioasq_type = str(example.get("bioasq_type") or "").lower()
         clusters: list[dict[str, Any]] = []
         semantic_ids: list[int] = []
 
@@ -175,13 +260,23 @@ def cluster_by_bidirectional_entailment(
 
             assigned_cluster_id = None
             for cluster in clusters:
-                if are_bidirectionally_equivalent(
-                    str(cluster["representative_answer"]),
-                    str(clean_answer),
-                    scorer,
-                    question=str(question) if question else None,
-                    strict_entailment=strict_entailment,
-                ):
+                equivalent = (
+                    are_set_equivalent(
+                        str(cluster["representative_answer"]),
+                        str(clean_answer),
+                        scorer,
+                        question=str(question) if question else None,
+                    )
+                    if bioasq_type in SET_AWARE_TYPES
+                    else are_bidirectionally_equivalent(
+                        str(cluster["representative_answer"]),
+                        str(clean_answer),
+                        scorer,
+                        question=str(question) if question else None,
+                        strict_entailment=strict_entailment,
+                    )
+                )
+                if equivalent:
                     assigned_cluster_id = int(cluster["cluster_id"])
                     break
 
@@ -206,8 +301,12 @@ def cluster_by_bidirectional_entailment(
             {
                 "example_id": example_id,
                 "num_samples": len(example_generations),
-                "clustering_method": "nli_bidirectional_entailment",
-                "strict_entailment": strict_entailment,
+                "clustering_method": (
+                    "nli_set_bidirectional_entailment"
+                    if bioasq_type in SET_AWARE_TYPES
+                    else "nli_bidirectional_entailment"
+                ),
+                "strict_entailment": strict_entailment or bioasq_type in SET_AWARE_TYPES,
                 "semantic_ids": semantic_ids,
                 "cluster_sizes": [cluster["cluster_size"] for cluster in clusters],
                 "clusters": clusters,

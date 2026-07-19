@@ -8,7 +8,7 @@
 #SBATCH --mem=64G
 #SBATCH --time=12:00:00
 
-# Full BioASQ Level 4 generation plus reference UQ and optional self-report UQ.
+# Full BioASQ medical-UQ run: SE, token UQ, verbal confidence, and blind P(True).
 set -euo pipefail
 
 : "${SCRATCHDIR:?SCRATCHDIR is not set. Submit this on Isambard.}"
@@ -18,7 +18,7 @@ WORKDIR="${SCRATCHDIR}/final_project"
 PROJECT_DIR="${PROJECT_DIR:-${WORKDIR}/archehr_sebaseline}"
 VENV_PATH_ORIGINAL="${PROJECT_DIR}/.venv_isambard"
 VENV_PATH_CUDA127="${PROJECT_DIR}/.venv_isambard_cuda127"
-OUTPUT_DIR="${OUTPUT_DIR:-${PROJECT_DIR}/outputs/bioasq_summary_gemma3_12b_100x10}"
+OUTPUT_DIR="${OUTPUT_DIR:-${PROJECT_DIR}/outputs/bioasq_medical_uq_gemma3_12b_1000x10_phase1}"
 HF_CACHE_DIR="${WORKDIR}/hf_cache"
 TORCH_CACHE_DIR="${WORKDIR}/torch_cache"
 
@@ -63,10 +63,16 @@ export TRANSFORMERS_CACHE="${HF_CACHE_DIR}"
 export TORCHINDUCTOR_CACHE_DIR="${TORCH_CACHE_DIR}"
 export PYTHONUNBUFFERED=1
 
-DATASET="${DATASET:-bioasq_summary}"
+DATASET="${DATASET:-bioasq_medical_uq}"
 SPLIT="${SPLIT:-train13b}"
 MODEL_NAME="${MODEL_NAME:-google/gemma-3-12b-it}"
-MAX_EXAMPLES="${MAX_EXAMPLES:-100}"
+MAX_EXAMPLES="${MAX_EXAMPLES:-1000}"
+if [[ "${BIOASQ_TYPE_LIMITS+x}" == "x" ]]; then
+  BIOASQ_TYPE_LIMITS="${BIOASQ_TYPE_LIMITS}"
+else
+  BIOASQ_TYPE_LIMITS="factoid=480,list=320,summary=200"
+fi
+SELECTION_SEED="${SELECTION_SEED:-20260718}"
 NUM_SAMPLES="${NUM_SAMPLES:-10}"
 MAX_NEW_TOKENS="${MAX_NEW_TOKENS:-192}"
 MAX_INPUT_TOKENS="${MAX_INPUT_TOKENS:-4096}"
@@ -75,17 +81,12 @@ TOP_P="${TOP_P:-0.9}"
 TOP_K="${TOP_K:-50}"
 BEST_GENERATION_TEMPERATURE="${BEST_GENERATION_TEMPERATURE:-0.1}"
 TORCH_DTYPE="${TORCH_DTYPE:-bfloat16}"
-NLI_MODEL_NAME="${NLI_MODEL_NAME:-microsoft/deberta-v2-xlarge-mnli}"
+NLI_MODEL_NAME="${NLI_MODEL_NAME:-pritamdeka/PubMedBERT-MNLI-MedNLI}"
 LOCAL_FILES_ONLY="${LOCAL_FILES_ONLY:-0}"
 NLI_LOCAL_FILES_ONLY="${NLI_LOCAL_FILES_ONLY:-${LOCAL_FILES_ONLY}}"
 RUN_SELF_REPORT_UQ="${RUN_SELF_REPORT_UQ:-1}"
 SEED="${SEED:-31}"
-QUALITY_MODE="${QUALITY_MODE:-three_axis}"
-REFERENCE_NLI_MODEL="${REFERENCE_NLI_MODEL:-${NLI_MODEL_NAME}}"
-REFERENCE_NLI_DEVICE="${REFERENCE_NLI_DEVICE:-cuda}"
-REFERENCE_NLI_LOCAL_FILES_ONLY="${REFERENCE_NLI_LOCAL_FILES_ONLY:-${NLI_LOCAL_FILES_ONLY}}"
-INCLUDE_EVIDENCE="${INCLUDE_EVIDENCE:-1}"
-RELATIVE_RISK_FRACTION="${RELATIVE_RISK_FRACTION:-0.30}"
+INCLUDE_EVIDENCE="${INCLUDE_EVIDENCE:-0}"
 
 RUN_STARTED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 RUN_STARTED_EPOCH="$(date +%s)"
@@ -124,6 +125,8 @@ record_run_timing() {
     "split: ${SPLIT}" \
     "model_name: ${MODEL_NAME}" \
     "max_examples: ${MAX_EXAMPLES}" \
+    "bioasq_type_limits: ${BIOASQ_TYPE_LIMITS}" \
+    "selection_seed: ${SELECTION_SEED}" \
     "num_samples: ${NUM_SAMPLES}" \
     "max_new_tokens: ${MAX_NEW_TOKENS}" \
     "temperature: ${TEMPERATURE}" \
@@ -131,7 +134,7 @@ record_run_timing() {
     "top_k: ${TOP_K}" \
     "best_generation_temperature: ${BEST_GENERATION_TEMPERATURE}" \
     "include_evidence: ${INCLUDE_EVIDENCE}" \
-    "relative_risk_fraction: ${RELATIVE_RISK_FRACTION}" \
+    "nli_model_name: ${NLI_MODEL_NAME}" \
     "seed: ${SEED}" \
     "clustering_method: nli" \
     "run_self_report_uq: ${RUN_SELF_REPORT_UQ}" \
@@ -162,20 +165,17 @@ elif [[ "${INCLUDE_EVIDENCE}" != "1" ]]; then
   echo "INCLUDE_EVIDENCE must be 0 or 1, got: ${INCLUDE_EVIDENCE}" >&2
   exit 2
 fi
-QUALITY_ARGS=(
-  --quality_mode "${QUALITY_MODE}"
-  --relative_risk_fraction "${RELATIVE_RISK_FRACTION}"
-)
-if [[ "${QUALITY_MODE}" == "three_axis" ]]; then
-  QUALITY_ARGS+=(
-    --reference_nli_model "${REFERENCE_NLI_MODEL}"
-    --reference_nli_device "${REFERENCE_NLI_DEVICE}"
-  )
-  if [[ "${REFERENCE_NLI_LOCAL_FILES_ONLY}" == "1" ]]; then
-    QUALITY_ARGS+=(--reference_nli_local_files_only)
-  fi
+BIOASQ_TYPE_LIMIT_ARGS=()
+if [[ -n "${BIOASQ_TYPE_LIMITS}" ]]; then
+  IFS=',' read -r -a BIOASQ_TYPE_LIMIT_ENTRIES <<< "${BIOASQ_TYPE_LIMITS}"
+  for type_limit in "${BIOASQ_TYPE_LIMIT_ENTRIES[@]}"; do
+    if [[ -z "${type_limit}" ]]; then
+      echo "BIOASQ_TYPE_LIMITS must be a comma-separated TYPE=COUNT list without empty entries." >&2
+      exit 2
+    fi
+    BIOASQ_TYPE_LIMIT_ARGS+=(--bioasq_type_limit "${type_limit}")
+  done
 fi
-
 cd "${PROJECT_DIR}"
 python scripts/run_level4.py \
   --dataset "${DATASET}" \
@@ -185,6 +185,8 @@ python scripts/run_level4.py \
   --model_name "${MODEL_NAME}" \
   --num_samples "${NUM_SAMPLES}" \
   --max_examples "${MAX_EXAMPLES}" \
+  "${BIOASQ_TYPE_LIMIT_ARGS[@]}" \
+  --selection_seed "${SELECTION_SEED}" \
   --max_new_tokens "${MAX_NEW_TOKENS}" \
   --max_input_tokens "${MAX_INPUT_TOKENS}" \
   --temperature "${TEMPERATURE}" \
@@ -213,12 +215,6 @@ python scripts/check_level4_outputs.py "${OUTPUT_DIR}" \
   --require_nli \
   --write_report "${OUTPUT_DIR}/health_check.txt"
 
-python scripts/evaluate_bioasq_quality.py \
-  --run_dir "${OUTPUT_DIR}" \
-  "${QUALITY_ARGS[@]}" \
-  --bootstrap_samples 1000 \
-  --overwrite
-
 if [[ "${RUN_SELF_REPORT_UQ}" == "1" ]]; then
   python scripts/run_self_report_uq.py \
     --run_dir "${OUTPUT_DIR}" \
@@ -226,10 +222,5 @@ if [[ "${RUN_SELF_REPORT_UQ}" == "1" ]]; then
     --device cuda \
     --torch_dtype "${TORCH_DTYPE}" \
     --max_input_tokens "${MAX_INPUT_TOKENS}" \
-    --overwrite
-  python scripts/evaluate_bioasq_quality.py \
-    --run_dir "${OUTPUT_DIR}" \
-    "${QUALITY_ARGS[@]}" \
-    --bootstrap_samples 1000 \
     --overwrite
 fi
