@@ -37,6 +37,28 @@ sample disagreement, P(True)-10, or any high-temperature answer generation.
 The raw hidden tensors are split into train/validation/test `.pt` files and
 have layout `[example, 4 blocks, 3 token positions, 3840 dimensions]`.
 
+### Completed Phase-2 run and local Probe follow-up
+
+Smoke job `5719092` completed in 27 seconds; full job `5719110` completed in
+3:44:58 with a passing health check for all 3,930 answers, blind P(True) rows,
+and `3,144/393/393` hidden-state rows. The copied local result is then consumed
+by the CPU-only linear-Probe entry point; it never reloads Gemma or regenerates
+answers:
+
+```bash
+PYTHONPATH=src python scripts/train_phase2_linear_probes.py \
+  --run-dir outputs/bioasq_phase2_gemma3_12b_single_answer_seed31 \
+  --output-dir analysis_outputs/bioasq_phase2_linear_probes_seed31 \
+  --include-accuracy-probe --allow-incomplete-accuracy-labels
+```
+
+The command fits only train rows, uses validation to freeze the Probe
+type/layer/token, and writes test metrics only for that selection. The first
+pass fixes both final Probes at block 24/LT with L2 logistic regression:
+P(True)-Probe uses the even train threshold and Accuracy-Probe uses Claude
+incorrect labels. It is a local analysis step, not a new Isambard allocation.
+See the root `PHASE2_PROBE_PLAN.md` for results and the cross-dataset next step.
+
 The ignored manifest must be copied to the server before submission. From the
 local machine, after the project source itself has been synchronized:
 
@@ -80,6 +102,18 @@ OUT="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_phase2_gemma3_1
 cat "$OUT/health_check.txt"
 cat "$OUT/run_timing.txt"
 head -n 2 "$OUT/uq_baselines/self_report_examples.csv"
+```
+
+For a completed run, append reproducibility provenance without re-running the
+model. Run this in the same cached model environment, then download the small
+JSON sidecar with the other result metadata:
+
+```bash
+python scripts/write_phase2_provenance_sidecar.py \
+  --run_dir "$OUT" \
+  --model_name google/gemma-3-12b-it \
+  --hf_cache_dir "$SCRATCHDIR/final_project/hf_cache" \
+  --source_git_commit 4f26b9d
 ```
 
 ## Historical Phase-1 server smoke

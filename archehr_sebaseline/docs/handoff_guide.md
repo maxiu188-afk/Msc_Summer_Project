@@ -1,6 +1,6 @@
 ﻿# ArchEHR-QA UQ Code Handoff Guide
 
-Last updated: 2026-07-19
+Last updated: 2026-07-20
 
 The active project is `archehr_sebaseline`. The package now contains:
 
@@ -17,6 +17,20 @@ collection and evaluation gates are in the root `PHASE2_PROBE_PLAN.md`.
 ArchEHR-QA remains useful as an engineering diagnostic, but it is not the final
 evaluation or SEP training dataset because its test key does not include gold
 evidence labels or answer-quality labels.
+
+## Active Phase-2 Probe result (2026-07-20)
+
+The complete 3,930-question BioASQ collection is accepted. The leakage-safe
+contract is now executed: train fits parameters, validation selects the
+P(True)-Probe/Accuracy-Probe configuration, and test is read once for the
+frozen configuration. The final P(True)-Probe is a hard-even-threshold L2
+logistic model at block 24/LT (P(True)-target AUROC 0.9026). The final
+Accuracy-Probe is L2 logistic at block 24/LT (Claude-incorrect AUROC 0.8058,
+AP 0.8884), versus direct blind P(True) at 0.7900/0.8383. Accuracy supervision
+uses 3,858 valid Claude labels; 72 blank labels are excluded only from that
+track. Do not increase Probe complexity from this result. The next approved
+research step is cross-dataset transfer, with the P(True)-Probe as the primary
+hypothesis. `PHASE2_PROBE_PLAN.md` is the canonical detailed result record.
 
 See:
 

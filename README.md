@@ -11,11 +11,12 @@ ArchEHR-QA final evaluation/training target: paused because no usable gold label
 BioASQ Task B: prior summary results archived as low-usability diagnostics
 Current compute host: Isambard (Runpod was a completed temporary recovery path)
 Active direction: Phase-2 BioASQ hidden-state probes, stratified by answer type
-Latest validated run: Phase-1 1000x10 at seeds 31/47; PubMedBERT set-aware
-  NLI, blind P(True), and binary Claude labels completed for all answer types
-Current Phase-2 tracks: P(True)-Probe and Claude-label Accuracy-Probe
-Current server status: three-question hidden-state smoke submitted; the full
-  3,930-question collection is queued behind its success condition
+Latest validated run: Phase-2 3,930-question single-answer collection and
+  two frozen linear hidden-state Probes on Gemma 3 12B
+Current Phase-2 tracks: P(True)-Probe (direct P(True) fidelity) and
+  Claude-label Accuracy-Probe (answer correctness)
+Current result: train-only fitting, validation-only feature selection, and one
+  held-out test evaluation are complete; cross-dataset transfer is next
 ```
 
 ArchEHR-QA remains useful for testing grounded long-form generation, citation
@@ -52,6 +53,19 @@ training side; an exact-question-grouped and type-stratified manifest reserves
 unobserved questions for validation and final test. The active plan is
 `PHASE2_PROBE_PLAN.md`; the fixed data procedure is in
 `archehr_sebaseline/docs/phase2_bioasq_dataset_split.md`.
+
+The completed Phase-2 run preserves that separation: parameters are trained on
+the 3,144-question train split, the Probe type/layer/token is selected on 393
+validation questions, and the resulting configuration is evaluated once on the
+393-question test split (384 valid Claude labels for the Accuracy track).
+The final P(True)-Probe is a train-even-threshold L2 logistic model at block
+24/LT; it reaches 0.9026 AUROC against its P(True) target. The final
+Accuracy-Probe is also block 24/LT and reaches 0.8058 AUROC / 0.8884 AP for
+Claude incorrect, ahead of direct blind P(True) at 0.7900 / 0.8383. No complex
+Probe is justified by this first pass; the next experiment is frozen-model
+cross-dataset transfer, where P(True)-Probe is the primary hypothesis. See
+`PHASE2_PROBE_PLAN.md` for target definitions, missing-label handling, and the
+full UQ comparison.
 
 ## Active Naming Policy
 
