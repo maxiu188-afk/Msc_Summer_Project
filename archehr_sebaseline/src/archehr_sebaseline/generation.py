@@ -196,6 +196,92 @@ class HuggingFaceCausalLMGenerator:
         false_weight = math.exp(false_logprob - maximum)
         return true_weight / (true_weight + false_weight)
 
+    def extract_answer_hidden_states(
+        self,
+        prompt: str,
+        *,
+        generated_token_ids: list[int],
+        transformer_blocks: tuple[int, ...],
+    ) -> dict[str, Any]:
+        """Return selected states from the exact prompt-plus-answer transcript.
+
+        This deliberately replays the saved generated token IDs in one
+        no-cache forward pass.  It must not be replaced with the hidden-state
+        structure returned by ``generate()``, whose cache steps have a
+        different token alignment.
+        """
+
+        if not transformer_blocks or any(block <= 0 for block in transformer_blocks):
+            raise ValueError("transformer_blocks must contain positive block numbers.")
+        if len(set(transformer_blocks)) != len(transformer_blocks):
+            raise ValueError("transformer_blocks must not contain duplicates.")
+        if self.tokenizer is None:
+            raise MissingGenerationDependency("Hidden-state extraction requires a tokenizer.")
+
+        answer_ids = self._answer_content_token_ids(generated_token_ids)
+        if not answer_ids:
+            raise ValueError("Generated answer has no non-EOS token for hidden-state extraction.")
+        encoded = self._encode_prompt(prompt)
+        prompt_ids = encoded["input_ids"]
+        prompt_length = int(prompt_ids.shape[-1])
+        answer_tensor = self._torch.tensor([answer_ids], dtype=prompt_ids.dtype, device=prompt_ids.device)
+        input_ids = self._torch.cat((prompt_ids, answer_tensor), dim=-1)
+        attention_mask = encoded.get("attention_mask")
+        if attention_mask is not None:
+            answer_mask = self._torch.ones(
+                (1, len(answer_ids)), dtype=attention_mask.dtype, device=attention_mask.device
+            )
+            attention_mask = self._torch.cat((attention_mask, answer_mask), dim=-1)
+        model_inputs: dict[str, Any] = {"input_ids": input_ids, "use_cache": False}
+        if attention_mask is not None:
+            model_inputs["attention_mask"] = attention_mask
+
+        with self._torch.no_grad():
+            outputs = self.model(
+                **model_inputs,
+                output_hidden_states=True,
+                return_dict=True,
+            )
+        hidden_states = getattr(outputs, "hidden_states", None)
+        if hidden_states is None:
+            raise RuntimeError("Model did not return hidden_states with output_hidden_states=True.")
+        if len(hidden_states) <= max(transformer_blocks):
+            raise RuntimeError(
+                "Hidden-state tuple does not expose the requested transformer blocks: "
+                f"requested={transformer_blocks}, available_entries={len(hidden_states)}."
+            )
+
+        positions = {
+            "TBG": prompt_length - 1,
+            "SLT": prompt_length + len(answer_ids) - 2,
+            "LT": prompt_length + len(answer_ids) - 1,
+        }
+        # A one-token answer has no distinct second-last answer token.  Its
+        # vector is represented as missing rather than silently duplicated.
+        valid_positions = {name: (name != "SLT" or len(answer_ids) >= 2) for name in positions}
+        feature_rows = []
+        for block in transformer_blocks:
+            state = hidden_states[block][0]
+            block_vectors = []
+            for name in ("TBG", "SLT", "LT"):
+                if valid_positions[name]:
+                    block_vectors.append(state[positions[name]])
+                else:
+                    block_vectors.append(self._torch.zeros_like(state[0]))
+            feature_rows.append(self._torch.stack(block_vectors))
+        vectors = self._torch.stack(feature_rows).detach().to("cpu", dtype=self._torch.bfloat16)
+        return {
+            "vectors": vectors,
+            "feature_shape": list(vectors.shape),
+            "transformer_blocks": list(transformer_blocks),
+            "hidden_state_indices": {str(block): block for block in transformer_blocks},
+            "positions": positions,
+            "position_valid": valid_positions,
+            "prompt_token_count": prompt_length,
+            "answer_token_count": len(answer_ids),
+            "answer_token_ids": answer_ids,
+        }
+
     def generate_with_scores(
         self,
         prompt: str,
@@ -322,6 +408,25 @@ class HuggingFaceCausalLMGenerator:
         if self.tokenizer is None:
             return [str(token_id) for token_id in token_ids]
         return self.tokenizer.convert_ids_to_tokens(token_ids)
+
+    def _answer_content_token_ids(self, generated_token_ids: list[int]) -> list[int]:
+        """Drop EOS and any trailing generation padding without retokenizing."""
+
+        eos_values: set[int] = set()
+        tokenizer_eos = getattr(self.tokenizer, "eos_token_id", None)
+        model_eos = getattr(getattr(self.model, "generation_config", None), "eos_token_id", None)
+        for value in (tokenizer_eos, model_eos):
+            if isinstance(value, (list, tuple)):
+                eos_values.update(int(item) for item in value)
+            elif value is not None:
+                eos_values.add(int(value))
+        answer_ids = []
+        for token_id in generated_token_ids:
+            token_id = int(token_id)
+            if token_id in eos_values:
+                break
+            answer_ids.append(token_id)
+        return answer_ids
 
     def _pad_token_id(self) -> int | None:
         if self.tokenizer is not None:

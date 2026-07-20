@@ -14,15 +14,13 @@ Current active planning is in:
 ```text
 docs/dataset_pivot_status.md
 docs/archived_low_usability/README.md
-SE_BASELINE_LEVEL_PLAN.md
+PHASE2_PROBE_PLAN.md
 ```
 
-The active BioASQ medical-UQ two-seed run is now complete. It uses 100
-questions, ten samples, no evidence, PubMedBERT-MNLI-MedNLI, and binary Claude
-labels. Discrete SE is useful for factoid/list but not summary; blind P(True)
-is stronger than the version that sees ten high-temperature answers. The next
-research direction is intentionally paused for review; see
-`docs/bioasq_medical_uq_protocol.md`.
+The active BioASQ medical-UQ two-seed run is complete. Its Phase-1 reference
+uses no evidence, PubMedBERT-MNLI-MedNLI, and binary Claude labels. The active
+Phase-2 direction is now P(True)-Probe plus Claude-label Accuracy-Probe; see
+the root `PHASE2_PROBE_PLAN.md` rather than this historical Level 4 record.
 
 ## Completed Pilot
 

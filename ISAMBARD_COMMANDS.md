@@ -25,6 +25,15 @@ P(True)-blind is best overall (0.811/0.821), while list cluster count is
 0.849/0.884. The full protocol and result are in
 `archehr_sebaseline/docs/bioasq_medical_uq_protocol.md`.
 
+## Next server task — Phase 2 single-answer artifacts
+
+Phase 2 runs the full frozen 3,930-question BioASQ manifest. It generates one
+low-temperature answer per question, blind P(True), verbal confidence,
+single-answer token UQ, and the `24/32/40/48 × TBG/SLT/LT` hidden-state grid.
+It must not launch NLI/SE or ten high-temperature answers. The exact smoke,
+upload, full-submission, and validation commands are in the Phase-2 section of
+`archehr_sebaseline/ISAMBARD_BIOASQ.md`.
+
 To upload a source archive or a data directory, run `scp` from the local
 machine, not from an Isambard login shell:
 

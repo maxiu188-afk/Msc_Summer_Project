@@ -16,6 +16,36 @@ Queueing time is excluded: elapsed time is measured from Slurm start to end.
 - Estimates should include a safety margin and should not silently substitute a
   different model, device, precision, sample count, or evaluation stage.
 
+## Phase-2 collection and local linear-Probe pass
+
+```text
+submitted: 2026-07-19
+smoke job: 5719092, completed 0:0, elapsed 00:00:27
+full job: 5719110, completed 0:0, elapsed 03:44:58
+source: complete eligible BioASQ training13b corpus, 3,930 questions
+  (train 3,144; validation 393; test 393), frozen type-stratified manifest
+model / generation: google/gemma-3-12b-it, bfloat16 CUDA, one T=0.1 answer,
+  top_p=0.9, top_k=50, max_new_tokens=192
+included UQ: blind P(True), verbalized confidence, single-answer token NLL and
+  entropy summaries
+hidden states: blocks 24/32/40/48 × TBG/SLT/LT, bf16,
+  [example, 4, 3, 3840] tensors split by manifest partition
+excluded: high-temperature generations, Semantic Entropy, NLI clustering,
+  sample disagreement, P(True)-10
+health validation: PASS; 3,930 answers/P(True) rows and hidden-state rows
+  split 3,144/393/393 with `[example, 4, 3, 3840]` layout
+local post-processing: CPU-only regularised linear Probes over saved artifacts;
+  train fit, validation selection, then one frozen test evaluation
+Claude labels: 3,858 valid / 3,930 after two retries; 72 blanks excluded only
+  from Accuracy-Probe (valid train/validation/test rows 3,090/384/384)
+frozen results: P(True)-Probe hard-even L2 logistic block 24/LT, target AUROC
+  0.9026; Accuracy-Probe L2 logistic block 24/LT, Claude AUROC 0.8058/AP 0.8884
+next allocation: none for Probe complexity; cross-dataset transfer is next
+```
+
+The server collection is complete. Probe fitting is local and consumes the
+saved artifacts only; it does not add an Isambard allocation.
+
 ## Phase-1 final BioASQ baseline
 
 ```text

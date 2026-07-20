@@ -1,6 +1,6 @@
 ﻿# ArchEHR-QA UQ Code Handoff Guide
 
-Last updated: 2026-07-19
+Last updated: 2026-07-20
 
 The active project is `archehr_sebaseline`. The package now contains:
 
@@ -9,12 +9,28 @@ The active project is `archehr_sebaseline`. The package now contains:
 - lightweight uncertainty/evaluation utilities,
 - documentation for the current dataset pivot.
 
-Current research direction: use the completed Phase-1 BioASQ baseline as the
-direct comparator for a narrow P(True)-Probe, while retaining SE as a
-list-specific baseline and continuing to compare credible candidates.
+Current research direction: use the full BioASQ Phase-2 split for two separate
+hidden-state probes: P(True)-Probe targets direct blind P(True), while
+Accuracy-Probe targets the binary Claude correctness label. SE remains an
+optional type-specific comparator, not the Phase-2 organising target. The
+collection and evaluation gates are in the root `PHASE2_PROBE_PLAN.md`.
 ArchEHR-QA remains useful as an engineering diagnostic, but it is not the final
 evaluation or SEP training dataset because its test key does not include gold
 evidence labels or answer-quality labels.
+
+## Active Phase-2 Probe result (2026-07-20)
+
+The complete 3,930-question BioASQ collection is accepted. The leakage-safe
+contract is now executed: train fits parameters, validation selects the
+P(True)-Probe/Accuracy-Probe configuration, and test is read once for the
+frozen configuration. The final P(True)-Probe is a hard-even-threshold L2
+logistic model at block 24/LT (P(True)-target AUROC 0.9026). The final
+Accuracy-Probe is L2 logistic at block 24/LT (Claude-incorrect AUROC 0.8058,
+AP 0.8884), versus direct blind P(True) at 0.7900/0.8383. Accuracy supervision
+uses 3,858 valid Claude labels; 72 blank labels are excluded only from that
+track. Do not increase Probe complexity from this result. The next approved
+research step is cross-dataset transfer, with the P(True)-Probe as the primary
+hypothesis. `PHASE2_PROBE_PLAN.md` is the canonical detailed result record.
 
 See:
 
@@ -36,8 +52,9 @@ and set-aware list/factoid matching. The repaired health check passed both
 complete artifact sets; jobs 5715701/5715703 added blind P(True) and verbal
 confidence. Claude retained 991 labels per seed after one bounded retry.
 P(True)-blind is strongest overall (0.811/0.821); SE is strongest/competitive
-for list (cluster count 0.849/0.884), but weak for summary. A P(True)-Probe
-must target blind P(True), never P(True)-10. See
+for list (cluster count 0.849/0.884), but weak for summary. The Phase-1
+reference supports both Phase-2 probe tracks; P(True)-Probe must target blind
+P(True), never P(True)-10. See
 `docs/bioasq_medical_uq_protocol.md` for all UQ methods and per-type values.
 
 ## Archived Stage

@@ -10,11 +10,13 @@ ArchEHR-QA SE baseline: implemented and tested as an engineering baseline
 ArchEHR-QA final evaluation/training target: paused because no usable gold labels
 BioASQ Task B: prior summary results archived as low-usability diagnostics
 Current compute host: Isambard (Runpod was a completed temporary recovery path)
-Active direction: no-evidence BioASQ medical-QA UQ, stratified by answer type
-Latest validated run: Phase-1 1000x10 at seeds 31/47; PubMedBERT set-aware
-  NLI, blind P(True), and binary Claude labels completed for all answer types
-Current decision: P(True)-blind is the strongest overall UQ; SE is retained as
-  a strong list-specific UQ, while P(True)-10 remains retired
+Active direction: Phase-2 BioASQ hidden-state probes, stratified by answer type
+Latest validated run: Phase-2 3,930-question single-answer collection and
+  two frozen linear hidden-state Probes on Gemma 3 12B
+Current Phase-2 tracks: P(True)-Probe (direct P(True) fidelity) and
+  Claude-label Accuracy-Probe (answer correctness)
+Current result: train-only fitting, validation-only feature selection, and one
+  held-out test evaluation are complete; cross-dataset transfer is next
 ```
 
 ArchEHR-QA remains useful for testing grounded long-form generation, citation
@@ -38,11 +40,32 @@ questions (480 factoid, 320 list, 200 summary), free biomedical set-aware NLI,
 and a low-temperature main answer judged only as `correct` or `incorrect`.
 With 991 valid Claude labels per seed, P(True)-blind is best overall (AUROC
 0.811/0.821), while SE is especially strong on list questions (discrete SE
-0.845/0.881). It is the direct baseline for a future P(True)-Probe, whose
-target must be blind P(True), not P(True)-10. See
+0.845/0.881). Those are Phase-1 comparators for the current P(True)-Probe and
+Claude-label Accuracy-Probe; direct blind P(True), not P(True)-10, is the
+P(True)-Probe target. See
 `archehr_sebaseline/docs/bioasq_medical_uq_results_20260718.md` for the full
 result and `archehr_sebaseline/docs/archived_low_usability/README.md` for
 retired material.
+
+Phase 2 uses the full eligible BioASQ training13b corpus. The Phase-1
+1,000-question cohort is already observed, so it is retained only on the
+training side; an exact-question-grouped and type-stratified manifest reserves
+unobserved questions for validation and final test. The active plan is
+`PHASE2_PROBE_PLAN.md`; the fixed data procedure is in
+`archehr_sebaseline/docs/phase2_bioasq_dataset_split.md`.
+
+The completed Phase-2 run preserves that separation: parameters are trained on
+the 3,144-question train split, the Probe type/layer/token is selected on 393
+validation questions, and the resulting configuration is evaluated once on the
+393-question test split (384 valid Claude labels for the Accuracy track).
+The final P(True)-Probe is a train-even-threshold L2 logistic model at block
+24/LT; it reaches 0.9026 AUROC against its P(True) target. The final
+Accuracy-Probe is also block 24/LT and reaches 0.8058 AUROC / 0.8884 AP for
+Claude incorrect, ahead of direct blind P(True) at 0.7900 / 0.8383. No complex
+Probe is justified by this first pass; the next experiment is frozen-model
+cross-dataset transfer, where P(True)-Probe is the primary hypothesis. See
+`PHASE2_PROBE_PLAN.md` for target definitions, missing-label handling, and the
+full UQ comparison.
 
 ## Active Naming Policy
 
@@ -77,7 +100,7 @@ These root-level files are intentionally kept at the workspace level:
 
 ```text
 codex_task_overview_archehr_uq.txt
-SE_BASELINE_LEVEL_PLAN.md
+PHASE2_PROBE_PLAN.md
 ISAMBARD_COMMANDS.md
 ```
 
@@ -85,8 +108,8 @@ Their roles are:
 
 - `codex_task_overview_archehr_uq.txt`: original project overview and broad
   requirements.
-- `SE_BASELINE_LEVEL_PLAN.md`: active stage plan, current status, and dataset
-  pivot notes.
+- `PHASE2_PROBE_PLAN.md`: active two-track probe plan, frozen BioASQ split,
+  collection gates, and evaluation boundaries.
 - `ISAMBARD_COMMANDS.md`: common local and Isambard operational commands;
   use the package guide for the full BioASQ launch procedure.
 

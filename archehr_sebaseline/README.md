@@ -68,6 +68,27 @@ overall (0.811/0.821 AUROC); SE is retained as a strong list-specific baseline
 `docs/bioasq_medical_uq_results_20260718.md` for the final table and
 `docs/bioasq_medical_uq_protocol.md` for the protocol.
 
+Phase 2 uses the full eligible BioASQ training13b corpus rather than treating
+the Phase-1 1,000 questions as its complete dataset. The observed Phase-1 IDs
+are train-side reference examples; an exact-question-grouped, type-stratified
+manifest creates the remaining train/validation/test split. See
+`docs/phase2_bioasq_dataset_split.md`.
+
+The active research plan is the root `PHASE2_PROBE_PLAN.md`: P(True)-Probe
+approximates direct blind P(True), while Accuracy-Probe predicts the binary
+Claude correctness label. The initial collection contract is fixed at blocks
+`24/32/40/48` and positions `TBG/SLT/LT`; high-temperature multi-sample UQ
+remains an optional later comparison. The Isambard smoke/full collection has
+completed and the initial local linear-Probe pass is frozen: fit on train,
+select type/layer/token on validation, and evaluate once on test. P(True)-Probe
+uses hard-threshold-even L2 logistic regression at block 24/LT (P(True)-target
+AUROC 0.9026); Accuracy-Probe uses L2 logistic regression at block 24/LT
+(Claude-incorrect AUROC 0.8058, AP 0.8884). The 72 blank Claude labels are
+excluded only from Accuracy-Probe (3,090/384/384 valid train/validation/test
+rows). The next milestone is cross-dataset transfer, not a more complex Probe.
+See `../PHASE2_PROBE_PLAN.md` for the full result and `docs/experiment_runtime_log.md`
+for Isambard provenance.
+
 New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
 `archehr` prefixes. This does not rename the package, Python imports, or
 historical ArchEHR-QA files. See `docs/naming_policy.md`.

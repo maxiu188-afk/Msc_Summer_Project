@@ -27,6 +27,10 @@ Thumbs.db
 .codex/
 
 archehr_sebaseline/outputs/
+# Raw datasets and derived local split manifests are reproducible but too large
+# or machine-local to commit.
+data/
+archehr_sebaseline/artifacts/
 archehr_sebaseline/.venv_uq_analysis/
 archehr_sebaseline/analysis_outputs/
 archehr_sebaseline_server_*.zip
