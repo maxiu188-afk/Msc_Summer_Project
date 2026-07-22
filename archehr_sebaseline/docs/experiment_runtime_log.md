@@ -40,11 +40,46 @@ Claude labels: 3,858 valid / 3,930 after two retries; 72 blanks excluded only
   from Accuracy-Probe (valid train/validation/test rows 3,090/384/384)
 frozen results: P(True)-Probe hard-even L2 logistic block 24/LT, target AUROC
   0.9026; Accuracy-Probe L2 logistic block 24/LT, Claude AUROC 0.8058/AP 0.8884
-next allocation: none for Probe complexity; cross-dataset transfer is next
+cross-dataset follow-up: no-context PubMedQA transfer completed; the separate
+  official-context condition is recorded in the next section
 ```
 
 The server collection is complete. Probe fitting is local and consumes the
 saved artifacts only; it does not add an Isambard allocation.
+
+## PubMedQA frozen-Probe transfer
+
+```text
+submitted: 2026-07-20
+smoke job: 5734703, MAX_EXAMPLES=3
+smoke status: COMPLETED 0:0, Slurm elapsed 00:00:39; internal timed stage 33 s
+source: official PubMedQA PQA-L 500-question test subset; smoke selects the
+  first three deterministic PMIDs only
+model / generation: unchanged google/gemma-3-12b-it, one T=0.1 no-evidence
+  yes/no/maybe answer with a concise explanation
+Probes: frozen BioASQ block-24/LT P(True)-Probe and Accuracy-Probe; no target
+  fitting, recalibration, threshold tuning, or feature selection
+other UQ: blind P(True), verbal confidence, sequence/normalized NLL, mean/max
+  token entropy; no high-temperature sampling or Semantic Entropy
+smoke health: PASS; 3/3 leading labels parsed, 3/3 answer/P(True)/hidden rows,
+  hidden shape [3,4,3,3840], both frozen Probes and all UQ tables written
+full 500-question job: 5739322, submitted 2026-07-21 after smoke gate PASS;
+  COMPLETED 0:0 in 00:40:55, 500/500 answer/P(True)/hidden rows and
+  [500,4,3,3840] hidden layout
+no-context outcome: 125/500 official decisions correct; predicted labels
+  maybe/yes/no = 373/123/4, motivating a separately named context rerun
+context rerun: prompt version pubmedqa_context_explanation_v1; official
+  CONTEXTS supplied to generation and self-report prompts, LONG_ANSWER withheld
+context smoke: 5748203, MAX_EXAMPLES=3, COMPLETED 0:0 in 00:01:00
+context full: 5748205, 500 questions, COMPLETED 0:0 in 00:37:43;
+  500/500 output rows, hidden shape [500,4,3,3840], zero LONG_ANSWER leakage
+context outcome: 295/500 official decisions correct; predicted labels
+  maybe/yes/no = 163/237/100; 197 no-context errors corrected and 27 previous
+  correct answers broken
+context correctness UQ: verbal confidence AUROC 0.7933, context-conditioned
+  P(True) 0.6800, frozen P(True)-Probe 0.6630, frozen Accuracy-Probe 0.5960;
+  token-only UQ 0.5603--0.5716
+```
 
 ## Phase-1 final BioASQ baseline
 

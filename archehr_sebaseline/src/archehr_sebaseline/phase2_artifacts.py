@@ -116,6 +116,7 @@ def write_phase2_core_artifacts(
     temperature: float,
     top_p: float,
     top_k: int,
+    generation_level: str = "phase2_low_temperature_main_answer",
     progress_callback: Callable[[int, int, str, int], None] | None = None,
     overwrite: bool = False,
 ) -> list[dict[str, Any]]:
@@ -127,7 +128,7 @@ def write_phase2_core_artifacts(
         generator,
         num_samples=1,
         model_name=model_name,
-        generation_level="phase2_low_temperature_main_answer",
+        generation_level=generation_level,
         include_token_scores=True,
         temperature=temperature,
         top_p=top_p,
@@ -188,6 +189,7 @@ def write_phase2_hidden_state_artifacts(
     best_generations: list[dict[str, Any]],
     generator: HuggingFaceCausalLMGenerator,
     transformer_blocks: tuple[int, ...] = FEATURE_BLOCKS,
+    splits: tuple[str, ...] = SPLITS,
     progress_callback: Callable[[int, int, str], None] | None = None,
     overwrite: bool = False,
 ) -> None:
@@ -199,15 +201,17 @@ def write_phase2_hidden_state_artifacts(
         raise ValueError("Prompt and low-temperature generation IDs do not match.")
     torch = generator._torch  # Kept on the generator to guarantee matching runtime/model dtype.
     output_dir = Path(output_dir) / "hidden_states"
-    vectors_by_split: dict[str, list[Any]] = {split: [] for split in SPLITS}
-    validity_by_split: dict[str, list[list[bool]]] = {split: [] for split in SPLITS}
-    metadata_by_split: dict[str, list[dict[str, Any]]] = {split: [] for split in SPLITS}
+    if not splits or len(set(splits)) != len(splits):
+        raise ValueError("Hidden-state splits must be a non-empty unique sequence.")
+    vectors_by_split: dict[str, list[Any]] = {split: [] for split in splits}
+    validity_by_split: dict[str, list[list[bool]]] = {split: [] for split in splits}
+    metadata_by_split: dict[str, list[dict[str, Any]]] = {split: [] for split in splits}
 
     for index, example_id in enumerate(sorted(prompts_by_id), start=1):
         prompt_row = prompts_by_id[example_id]
         generation = generations_by_id[example_id]
         split = str(prompt_row.get("split"))
-        if split not in SPLITS:
+        if split not in splits:
             raise ValueError(f"Prompt {example_id} has invalid split {split!r}.")
         feature = generator.extract_answer_hidden_states(
             str(prompt_row["prompt"]),
@@ -229,7 +233,7 @@ def write_phase2_hidden_state_artifacts(
         if progress_callback is not None:
             progress_callback(index, len(prompts_by_id), example_id)
 
-    for split in SPLITS:
+    for split in splits:
         if not vectors_by_split[split]:
             raise RuntimeError(f"No hidden-state vectors collected for split {split}.")
         tensor = torch.stack(vectors_by_split[split])

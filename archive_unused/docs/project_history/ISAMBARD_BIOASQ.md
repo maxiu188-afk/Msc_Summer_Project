@@ -201,5 +201,5 @@ local raw download is archived; do not extend it as the main experiment.
 
 The earlier summary/evidence runs, generic DeBERTa NLI, three-axis deterministic
 quality score, and three-level Claude labels are retained only as archived
-diagnostics under `docs/archived_low_usability/`. They are not comparable to
+diagnostics under `../archive_unused/docs/historical_results/`. They are not comparable to
 the active protocol and must not be extended as the main experiment.

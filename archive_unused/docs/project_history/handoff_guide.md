@@ -32,6 +32,14 @@ track. Do not increase Probe complexity from this result. The next approved
 research step is cross-dataset transfer, with the P(True)-Probe as the primary
 hypothesis. `PHASE2_PROBE_PLAN.md` is the canonical detailed result record.
 
+The first transfer target is now fixed as the official 500-question PubMedQA
+PQA-L test subset. Collection/evaluation code is ready but no GPU result exists.
+Both BioASQ-selected block-24/LT Probes remain frozen and are evaluated against
+both direct-P(True) and official-label correctness targets, alongside all
+single-answer UQ. The answer includes an explanation for later separate Claude
+alignment judging. Use `docs/pubmedqa_frozen_probe_transfer.md`; never use the
+historical grounded PubMedQA Level-4 prompt for this no-evidence transfer.
+
 See:
 
 ```text

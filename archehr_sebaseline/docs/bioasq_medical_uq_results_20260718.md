@@ -101,7 +101,7 @@ lower-cost fidelity study against direct blind P(True).
 
 The 100-question two-seed pilot established the protocol, PubMedBERT set-aware
 NLI, binary Claude judge, and the P(True)-10 failure. Its raw local downloads
-are archived under `server_results/archived_low_usability/`; its post-hoc fusion
+are archived under `archive_unused/results/server_results/`; its post-hoc fusion
 diagnostic was inconclusive because its paired-bootstrap intervals crossed
 zero. The reproducible fusion script is retained and now defaults to this
 Phase-1 1,000-question baseline.

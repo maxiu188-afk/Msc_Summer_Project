@@ -42,10 +42,16 @@ archehr_sebaseline_*.tar.gz
 upload_staging_*/
 server_results/*
 !server_results/level4_qwen25_7b_nli_50x5/
-!server_results/archived_low_usability/
-server_results/archived_low_usability/*
-!server_results/archived_low_usability/level4_qwen25_7b_nli_50x5/
-!server_results/archived_low_usability/level4_qwen25_7b_nli_50x5/**
+
+# Repository-wide archive. Keep inventories and the small historical Level-4
+# snapshot, but ignore generated data and bulky result payloads.
+archive_unused/data/*
+!archive_unused/data/
+!archive_unused/data/README.md
+archive_unused/results/local_outputs/
+archive_unused/results/server_results/*
+!archive_unused/results/server_results/level4_qwen25_7b_nli_50x5/
+!archive_unused/results/server_results/level4_qwen25_7b_nli_50x5/**
 
 # Document conversion and other temporary working directories.
 tmp/

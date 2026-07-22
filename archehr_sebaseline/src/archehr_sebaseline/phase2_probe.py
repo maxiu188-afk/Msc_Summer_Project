@@ -135,6 +135,20 @@ def binary_metrics(labels: np.ndarray, scores: np.ndarray) -> dict[str, float | 
     }
 
 
+def binary_ranking_metrics(labels: np.ndarray, scores: np.ndarray) -> dict[str, float | None]:
+    """Return AUROC/AP for arbitrary finite ranking scores without calibration."""
+
+    labels = _finite_vector(labels, name="labels").astype(np.int64)
+    scores = _finite_vector(scores, name="scores")
+    if labels.shape != scores.shape or not np.isin(labels, (0, 1)).all():
+        raise ValueError("Binary labels/scores must have equal length and labels in {0, 1}.")
+    has_two_classes = np.unique(labels).size == 2
+    return {
+        "auroc": float(roc_auc_score(labels, scores)) if has_two_classes else None,
+        "average_precision": float(average_precision_score(labels, scores)) if has_two_classes else None,
+    }
+
+
 def continuous_metrics(target: np.ndarray, prediction: np.ndarray) -> dict[str, float | None]:
     """Return continuous-target fidelity metrics for P(True)-Probe."""
 

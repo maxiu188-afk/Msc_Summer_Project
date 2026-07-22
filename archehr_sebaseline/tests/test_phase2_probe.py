@@ -13,6 +13,7 @@ if str(SRC_DIR) not in sys.path:
 
 from archehr_sebaseline.phase2_probe import (
     binary_metrics,
+    binary_ranking_metrics,
     continuous_metrics,
     fit_even_threshold,
     fit_minimum_within_variance_threshold,
@@ -50,6 +51,13 @@ class Phase2ProbeTests(unittest.TestCase):
         self.assertAlmostEqual(float(metrics["mae"]), 0.0)
         self.assertAlmostEqual(float(metrics["rmse"]), 0.0)
         self.assertAlmostEqual(float(metrics["spearman"]), 1.0)
+
+    def test_ranking_metrics_accept_unbounded_uq_scores(self) -> None:
+        metrics = binary_ranking_metrics(
+            np.asarray([0, 1, 0, 1]), np.asarray([1.5, 9.0, 2.0, 7.0])
+        )
+        self.assertAlmostEqual(float(metrics["auroc"]), 1.0)
+        self.assertAlmostEqual(float(metrics["average_precision"]), 1.0)
 
 
 if __name__ == "__main__":
