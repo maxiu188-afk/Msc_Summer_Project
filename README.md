@@ -16,7 +16,8 @@ Latest validated run: Phase-2 3,930-question single-answer collection and
 Current Phase-2 tracks: P(True)-Probe (direct P(True) fidelity) and
   Claude-label Accuracy-Probe (answer correctness)
 Current result: train-only fitting, validation-only feature selection, and one
-  held-out test evaluation are complete; cross-dataset transfer is next
+  held-out test evaluation are complete; both PubMedQA no-context and
+  context-conditioned frozen-Probe transfer runs have completed
 ```
 
 ArchEHR-QA remains useful for testing grounded long-form generation, citation
@@ -24,9 +25,10 @@ parsing, answer Semantic Entropy, and citation uncertainty. It should not be the
 main SEP training or final SE-evaluation dataset unless additional gold
 answer-quality/evidence labels become available.
 
-PubMedQA remains available only as an engineering smoke-test and historical
-baseline path. It is not the preferred main research target because its short
-yes/no/maybe labels do not match open long-form clinical generation.
+PubMedQA remains unsuitable as the main research target because its
+yes/no/maybe task differs from BioASQ free-form QA. Its official 500-question
+PQA-L test subset is now deliberately used as an external frozen-Probe transfer
+test, with an explained decision output and no target-dataset fitting.
 
 BioASQ Task B remains the active dataset family, but all completed summary
 results are now archived rather than treated as active UQ evidence. They mix
@@ -44,8 +46,7 @@ With 991 valid Claude labels per seed, P(True)-blind is best overall (AUROC
 Claude-label Accuracy-Probe; direct blind P(True), not P(True)-10, is the
 P(True)-Probe target. See
 `archehr_sebaseline/docs/bioasq_medical_uq_results_20260718.md` for the full
-result and `archehr_sebaseline/docs/archived_low_usability/README.md` for
-retired material.
+result and `archive_unused/` for retired material.
 
 Phase 2 uses the full eligible BioASQ training13b corpus. The Phase-1
 1,000-question cohort is already observed, so it is retained only on the
@@ -63,17 +64,25 @@ The final P(True)-Probe is a train-even-threshold L2 logistic model at block
 Accuracy-Probe is also block 24/LT and reaches 0.8058 AUROC / 0.8884 AP for
 Claude incorrect, ahead of direct blind P(True) at 0.7900 / 0.8383. No complex
 Probe is justified by this first pass; the next experiment is frozen-model
-cross-dataset transfer, where P(True)-Probe is the primary hypothesis. See
-`PHASE2_PROBE_PLAN.md` for target definitions, missing-label handling, and the
-full UQ comparison.
+cross-dataset transfer, where P(True)-Probe is the primary hypothesis. The
+no-context PubMedQA run showed a strong `maybe` bias and only 25% decision
+accuracy. Supplying official abstract context increased accuracy to 59%;
+verbal confidence was the best error-ranking UQ (AUROC 0.7933), followed by
+context-conditioned P(True) (0.6800), the frozen P(True)-Probe (0.6630), and
+the frozen Accuracy-Probe (0.5960). See
+`PHASE2_PROBE_PLAN.md` and
+`archehr_sebaseline/docs/pubmedqa_frozen_probe_transfer.md` for the frozen
+2x2 Probe-target comparison, explanation contract, and other UQ scores.
+The next experiment repairs the PubMedQA prompt/label distribution on a
+separate development/holdout split; it does not adapt either Probe or reuse the
+already inspected official test as a fresh confirmatory set.
 
 ## Active Naming Policy
 
 New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
 `archehr` prefixes. This is forward-only: the `archehr_sebaseline/` package,
-existing imports, historical ArchEHR-QA artifacts, and completed server
-results remain unchanged to preserve working paths and provenance. See
-`archehr_sebaseline/docs/naming_policy.md` for the exact rules.
+existing imports and historical ArchEHR-QA artifact names remain unchanged to
+preserve working paths and provenance.
 
 The BioASQ evaluator uses versioned post-processing with type-specific
 quality diagnostics, threshold sensitivity, continuous-risk association, and
@@ -89,7 +98,8 @@ understood.
 code/
   archehr_sebaseline/        Active maintained SE/UQ package and dataset adapters
   semantic_uncertainty/      Reference implementation from the Semantic Entropy work
-  server_results/            Active results; archived diagnostics are in archived_low_usability/
+  server_results/            Active server-result snapshots
+  archive_unused/            Superseded docs, data inventories, and old results
   .agents/                   Local Codex/agent state
   .git/                      Repository metadata
 ```
@@ -99,19 +109,16 @@ code/
 These root-level files are intentionally kept at the workspace level:
 
 ```text
-codex_task_overview_archehr_uq.txt
 PHASE2_PROBE_PLAN.md
 ISAMBARD_COMMANDS.md
 ```
 
 Their roles are:
 
-- `codex_task_overview_archehr_uq.txt`: original project overview and broad
-  requirements.
 - `PHASE2_PROBE_PLAN.md`: active two-track probe plan, frozen BioASQ split,
   collection gates, and evaluation boundaries.
 - `ISAMBARD_COMMANDS.md`: common local and Isambard operational commands;
-  use the package guide for the full BioASQ launch procedure.
+  historical launch procedures are kept only under `archive_unused/`.
 
 ## Active Project
 
@@ -129,12 +136,9 @@ archehr_sebaseline/README.md
 
 for code layout, script entry points, tests, and server run commands.
 
-The package-level docs under `archehr_sebaseline/docs/` now separate:
-
-- implemented ArchEHR-QA engineering baseline,
-- current dataset limitation,
-- evaluation method notes,
-- handoff and next-step guidance.
+Use `archehr_sebaseline/docs/README.md` as the active documentation index.
+Superseded plans, handoff notes, legacy runbooks, and historical result reports
+are consolidated under `archive_unused/`.
 
 ## Reference Code
 
@@ -147,26 +151,17 @@ semantic_uncertainty/
 contains reference code for the original Semantic Entropy project. Treat it as
 reference material, not as the active codebase.
 
-## Notes And Literature Extracts
+## Archived Material
 
-Project notes, literature-derived notes, and extracted paper text should live
-under:
-
-```text
-archehr_sebaseline/docs/
-```
-
-Extracted PDF text snapshots are organized under:
+Material that is not part of the current workflow belongs under:
 
 ```text
-archehr_sebaseline/docs/extracted_literature_text/
+archive_unused/
 ```
 
-The original PDF papers remain outside this code workspace under:
-
-```text
-D:\work\FinalProject\literature
-```
+See `archive_unused/README.md` before moving obsolete documents, generated data,
+or results. The local `literature/` directory is separate source material and
+was not changed by this cleanup.
 
 ## Server Packages
 

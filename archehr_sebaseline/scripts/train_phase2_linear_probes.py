@@ -34,6 +34,7 @@ from archehr_sebaseline.phase2_probe import (
     continuous_metrics,
     fit_threshold,
 )
+from archehr_sebaseline.frozen_probe import write_frozen_probe_bundle
 
 
 SPLITS = ("train", "validation", "test")
@@ -518,6 +519,7 @@ def main() -> int:
 
     prediction_rows: list[dict[str, object]] = []
     selected_summary: list[dict[str, object]] = []
+    frozen_export_specs: list[dict[str, object]] = []
     for candidate, binary in selected:
         # Test predictions are deliberately made only after validation has fixed
         # this candidate.  Other candidates never receive a test metric.
@@ -546,6 +548,27 @@ def main() -> int:
             "transformer_block": candidate.transformer_block, "token_position": candidate.token_position,
             "validation_rows": len(candidate.validation_ids), "test_rows": len(candidate.test_ids),
         })
+        if candidate.analysis in {"hard_threshold_even", "accuracy"}:
+            frozen_export_specs.append(
+                {
+                    "name": "p_true_probe" if candidate.analysis == "hard_threshold_even" else "accuracy_probe",
+                    "track": track,
+                    "analysis": candidate.analysis,
+                    "pipeline": candidate.model,
+                    "transformer_block": candidate.transformer_block,
+                    "token_position": candidate.token_position,
+                    "target_threshold": (
+                        threshold_specs["even"].threshold
+                        if candidate.analysis == "hard_threshold_even"
+                        else None
+                    ),
+                    "positive_class": (
+                        "p_true_blind_uncertainty_at_or_above_frozen_BioASQ_train_threshold"
+                        if candidate.analysis == "hard_threshold_even"
+                        else "answer_incorrect"
+                    ),
+                }
+            )
         for example_id, bioasq_type, target, score in zip(candidate.test_ids, candidate.test_types, candidate.test_target, test_scores):
             prediction_rows.append({
                 "example_id": example_id, "bioasq_type": bioasq_type, "track": track,
@@ -554,6 +577,7 @@ def main() -> int:
 
     config = {
         "schema_version": "phase2_linear_probe_v1",
+        "random_seed": args.random_seed,
         "run_dir": str(args.run_dir.resolve()),
         "input_artifacts": {
             "targets": "uq_baselines/self_report_examples.csv:p_true_blind_uncertainty",
@@ -586,12 +610,31 @@ def main() -> int:
             else None
         ),
         "selected_models": selected_summary,
+        "frozen_transfer_bundle": {
+            "metadata": "frozen_probe_bundle.json",
+            "parameters": "frozen_probe_parameters.npz",
+            "included": ["p_true_probe", "accuracy_probe"] if args.include_accuracy_probe else ["p_true_probe"],
+        },
     }
     args.output_dir.mkdir(parents=True, exist_ok=True)
     config_path = args.output_dir / "probe_run_config.json"
     if config_path.exists() and not args.overwrite:
         raise FileExistsError(f"Refusing to overwrite {config_path}; pass --overwrite.")
     config_path.write_text(json.dumps(config, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    write_frozen_probe_bundle(
+        args.output_dir / "frozen_probe_bundle.json",
+        args.output_dir / "frozen_probe_parameters.npz",
+        frozen_export_specs,
+        source={
+            "dataset": "BioASQ training13b",
+            "fit_split": "train",
+            "selection_split": "validation",
+            "test_used_for_fitting_or_selection": False,
+            "random_seed": args.random_seed,
+            "feature_selection": "validation-selected before the BioASQ test evaluation",
+        },
+        overwrite=args.overwrite,
+    )
     write_csv(args.output_dir / "candidate_metrics.csv", metric_rows, overwrite=args.overwrite)
     write_csv(args.output_dir / "selected_test_predictions.csv", prediction_rows, overwrite=args.overwrite)
     print(f"wrote {len(metric_rows)} metrics and {len(prediction_rows)} selected test predictions to {args.output_dir}")

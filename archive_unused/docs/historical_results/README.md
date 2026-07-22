@@ -15,23 +15,20 @@ provenance but are not active evidence for the next research decision.
   medical free-form UQ benchmark.
 
 These materials must not be cited as current SE, P(True), or probe results.
-They remain useful for reproducing prior runs, checking artifact formats, and
-designing the next no-evidence factoid/list pipeline.
+They remain useful for reproducing prior runs and checking artifact formats.
 
 ## Contents
 
 - `bioasq_isambard_results_20260715.md`: historical Isambard summary results,
   including the evidence/direct ablation and three-class Claude evaluation.
 - `bioasq_runpod_results_20260713.md`: historical grounded RunPod batch.
-- `../../../server_results/archived_low_usability/`: local raw summary outputs,
-  related analyses, manual-review material, and the PubMedQA Level-4 pilot.
-- `../../outputs/archived_low_usability/`: local downloaded BioASQ summary run
+- `../../results/server_results/`: local raw summary outputs, related analyses,
+  manual-review material, and the PubMedQA Level-4 pilot.
+- `../../results/local_outputs/`: local downloaded BioASQ summary run
   directories. This path is ignored by Git because it contains generated data.
 
-## Active direction
+## Current-document pointer
 
-The next experimental gate is a no-evidence BioASQ factoid pipeline, followed
-by list if the factoid setup produces a sufficiently usable binary outcome.
-It will use a free biomedical NLI model with set-aware equivalence, a binary
-`correct`/`incorrect` judge, and a paired P(True) ablation with versus without
-the high-temperature answers.
+This archived report deliberately does not describe the active direction. Use
+`../../../archehr_sebaseline/docs/README.md` and
+`../../../PHASE2_PROBE_PLAN.md` for the current protocol and experiment state.

@@ -47,9 +47,9 @@ It does not contain sentence relevance labels, citation labels, or answer-qualit
 - Test can only be evaluated in reference-only mode.
 - ArchEHR-QA should not be used as the main SEP training target or final AUROC/ECE benchmark unless stronger gold labels are added.
 
-The replacement dataset direction is now BioASQ. PubMedQA remains available as
-a short-answer engineering smoke path, but it is not the preferred main SE
-dataset.
+The replacement dataset direction is now BioASQ. PubMedQA is not the main
+research dataset, but its official 500-question PQA-L test subset is the fixed
+external dataset for zero-shot evaluation of the two frozen Probe models.
 
 ### Current BioASQ decision
 
@@ -57,7 +57,8 @@ The completed BioASQ summary runs are archived as low-usability diagnostics.
 They are not current benchmark results because they combine summary prompts,
 evidence-conditioned generation, generic NLI clustering, and non-binary quality
 targets. Their reports and raw outputs remain available for provenance under
-`docs/archived_low_usability/` and `../../server_results/archived_low_usability/`.
+`../archive_unused/docs/historical_results/` and
+`../archive_unused/results/`.
 
 Phase 1 is complete. The 1,000-question stratified BioASQ baseline uses free
 biomedical set-aware NLI, binary `correct`/`incorrect` judging of the
@@ -85,13 +86,23 @@ uses hard-threshold-even L2 logistic regression at block 24/LT (P(True)-target
 AUROC 0.9026); Accuracy-Probe uses L2 logistic regression at block 24/LT
 (Claude-incorrect AUROC 0.8058, AP 0.8884). The 72 blank Claude labels are
 excluded only from Accuracy-Probe (3,090/384/384 valid train/validation/test
-rows). The next milestone is cross-dataset transfer, not a more complex Probe.
-See `../PHASE2_PROBE_PLAN.md` for the full result and `docs/experiment_runtime_log.md`
-for Isambard provenance.
+rows). Both PubMedQA transfer conditions are complete. No context produced 25%
+strict accuracy and 373 `maybe` outputs; official abstract context raised
+accuracy to 59% and reduced `maybe` to 163. In the context condition, verbal
+confidence ranks errors best (AUROC 0.7933), followed by context-conditioned
+P(True) (0.6800), frozen P(True)-Probe (0.6630), and frozen Accuracy-Probe
+(0.5960). Both conditions retain explained `yes/no/maybe` answers and use the
+same frozen Probes without target fitting. See
+`docs/pubmedqa_frozen_probe_transfer.md`, `../PHASE2_PROBE_PLAN.md`, and
+`docs/experiment_runtime_log.md`.
+
+The next planned PubMedQA step changes only the prompt. It will use a frozen
+development/holdout split from the 500 non-test PQA-L records, restrict `maybe`
+to genuinely inconclusive/mixed evidence, and leave both Probes unchanged.
 
 New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
 `archehr` prefixes. This does not rename the package, Python imports, or
-historical ArchEHR-QA files. See `docs/naming_policy.md`.
+historical ArchEHR-QA files.
 
 ## Package Layout
 
@@ -100,9 +111,8 @@ archehr_sebaseline/
   scripts/                  CLI and Slurm entry points
   src/archehr_sebaseline/   Python package
   tests/                    Unit tests and smoke fixtures
-  docs/                     Plans, handoffs, method notes, literature extracts
+  docs/                     Active protocols, results, and runtime records
   requirements.txt          Minimal Python dependencies
-  SERVER_RUN.md             Historical server run guide
 ```
 
 ## Important Modules
@@ -508,15 +518,18 @@ Reference-only mode is diagnostic only. It cannot evaluate factuality, citation 
 Key docs:
 
 ```text
-docs/archehr_se_baseline_plan.md
-docs/archehr_evaluation_architecture.md
-docs/dataset_pivot_status.md
-docs/level5_evaluation_method.md
-docs/progress_level4.md
-docs/handoff_guide.md
-docs/literature_notes.md
-docs/extracted_literature_text/
+docs/README.md
+docs/bioasq_medical_uq_protocol.md
+docs/bioasq_medical_uq_results_20260718.md
+docs/phase2_bioasq_dataset_split.md
+docs/pubmedqa_frozen_probe_transfer.md
+docs/semantic_entropy_generation_protocol.md
+docs/experiment_runtime_log.md
 ```
+
+Superseded ArchEHR/Level-4 plans, handoff notes, Runpod guides, extracted paper
+text, and low-usability result reports are consolidated under
+`../archive_unused/`.
 
 ## Data Boundary
 
