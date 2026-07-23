@@ -144,20 +144,24 @@ the held-out BioASQ test split.
 | --- | --- | --- | --- |
 | Even-split hard threshold | Binary low/high uncertainty; L2 logistic regression | block 24 / LT | **AUROC 0.9026**; AP 0.8948; Brier 0.1414 |
 | Minimum-within-variance threshold | Binary low/high uncertainty; L2 logistic regression | block 40 / LT | AUROC 0.7677; AP 0.3629; Brier 0.1436 |
-| ElasticNet continuous regression | Continuous blind P(True) uncertainty | block 24 / SLT; 391 valid test rows | **Spearman 0.6057**; MAE 0.2189 |
+| ElasticNet continuous regression | Continuous blind P(True) uncertainty | block 24 / SLT; 391 valid test rows | **Spearman 0.6057**; MAE 0.2189; even-threshold AUROC **0.8486** / AP 0.8163 |
 | Ridge continuous regression | Continuous blind P(True) uncertainty | block 24 / TBG | Spearman 0.2146; MAE 0.4378 |
 
 The two hard-threshold variants are classification Probes and are compared
 with AUROC/AP/Brier. Ridge and ElasticNet predict the continuous uncertainty
-score and are compared with Spearman correlation and MAE. Their headline
-values are therefore not directly rankable on one common metric. The frozen
-P(True)-Probe used elsewhere in this report is the even-split hard-threshold
-model; ElasticNet is retained as a continuous-target sensitivity analysis.
+score and are primarily compared with Spearman correlation and MAE. A
+supplemental test also ranks the train-derived even-threshold target with the
+unclipped ElasticNet prediction: overall AUROC is 0.8486, with 0.7178 for
+factoid, 0.6655 for list, and 0.5644 for summary. On the exact same 391 valid
+questions, the hard-even L2 Probe reaches 0.9029 AUROC. This evaluation does
+not turn ElasticNet into a classification-trained Probe, and test AUROC was
+not used for model or feature selection. The frozen P(True)-Probe used
+elsewhere in this report remains the even-split hard-threshold model.
 
 The underlying evidence remains available in
 `analysis_outputs/bioasq_phase2_linear_probes_seed31/candidate_metrics.csv`;
-the selected test predictions and run configuration are retained in the same
-directory.
+the new binary-ranking evidence is
+`analysis_outputs/bioasq_phase2_linear_probes_seed31_elasticnet_auc_20260723/elasticnet_even_threshold_test_metrics.csv`.
 
 #### Type-stratified fidelity
 

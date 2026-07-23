@@ -43,9 +43,21 @@ predictions.
 | Hard-threshold even split, L2 logistic | train uncertainty threshold `1.877536e-06`; 1,568 high / 1,576 low | block 24, LT | AUROC 0.9026; AP 0.8948; Brier 0.1414 |
 | Hard-threshold minimum-within-variance, L2 logistic | train threshold `0.468912`; 433 high / 2,711 low | block 40, LT | AUROC 0.7677; AP 0.3629; Brier 0.1436 |
 | Ridge | continuous uncertainty | block 24, TBG | MAE 0.4378; Spearman 0.2146 |
-| ElasticNet sensitivity check | continuous uncertainty | block 24, SLT; 391 valid test rows | MAE 0.2189; Spearman 0.6057 |
+| ElasticNet sensitivity check | continuous uncertainty | block 24, SLT; 391 valid test rows | MAE 0.2189; Spearman 0.6057; even-threshold AUROC 0.8486 / AP 0.8163 |
 
 These are P(True)-fidelity results, not answer-correctness results.
+
+The ElasticNet AUROC is a supplemental 2026-07-23 evaluation of the continuous
+regressor against the same train-derived even-threshold P(True) target used by
+the final classification Probe. ElasticNet is still fitted to continuous blind
+P(True) uncertainty and selected on validation MAE, then Spearman; neither the
+test labels nor test AUROC affect fitting or selection. Its test AUROC is 0.8486
+on 391 SLT-valid questions (190 high-uncertainty targets), with AP 0.8163.
+Within-type AUROC is 0.7178 factoid, 0.6655 list, and 0.5644 summary. The
+hard-even L2 Probe reaches 0.9029 on the same 391-question subset
+(0.9026 on all 393), so ElasticNet does not replace the frozen Probe. The
+reproducible metric is retained in
+`analysis_outputs/bioasq_phase2_linear_probes_seed31_elasticnet_auc_20260723/elasticnet_even_threshold_test_metrics.csv`.
 
 The final P(True)-Probe is fixed as the **hard-threshold even split, L2
 logistic regression, block 24 LT** model. It has the highest validation AUROC

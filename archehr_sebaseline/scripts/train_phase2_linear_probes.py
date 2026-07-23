@@ -31,6 +31,7 @@ if str(SRC_DIR) not in sys.path:
 from archehr_sebaseline.phase2_probe import (
     ThresholdSpec,
     binary_metrics,
+    binary_ranking_metrics,
     continuous_metrics,
     fit_threshold,
 )
@@ -337,6 +338,36 @@ def _metric_rows(
     }
 
 
+def _elasticnet_threshold_ranking_row(
+    *,
+    candidate: Candidate,
+    scores: np.ndarray,
+    threshold: ThresholdSpec,
+    subset: str,
+    mask: np.ndarray,
+) -> dict[str, object]:
+    labels = threshold.labels(candidate.test_target[mask])
+    metrics = binary_ranking_metrics(labels, scores[mask])
+    return {
+        "track": "p_true",
+        "analysis": "elasticnet",
+        "fit_target": "continuous_blind_p_true_uncertainty",
+        "selection_rule": "validation MAE, then higher Spearman",
+        "evaluation_target": "blind_p_true_uncertainty_at_or_above_train_even_threshold",
+        "split": "test",
+        "subset": subset,
+        "transformer_block": candidate.transformer_block,
+        "token_position": candidate.token_position,
+        "model": candidate.model_name,
+        "num_examples": int(np.sum(mask)),
+        "num_positive": int(np.sum(labels)),
+        "train_threshold": threshold.threshold,
+        "auroc": metrics["auroc"],
+        "average_precision": metrics["average_precision"],
+        "test_used_for_fitting_or_selection": "false",
+    }
+
+
 def _select_candidate(candidates: list[Candidate], *, binary: bool) -> Candidate:
     if not candidates:
         raise ValueError("No valid feature candidates were available.")
@@ -520,6 +551,7 @@ def main() -> int:
     prediction_rows: list[dict[str, object]] = []
     selected_summary: list[dict[str, object]] = []
     frozen_export_specs: list[dict[str, object]] = []
+    elasticnet_threshold_ranking_rows: list[dict[str, object]] = []
     for candidate, binary in selected:
         # Test predictions are deliberately made only after validation has fixed
         # this candidate.  Other candidates never receive a test metric.
@@ -543,6 +575,28 @@ def main() -> int:
                     binary=binary, subset=bioasq_type,
                 )
             )
+        if candidate.analysis == "elasticnet":
+            overall_mask = np.ones(len(candidate.test_target), dtype=bool)
+            elasticnet_threshold_ranking_rows.append(
+                _elasticnet_threshold_ranking_row(
+                    candidate=candidate,
+                    scores=test_scores,
+                    threshold=threshold_specs["even"],
+                    subset="overall",
+                    mask=overall_mask,
+                )
+            )
+            for bioasq_type in sorted(set(candidate.test_types)):
+                mask = np.asarray([value == bioasq_type for value in candidate.test_types])
+                elasticnet_threshold_ranking_rows.append(
+                    _elasticnet_threshold_ranking_row(
+                        candidate=candidate,
+                        scores=test_scores,
+                        threshold=threshold_specs["even"],
+                        subset=bioasq_type,
+                        mask=mask,
+                    )
+                )
         selected_summary.append({
             "track": track, "analysis": candidate.analysis, "model": candidate.model_name,
             "transformer_block": candidate.transformer_block, "token_position": candidate.token_position,
@@ -576,7 +630,7 @@ def main() -> int:
             })
 
     config = {
-        "schema_version": "phase2_linear_probe_v1",
+        "schema_version": "phase2_linear_probe_v2",
         "random_seed": args.random_seed,
         "run_dir": str(args.run_dir.resolve()),
         "input_artifacts": {
@@ -594,6 +648,13 @@ def main() -> int:
         "selection": {
             "binary": "validation AUROC, then lower Brier; no test candidate metrics are written",
             "continuous": "validation MAE, then higher Spearman; no test candidate metrics are written",
+        },
+        "elasticnet_binary_ranking_evaluation": {
+            "fit_target": "continuous_blind_p_true_uncertainty",
+            "evaluation_target": "blind_p_true_uncertainty_at_or_above_train_even_threshold",
+            "score": "unclipped ElasticNet continuous prediction",
+            "metrics": ["auroc", "average_precision"],
+            "test_used_for_fitting_or_selection": False,
         },
         "accuracy_probe_included": args.include_accuracy_probe,
         "accuracy_label_policy": (
@@ -636,6 +697,11 @@ def main() -> int:
         overwrite=args.overwrite,
     )
     write_csv(args.output_dir / "candidate_metrics.csv", metric_rows, overwrite=args.overwrite)
+    write_csv(
+        args.output_dir / "elasticnet_even_threshold_test_metrics.csv",
+        elasticnet_threshold_ranking_rows,
+        overwrite=args.overwrite,
+    )
     write_csv(args.output_dir / "selected_test_predictions.csv", prediction_rows, overwrite=args.overwrite)
     print(f"wrote {len(metric_rows)} metrics and {len(prediction_rows)} selected test predictions to {args.output_dir}")
     return 0

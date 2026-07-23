@@ -40,6 +40,10 @@ Claude labels: 3,858 valid / 3,930 after two retries; 72 blanks excluded only
   from Accuracy-Probe (valid train/validation/test rows 3,090/384/384)
 frozen results: P(True)-Probe hard-even L2 logistic block 24/LT, target AUROC
   0.9026; Accuracy-Probe L2 logistic block 24/LT, Claude AUROC 0.8058/AP 0.8884
+local ElasticNet rerun: 2026-07-23, continuous blind P(True) training target,
+  validation-selected block 24/SLT; test Spearman 0.6057/MAE 0.2189
+ElasticNet binary ranking: train-even-threshold test AUROC 0.8486/AP 0.8163
+  on 391 SLT-valid questions; no test fitting, selection, or threshold tuning
 cross-dataset follow-up: no-context PubMedQA transfer completed; the separate
   official-context condition is recorded in the next section
 ```
