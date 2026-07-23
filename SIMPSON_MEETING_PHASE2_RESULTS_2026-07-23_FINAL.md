@@ -140,22 +140,38 @@ Four P(True)-fidelity formulations were evaluated. Each formulation selected
 its own block/token position using validation data and was then evaluated on
 the held-out BioASQ test split.
 
-| Formulation | Target and model | Validation-selected feature | Held-out test result |
-| --- | --- | --- | --- |
-| Even-split hard threshold | Binary low/high uncertainty; L2 logistic regression | block 24 / LT | **AUROC 0.9026**; AP 0.8948; Brier 0.1414 |
-| Minimum-within-variance threshold | Binary low/high uncertainty; L2 logistic regression | block 40 / LT | AUROC 0.7677; AP 0.3629; Brier 0.1436 |
-| ElasticNet continuous regression | Continuous blind P(True) uncertainty | block 24 / SLT; 391 valid test rows | **Spearman 0.6057**; MAE 0.2189 |
-| Ridge continuous regression | Continuous blind P(True) uncertainty | block 24 / TBG | Spearman 0.2146; MAE 0.4378 |
+| Formulation | Target and model | Validation-selected feature | Native P(True)-fidelity test result | Correctness-UQ test AUROC |
+| --- | --- | --- | --- | ---: |
+| Even-split hard threshold | Binary low/high uncertainty; L2 logistic regression | block 24 / LT | **AUROC 0.9026**; AP 0.8948; Brier 0.1414 | **0.7452** (384 rows) |
+| Minimum-within-variance threshold | Binary low/high uncertainty; L2 logistic regression | block 40 / LT | AUROC 0.7677; AP 0.3629; Brier 0.1436 | 0.6065 (384 rows) |
+| ElasticNet continuous regression | Continuous blind P(True) uncertainty | block 24 / SLT; 391 valid P(True) rows | **Spearman 0.6057**; MAE 0.2189 | 0.6532 (382 rows) |
+| Ridge continuous regression | Continuous blind P(True) uncertainty | block 24 / TBG | Spearman 0.2146; MAE 0.4378 | 0.5635 (384 rows) |
 
 The two hard-threshold variants are classification Probes and are compared
 with AUROC/AP/Brier. Ridge and ElasticNet predict the continuous uncertainty
 score and are compared with Spearman correlation and MAE. A continuous
 P(True) target has no native classification AUROC unless it is changed into a
-separate binary target. The frozen P(True)-Probe used elsewhere in this report
-remains the even-split hard-threshold model.
+separate binary target. The final column therefore uses a different common
+target, Claude `incorrect`, so all four selected model scores can be compared
+directly as UQ rankings without retraining them on correctness. On the exact
+382 rows available to ElasticNet, the even-split hard-threshold Probe remains
+stronger (0.7456 versus 0.6532 AUROC), so the two-row sample difference does
+not change the ordering.
+
+The even-split hard-threshold formulation remains the justified frozen
+P(True)-Probe choice. Before test evaluation, it supplied a near-balanced,
+train-derived target and its block-24/LT feature was selected on validation.
+The held-out results then provide convergent support rather than a new
+test-driven selection: it has both the strongest native binary P(True)
+fidelity (0.9026 AUROC) and the strongest correctness-UQ ranking among the
+four formulations (0.7452 AUROC). ElasticNet is retained as the strongest
+continuous-target sensitivity analysis, but its 0.6532 correctness-UQ AUROC
+does not support replacing the frozen hard-threshold Probe.
 
 The underlying evidence remains available in
-`analysis_outputs/bioasq_phase2_linear_probes_seed31/candidate_metrics.csv`.
+`analysis_outputs/bioasq_phase2_linear_probes_seed31/candidate_metrics.csv`
+and
+`analysis_outputs/bioasq_phase2_linear_probes_seed31_elasticnet_uq_auc_20260723/selected_p_true_models_correctness_metrics.csv`.
 
 #### Type-stratified fidelity
 
