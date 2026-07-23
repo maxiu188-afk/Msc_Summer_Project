@@ -1,6 +1,6 @@
 # Phase 2 Probe Research Plan
 
-Last updated: 2026-07-22
+Last updated: 2026-07-23
 
 ## Execution Status (2026-07-20)
 
@@ -303,12 +303,12 @@ separate comparator, not a training target.
 
 The first external dataset is fixed as the official 500-question PubMedQA
 PQA-L test subset. It passed local completeness, label-agreement, duplicate,
-and exact-question-overlap checks. The implemented transfer path keeps the
-Gemma 3 12B source model fixed, uses a no-evidence `yes/no/maybe + explanation`
-prompt, and applies the already selected block-24/LT P(True)-Probe and
-Accuracy-Probe. This compares two Probe models across datasets; it is not an
-unsupported transfer of one coefficient vector across different language-model
-hidden spaces.
+and exact-question-overlap checks. The active transfer path keeps the Gemma 3
+12B source model fixed, supplies the official PubMed abstract context, requires
+`yes/no/maybe + explanation`, and applies the already selected block-24/LT
+P(True)-Probe and Accuracy-Probe. This compares two Probe models across
+datasets; it is not an unsupported transfer of one coefficient vector across
+different language-model hidden spaces.
 
 For a genuine transfer result, do not fit probe parameters or tune thresholds
 on the target dataset. If later adaptation is useful, report it as a distinct
@@ -319,41 +319,39 @@ as separate artifacts and report answer-type/distribution differences.
 Evaluate both frozen Probes against both PubMedQA targets. For the
 P(True)-Probe's original target, retain the BioASQ-train even threshold exactly;
 for Accuracy-Probe, define incorrect from mismatch between the required leading
-decision and the official PubMedQA label. Also compare direct blind P(True),
-verbalized confidence, sequence/normalized NLL, and mean/max token entropy on
-the same questions. Preserve generated explanations and `LONG_ANSWER` for a
-later separate Claude alignment stage, without assuming that `LONG_ANSWER` is a
-manually curated high-quality explanation. See
+decision and the official PubMedQA label. Also compare the separately named
+blind P(True), verbalized confidence, sequence/normalized NLL,
+and mean/max token entropy on the same questions. Preserve generated
+explanations and `LONG_ANSWER` for a later separate Claude alignment stage,
+without assuming that `LONG_ANSWER` is a manually curated high-quality
+explanation. See
 `archehr_sebaseline/docs/pubmedqa_frozen_probe_transfer.md`.
 
-The first no-context PubMedQA run is retained as a distribution-shift result,
-not overwritten: Gemma emitted `maybe` for 373/500 questions and achieved only
-25% strict decision accuracy. A second pre-specified context condition supplies
-the official PubMed abstract `CONTEXTS` to generation and self-report scoring
-while keeping both Probes and the BioASQ threshold frozen. Report the two prompt
-conditions separately; never pool them or rename context-conditioned P(True) as
-blind P(True).
+The question-only PubMedQA run is archived rather than used as an active
+result because it omitted the article evidence that defines the official
+decision. Its 25.0% accuracy and full provenance remain in
+`archive_unused/docs/historical_results/pubmedqa_no_context_transfer_20260721.md`.
 
-Both conditions are now complete. Context increased strict decision accuracy
-from 25.0% to 59.0% and changed predicted `maybe/yes/no` counts from
-`373/123/4` to `163/237/100`. Against context-condition decision error,
-verbalized confidence is strongest (AUROC 0.7933), followed by
-context-conditioned P(True) (0.6800), frozen P(True)-Probe (0.6630), frozen
-Accuracy-Probe (0.5960), and token-only UQ (0.5603--0.5716). The P(True)-Probe
-has only 0.6121 AUROC against the context-conditioned frozen-threshold teacher
-target, far below its 0.9026 held-out BioASQ fidelity. This supports modest
-cross-target usefulness under context, not strong preservation of either
-Probe's original source-dataset mapping. No PubMedQA fitting or tuning occurred.
+The active comparison is between two completed abstract-context prompts on the
+same 500 IDs. Context v1 reached 59.0% accuracy and predicted
+`yes/no/maybe = 237/100/163`. The Appendix-C v2 prompt adds the official narrow
+label definitions while keeping the data, Gemma snapshot, generation settings,
+block-24/LT Probes, BioASQ threshold, and evaluator unchanged. It reached 72.4%
+accuracy and `298/164/38`, with 88 v1 errors corrected and 21 v1 correct
+answers broken (`p=6.11e-11`). Macro-F1 improved from 0.5211 to 0.5659.
 
-The next step is prompt development rather than Probe adaptation. Treat the
-completed official-test runs as frozen results. Build a deterministic
-label-stratified development/holdout split from the other 500 PQA-L records,
-test only a small predeclared family of prompts that restricts `maybe` to
-genuinely inconclusive/mixed evidence, select without consulting Probe/UQ
-metrics, and evaluate the frozen prompt once on the held-out portion. Both
-block-24/LT Probes and the BioASQ threshold remain unchanged. Any further use
-of the already inspected official test is adaptive/exploratory, not a new
-untouched transfer result.
+Against v2 decision error, frozen P(True)-Probe is strongest at 0.6839 AUROC /
+0.4519 AP, followed by blind P(True) at 0.6490 / 0.4210,
+verbalized confidence at 0.6402 / 0.4164, and frozen Accuracy-Probe at 0.5901 /
+0.3916. P(True)-Probe has only 0.5899 AUROC against the v2 blind P(True)
+frozen-threshold teacher target, far below its 0.9026 held-out BioASQ fidelity.
+The transfer result is therefore cross-target correctness ranking, not strong
+preservation of the source mapping.
+
+The main v2 limitation is `maybe` recall: 12.7%, down from 43.6% in v1, while
+`yes` and `no` recall improve to 84.1% and 72.8%. This is a documented
+minority-class limitation of an otherwise clear overall improvement. Further
+work is fixed error analysis, not repeated prompt tuning.
 
 ## Milestones
 
@@ -371,11 +369,13 @@ untouched transfer result.
 6. **Complete — final in-domain evaluation:** one frozen BioASQ test evaluation with
    type-stratified comparisons and cost accounting.
 7. **Complete — initial transfer evaluation:** ran both frozen Probes on the
-   separately documented PubMedQA no-context and official-context conditions.
-   Any adaptation is a new experiment.
-8. **Next — prompt-distribution repair:** develop and freeze a bounded prompt
-   change on a disjoint PQA-L development split, then evaluate once on its
-   pre-frozen holdout without changing either Probe.
+   PubMedQA question-only diagnostic and official-context v1 condition; the
+   question-only result is now archived.
+8. **Complete — PubMedQA prompt improvement:** added the official Appendix-C
+   label definitions once and completed context v2 without changing either
+   Probe or tuning on PubMedQA metrics.
+9. **Next — fixed error analysis:** inspect the completed v2 error set,
+   especially official `maybe` regressions, without changing the frozen result.
 
 ## Non-negotiable Boundaries
 

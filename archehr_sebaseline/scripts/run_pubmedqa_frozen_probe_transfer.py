@@ -95,7 +95,7 @@ def _write_metadata(args: argparse.Namespace, examples: list[dict[str, object]])
         },
         "uq": {
             "included": [
-                "direct_blind_p_true_uncertainty",
+                "blind_p_true_uncertainty",
                 "verbalized_confidence_uncertainty",
                 "sequence_nll",
                 "normalized_nll",

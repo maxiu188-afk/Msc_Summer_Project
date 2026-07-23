@@ -14,7 +14,7 @@ from .dataset_adapters import load_pubmedqa_common_examples
 PUBMEDQA_LABELS = ("yes", "no", "maybe")
 PUBMEDQA_TRANSFER_SPLIT = "test"
 PUBMEDQA_DIRECT_PROMPT_VERSION = "pubmedqa_direct_explanation_v1"
-PUBMEDQA_CONTEXT_PROMPT_VERSION = "pubmedqa_context_explanation_v1"
+PUBMEDQA_CONTEXT_PROMPT_VERSION = "pubmedqa_context_explanation_v2"
 
 
 def pubmedqa_prompt_version(*, include_context: bool) -> str:
@@ -62,6 +62,12 @@ def build_pubmedqa_transfer_prompt(
         prompt.extend(
             [
                 "Base the decision and explanation only on the PubMed abstract context above.",
+                "Use the official PubMedQA annotation criteria for the decision label:",
+                "Choose YES when the experiments and results reported in the abstract support the question's proposition in this study context, even if the conclusion is not universally true.",
+                "Choose NO when the experiments and results reported in the abstract do not support the proposition.",
+                "Choose MAYBE only when the abstract supports the proposition under some conditions but not others, or when a question asks about multiple interventions, observations, or groups and the answer is true for some but false for others.",
+                "Do not use MAYBE to express your own uncertainty.",
+                "Do not choose MAYBE merely because the study has limitations, cautious wording, a small sample size, non-significant findings, or recommends further research.",
                 "Do not claim to have seen a reference answer or final decision label.",
             ]
         )

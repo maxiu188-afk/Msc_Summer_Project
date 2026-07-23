@@ -20,7 +20,9 @@ They were consolidated here on 2026-07-22.
 ## `historical_results/`
 
 Historical grounded/summary BioASQ reports that use protocols or targets not
-comparable to the current Phase-1/Phase-2 experiments.
+comparable to the current Phase-1/Phase-2 experiments, plus the archived
+question-only PubMedQA transfer result whose official article evidence was
+omitted.
 
 ## `literature_extracts/`
 

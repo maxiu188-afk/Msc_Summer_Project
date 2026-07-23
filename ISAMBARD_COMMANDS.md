@@ -35,21 +35,23 @@ an experiment. Before a first model download, verify the Hugging Face account:
 hf auth whoami
 ```
 
-## Current PubMedQA context run
+## Current PubMedQA context result
 
-The no-context full job `5739322` completed. Its strong `maybe` bias is retained
-as the comparison condition. The official-abstract context condition uses the
-same Gemma snapshot, generation settings, 500 IDs, and frozen BioASQ Probes;
-there is no PubMedQA fitting, calibration, threshold tuning, or feature
-selection.
+The active result is the completed Appendix-C context v2 run. The question-only
+result is archived under `archive_unused/docs/historical_results/` because it
+omitted the article evidence that defines the official PubMedQA decision.
+Context v1 remains the direct historical baseline. There is no PubMedQA Probe
+fitting, calibration, threshold tuning, or feature selection.
 
 ```text
-5748203  context smoke (3 questions), COMPLETED 0:0, 00:01:00
-5748205  context full (500 questions), COMPLETED 0:0, 00:37:43
+5748203  context v1 smoke (3 questions), COMPLETED 0:0, 00:01:00
+5748205  context v1 full (500 questions), COMPLETED 0:0, 00:37:43
+5750742  Appendix-C v2 smoke (3 questions), COMPLETED 0:0, 00:00:46
+5750745  Appendix-C v2 full (500 questions), COMPLETED 0:0, 00:40:16
 ```
 
-The completed dependency prevented the full run from starting until the smoke
-succeeded. A future protocol-identical context submission uses:
+The v2 full job used `afterok:5750742`, so it started only after the smoke
+succeeded. The submission pattern for a future separately authorized run is:
 
 ```bash
 cd "$SCRATCHDIR/final_project/archehr_sebaseline"
@@ -70,11 +72,11 @@ protocol and acceptance checks are in
 
 ```bash
 squeue -u "$USER" -o "%.18i %.9P %.30j %.2t %.12M %.12l %R"
-sacct -j 5748203,5748205 \
+sacct -j 5750742,5750745 \
   --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS,AllocTRES%80
 
-tail -f pubmedqa-probe-xfer-5748203.out
-cat pubmedqa-probe-xfer-5748203.err
+tail -f pubmedqa-probe-xfer-5750742.out
+cat pubmedqa-probe-xfer-5750742.err
 ```
 
 A failed job exits without continuing later stages because the batch script
@@ -83,8 +85,8 @@ uses `set -euo pipefail`.
 ## Inspect accepted outputs
 
 ```bash
-RUN="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/pubmedqa_context_frozen_probe_transfer_full500_seed31_20260722"
-ANALYSIS="$SCRATCHDIR/final_project/archehr_sebaseline/analysis_outputs/pubmedqa_context_frozen_probe_transfer_full500_seed31_20260722"
+RUN="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/pubmedqa_context_appendix_c_v2_full500_seed31_20260722"
+ANALYSIS="$SCRATCHDIR/final_project/archehr_sebaseline/analysis_outputs/pubmedqa_context_appendix_c_v2_full500_seed31_20260722"
 
 cat "$RUN/run_timing.txt"
 wc -l "$RUN/examples.jsonl" "$RUN/best_generations.jsonl"

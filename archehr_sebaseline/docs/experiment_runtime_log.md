@@ -76,9 +76,25 @@ context full: 5748205, 500 questions, COMPLETED 0:0 in 00:37:43;
 context outcome: 295/500 official decisions correct; predicted labels
   maybe/yes/no = 163/237/100; 197 no-context errors corrected and 27 previous
   correct answers broken
-context correctness UQ: verbal confidence AUROC 0.7933, context-conditioned
-  P(True) 0.6800, frozen P(True)-Probe 0.6630, frozen Accuracy-Probe 0.5960;
+context correctness UQ: verbal confidence AUROC 0.7933, blind P(True) 0.6800,
+  frozen P(True)-Probe 0.6630, frozen Accuracy-Probe 0.5960;
   token-only UQ 0.5603--0.5716
+question-only result disposition: archived on 2026-07-23 because the official
+  PubMedQA decision depends on the omitted article evidence
+Appendix-C v2 prompt: pubmedqa_context_explanation_v2; same official contexts,
+  500 IDs, Gemma snapshot, generation settings, frozen block-24/LT Probes,
+  BioASQ threshold, and evaluator as context v1
+v2 smoke: 5750742, MAX_EXAMPLES=3, COMPLETED 0:0 in 00:00:46
+v2 full: 5750745, 500 questions, COMPLETED 0:0 in 00:40:16;
+  500/500 output rows, hidden shape [500,4,3,3840], zero LONG_ANSWER leakage
+v2 outcome: 362/500 correct (72.4%); predicted labels yes/no/maybe =
+  298/164/38; context-v1 paired outcomes 274 both correct, 21 v1-only correct,
+  88 v2-only correct, 117 both wrong; exact paired p=6.11e-11
+v2 correctness UQ: frozen P(True)-Probe AUROC 0.6839/AP 0.4519,
+  blind P(True) 0.6490/0.4210, verbal confidence 0.6402/0.4164,
+  frozen Accuracy-Probe 0.5901/0.3916; error prevalence 0.276
+v2 limitation: yes/no/maybe recall 84.1%/72.8%/12.7%; retain the low maybe
+  recall as type-specific error analysis, not as a rejection of the overall gain
 ```
 
 ## Phase-1 final BioASQ baseline

@@ -19,6 +19,7 @@ class PubMedQATransferTests(unittest.TestCase):
         )
         self.assertIn("yes, no, or maybe", prompt)
         self.assertIn("one to three sentences", prompt)
+        self.assertNotIn("official PubMedQA annotation criteria", prompt)
         self.assertNotIn("Hidden reference text", prompt)
         self.assertNotIn("Evidence snippets:", prompt)
 
@@ -34,6 +35,12 @@ class PubMedQATransferTests(unittest.TestCase):
         self.assertIn("PubMed abstract context:", prompt)
         self.assertIn("[C1] The trial found a significant benefit.", prompt)
         self.assertIn("using only", prompt)
+        self.assertIn("official PubMedQA annotation criteria", prompt)
+        self.assertIn("Choose YES", prompt)
+        self.assertIn("Choose NO", prompt)
+        self.assertIn("Choose MAYBE only", prompt)
+        self.assertIn("Do not use MAYBE to express your own uncertainty.", prompt)
+        self.assertIn("non-significant findings", prompt)
         self.assertNotIn("Hidden reference text", prompt)
 
     def test_leading_label_parser_rejects_label_only_in_explanation(self) -> None:
@@ -92,7 +99,7 @@ class PubMedQATransferTests(unittest.TestCase):
             )
         self.assertEqual(examples[0]["prompt_evidence_mode"], "provided")
         self.assertEqual(prompts[0]["evidence_mode"], "provided")
-        self.assertEqual(prompts[0]["prompt_version"], "pubmedqa_context_explanation_v1")
+        self.assertEqual(prompts[0]["prompt_version"], "pubmedqa_context_explanation_v2")
         self.assertIn("Abstract evidence.", prompts[0]["prompt"])
         self.assertNotIn("Reference conclusion.", prompts[0]["prompt"])
 
