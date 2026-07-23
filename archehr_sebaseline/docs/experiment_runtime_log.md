@@ -51,6 +51,35 @@ cross-dataset follow-up: no-context PubMedQA transfer completed; the separate
 The server collection is complete. Probe fitting is local and consumes the
 saved artifacts only; it does not add an Isambard allocation.
 
+## Phase-2 UQ efficiency benchmark
+
+```text
+submitted: 2026-07-23
+status at documentation time: queued; no benchmark result yet
+smoke job: 5761273, six valid-labelled test questions, includes SE
+full job: 5761275, all 384 valid-labelled test questions
+dependency: full job afterok:5761273; a failed smoke cannot release the full job
+cost boundary: incremental UQ work after the saved T=0.1 main answer exists;
+  common Gemma load and original answer generation excluded from steady state
+selection: Phase-2 test only, 158 factoid / 103 list / 123 summary;
+  252 Claude-incorrect / 132 correct
+Probes: frozen block-24/LT P(True)-Probe and Accuracy-Probe; one hidden-state
+  replay shared by both CPU linear heads; zero extra generated tokens
+original UQ comparators: blind P(True), ten-sample normalized NLL, discrete SE,
+  and cluster count; verbalized confidence and weaker Phase-1 variants excluded
+sampling / NLI: ten T=1.0 samples, top_p=0.9, top_k=50, max_new_tokens=192;
+  pritamdeka/PubMedBERT-MNLI-MedNLI with the Phase-1 type-specific rules
+reported cost fields: mean/median/p95 latency, CUDA GPU time, extra generated
+  tokens, question/token throughput, causal-LM/NLI calls, and NLI load time
+performance fields: AUROC/AP against Claude incorrect on the same rows
+historical SE planning estimate: 02:47--03:04 for 384 questions, projected
+  from the completed 1,000-question Phase-1 jobs; not a measured Phase-2 result
+```
+
+The complete cost boundary, sharing rules, output schema, and pending-result
+caveat are in `phase2_uq_efficiency_benchmark.md`. Update this entry only after
+the Slurm artifacts and health checks are available.
+
 ## PubMedQA frozen-Probe transfer
 
 ```text

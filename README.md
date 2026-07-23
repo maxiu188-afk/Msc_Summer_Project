@@ -18,6 +18,8 @@ Current Phase-2 tracks: P(True)-Probe (direct P(True) fidelity) and
 Current result: train-only fitting, validation-only feature selection, and one
   held-out test evaluation are complete; PubMedQA Appendix-C context v2 reaches
   72.4% decision accuracy and P(True)-Probe reaches 0.6839 error AUROC
+Current follow-up: an incremental UQ-efficiency smoke/full pair is queued on
+  the 384 valid-labelled BioASQ test questions; no efficiency result exists yet
 ```
 
 ArchEHR-QA remains useful for testing grounded long-form generation, citation
@@ -75,6 +77,14 @@ omitted the article evidence that defines the official decision. See
 `archehr_sebaseline/docs/pubmedqa_frozen_probe_transfer.md` for the frozen
 2x2 Probe-target comparison, complete v1/v2 tables, explanation contract, and
 other UQ scores.
+
+The current in-domain follow-up measures incremental UQ cost after the saved
+main answer exists. Smoke job `5761273` and dependent full job `5761275`
+compare the two block-24/LT Probes (one shared hidden-state replay) with blind
+P(True), ten-sample normalized NLL, discrete SE, and cluster count on all 384
+valid-labelled Phase-2 test questions. The jobs are queued, so no latency,
+GPU-time, token, throughput, or new AUROC value is yet a result. See
+`archehr_sebaseline/docs/phase2_uq_efficiency_benchmark.md`.
 
 ## Active Naming Policy
 

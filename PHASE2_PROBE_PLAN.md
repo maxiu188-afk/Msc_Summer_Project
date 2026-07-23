@@ -27,6 +27,13 @@ accepted for P(True)-Probe training. Accuracy-Probe uses only its frozen
 valid-label subset (train 3,090; validation 384; test 384); P(True)-Probe
 continues to use all 3,930 questions.
 
+The separate incremental-cost comparison is now submitted but has no result:
+smoke job **5761273** covers six labelled test questions and full job
+**5761275** covers all 384, with the full job gated by
+`afterok:5761273`. It compares both shared-replay Probes with blind P(True),
+ten-sample normalized NLL, discrete SE, and cluster count. See
+`archehr_sebaseline/docs/phase2_uq_efficiency_benchmark.md`.
+
 ### First local P(True)-Probe pass (2026-07-20)
 
 `scripts/train_phase2_linear_probes.py` completed a CPU-only first pass over
@@ -202,15 +209,16 @@ Claude judging is a separate post-processing stage. It produces only the binary
 correct/incorrect target for the corresponding low-temperature answer. It does
 not change generation, direct P(True), or hidden-state artifacts.
 
-### Deferred UQ Decision: ten high-temperature samples
+### Approved efficiency comparison: ten high-temperature samples
 
-The core run does **not** assume that ten high-temperature samples will be
-generated. That costly branch is required for multi-sample scores such as SE,
-cluster count, and sampled-answer disagreement, but is not required to define
-or train the two probes. Decide later whether to run it as an optional UQ
-comparison package. If approved, it must use the same frozen split and report
-its additional compute cost separately; it must not change the main answer or
-either supervision target.
+The completed core run did **not** generate ten high-temperature samples.
+That branch is now approved only as a separate efficiency/comparator package
+on the 384 valid-labelled test questions. It supplies ten-sample normalized
+NLL, discrete SE, and cluster count while measuring the extra sampling and NLI
+cost separately from the saved main answer. It does not change either Probe,
+the main answer, the frozen split, or either supervision target. The submitted
+smoke/full jobs and cost contract are recorded in
+`archehr_sebaseline/docs/phase2_uq_efficiency_benchmark.md`.
 
 ### Initial feature contract: hidden states
 
@@ -377,15 +385,18 @@ work is fixed error analysis, not repeated prompt tuning.
    low-temperature answers, respecting the frozen splits.
 5. **Complete — Probe development:** trained/selected P(True)-Probe and Accuracy-Probe on
    train/validation.
-6. **Complete — final in-domain evaluation:** one frozen BioASQ test evaluation with
-   type-stratified comparisons and cost accounting.
+6. **Complete — final in-domain evaluation:** one frozen BioASQ test evaluation
+   with type-stratified performance comparisons.
 7. **Complete — initial transfer evaluation:** ran both frozen Probes on the
    PubMedQA question-only diagnostic and official-context v1 condition; the
    question-only result is now archived.
 8. **Complete — PubMedQA prompt improvement:** added the official Appendix-C
    label definitions once and completed context v2 without changing either
    Probe or tuning on PubMedQA metrics.
-9. **Next — fixed error analysis:** inspect the completed v2 error set,
+9. **Queued — in-domain efficiency comparison:** measure the two shared-replay
+   Probes against selected Phase-1 UQ methods on the 384 labelled test
+   questions; full job 5761275 is gated by smoke job 5761273.
+10. **Next — fixed error analysis:** inspect the completed v2 error set,
    especially official `maybe` regressions, without changing the frozen result.
 
 ## Non-negotiable Boundaries
@@ -394,8 +405,8 @@ work is fixed error analysis, not repeated prompt tuning.
 - Do not train an unsupported multi-target SE/NLL/P(True) probe.
 - Do not let answers, hidden states, P(True), UQ rows, or Claude labels cross
   their manifest split.
-- Do not present optional high-temperature UQ as part of the core run unless it
-  was actually approved and generated.
+- Do not present the approved high-temperature efficiency package as part of
+  the core run, or as a result before its queued jobs and health checks finish.
 - Do not alter the initial `24/32/40/48 × TBG/SLT/LT` feature grid or replace
   the linear baseline after test outcomes are visible; any expansion is a new
   experiment.

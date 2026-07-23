@@ -97,9 +97,17 @@ because it omitted the article evidence defining the official labels. See
 `docs/pubmedqa_frozen_probe_transfer.md`, `../PHASE2_PROBE_PLAN.md`, and
 `docs/experiment_runtime_log.md`.
 
-The current follow-up is fixed error analysis of the completed v2 result,
+The PubMedQA follow-up is fixed error analysis of the completed v2 result,
 especially its 12.7% recall on the minority `maybe` label. This does not reopen
 the prompt or authorize repeated tuning.
+
+A separate in-domain efficiency benchmark is queued on the 384 valid-labelled
+Phase-2 test questions. Smoke job `5761273` gates full job `5761275`. It
+measures the incremental latency, CUDA GPU time, extra generated tokens, and
+throughput of the two block-24/LT Probes, blind P(True), ten-sample normalized
+NLL, discrete SE, and cluster count after the saved main answer exists. There
+is no efficiency result until those jobs and their health checks complete; see
+`docs/phase2_uq_efficiency_benchmark.md`.
 
 New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
 `archehr` prefixes. This does not rename the package, Python imports, or
@@ -199,6 +207,8 @@ scripts/evaluate_bioasq_nli_isambard.sbatch
 scripts/run_bioasq_llm_judge.py
 scripts/run_bioasq_llm_judge.sbatch
 scripts/run_bioasq_isambard.sbatch
+scripts/benchmark_phase2_uq_efficiency.py
+scripts/run_phase2_uq_efficiency_isambard.sbatch
 scripts/runpod_remaining_experiments.sh
 ```
 
@@ -523,6 +533,7 @@ docs/README.md
 docs/bioasq_medical_uq_protocol.md
 docs/bioasq_medical_uq_results_20260718.md
 docs/phase2_bioasq_dataset_split.md
+docs/phase2_uq_efficiency_benchmark.md
 docs/pubmedqa_frozen_probe_transfer.md
 docs/semantic_entropy_generation_protocol.md
 docs/experiment_runtime_log.md

@@ -11,6 +11,10 @@ this directory. Historical material is kept under the repository-level
 - `../../SIMPSON_MEETING_PHASE2_RESULTS_2026-07-23_FINAL.md`: current meeting
   brief with the completed results and proposed remaining research direction.
 - `phase2_bioasq_dataset_split.md`: leakage-safe BioASQ split contract.
+- `phase2_uq_efficiency_benchmark.md`: submitted 384-question incremental-cost
+  comparison of the two Probes, blind P(True), sampled normalized NLL, SE, and
+  cluster count; job state and future output contract are recorded without
+  claiming pending results.
 - `pubmedqa_frozen_probe_transfer.md`: frozen-Probe PubMedQA transfer protocol,
   complete context-v1/context-v2 results, comparison tables, and evidence
   pointers. The question-only result is archived under
