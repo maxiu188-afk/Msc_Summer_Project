@@ -42,8 +42,8 @@ frozen results: P(True)-Probe hard-even L2 logistic block 24/LT, target AUROC
   0.9026; Accuracy-Probe L2 logistic block 24/LT, Claude AUROC 0.8058/AP 0.8884
 local ElasticNet rerun: 2026-07-23, continuous blind P(True) training target,
   validation-selected block 24/SLT; test Spearman 0.6057/MAE 0.2189
-ElasticNet binary ranking: train-even-threshold test AUROC 0.8486/AP 0.8163
-  on 391 SLT-valid questions; no test fitting, selection, or threshold tuning
+correctness-UQ diagnostic: ElasticNet AUROC 0.6532/AP 0.7945 on 382 valid
+  Claude-labelled rows; matched hard-even Probe AUROC 0.7456/AP 0.8362
 cross-dataset follow-up: no-context PubMedQA transfer completed; the separate
   official-context condition is recorded in the next section
 ```

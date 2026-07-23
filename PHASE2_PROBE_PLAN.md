@@ -43,21 +43,9 @@ predictions.
 | Hard-threshold even split, L2 logistic | train uncertainty threshold `1.877536e-06`; 1,568 high / 1,576 low | block 24, LT | AUROC 0.9026; AP 0.8948; Brier 0.1414 |
 | Hard-threshold minimum-within-variance, L2 logistic | train threshold `0.468912`; 433 high / 2,711 low | block 40, LT | AUROC 0.7677; AP 0.3629; Brier 0.1436 |
 | Ridge | continuous uncertainty | block 24, TBG | MAE 0.4378; Spearman 0.2146 |
-| ElasticNet sensitivity check | continuous uncertainty | block 24, SLT; 391 valid test rows | MAE 0.2189; Spearman 0.6057; even-threshold AUROC 0.8486 / AP 0.8163 |
+| ElasticNet sensitivity check | continuous uncertainty | block 24, SLT; 391 valid test rows | MAE 0.2189; Spearman 0.6057 |
 
 These are P(True)-fidelity results, not answer-correctness results.
-
-The ElasticNet AUROC is a supplemental 2026-07-23 evaluation of the continuous
-regressor against the same train-derived even-threshold P(True) target used by
-the final classification Probe. ElasticNet is still fitted to continuous blind
-P(True) uncertainty and selected on validation MAE, then Spearman; neither the
-test labels nor test AUROC affect fitting or selection. Its test AUROC is 0.8486
-on 391 SLT-valid questions (190 high-uncertainty targets), with AP 0.8163.
-Within-type AUROC is 0.7178 factoid, 0.6655 list, and 0.5644 summary. The
-hard-even L2 Probe reaches 0.9029 on the same 391-question subset
-(0.9026 on all 393), so ElasticNet does not replace the frozen Probe. The
-reproducible metric is retained in
-`analysis_outputs/bioasq_phase2_linear_probes_seed31_elasticnet_auc_20260723/elasticnet_even_threshold_test_metrics.csv`.
 
 The final P(True)-Probe is fixed as the **hard-threshold even split, L2
 logistic regression, block 24 LT** model. It has the highest validation AUROC
@@ -106,23 +94,34 @@ and ElasticNet 0.6532 (382 rows because SLT is unavailable for two additional
 valid-label answers). Thus this is preliminary evidence for a distinct
 Accuracy-Probe, not evidence that P(True)-fidelity models recover correctness.
 
-On the same 384 valid test labels (252 incorrect; AP prevalence 0.6563), the
-following is the final fixed-score comparison. It includes the frozen two
-Probes and every collected single-answer UQ; no high-temperature samples, NLI
-clustering, or new generations were introduced. Brier is reported only for
-scores natively in `[0,1]`; it remains a diagnostic against Claude risk, not a
-claim that a non-Claude training target is calibrated for Claude correctness.
+On the valid test labels (252/384 incorrect; AP prevalence 0.6563), the
+following is the final fixed-score comparison. Most scores use all 384 rows;
+ElasticNet uses 382 because SLT is missing for two answers. It includes the
+frozen two Probes, the continuous-regression sensitivity check, and every
+collected single-answer UQ; no high-temperature samples, NLI clustering, or
+new generations were introduced. Brier is reported only for scores natively
+in `[0,1]`; it remains a diagnostic against Claude risk, not a claim that a
+non-Claude training target is calibrated for Claude correctness.
 
 | Score | AUROC | AP | Brier | Notes |
 | --- | ---: | ---: | ---: | --- |
 | Accuracy-Probe, block 24 LT | **0.8058** | **0.8884** | **0.2162** | validation-selected L2 logistic classifier |
 | Direct blind P(True) uncertainty | 0.7900 | 0.8383 | 0.5347 | strongest non-Probe discriminator; poorly calibrated to Claude risk |
 | P(True)-Probe, even hard threshold, block 24 LT | 0.7452 | 0.8357 | 0.3177 | frozen P(True)-fidelity Probe; its Claude result is secondary |
+| ElasticNet continuous P(True)-Probe, block 24 SLT | 0.6532 | 0.7945 | — | continuous P(True) fit; 382 valid rows; secondary correctness-UQ diagnostic |
 | Verbalized confidence uncertainty | 0.6662 | 0.7426 | 0.5557 | 12 discrete score values |
 | Mean token entropy | 0.5583 | 0.7096 | — | single-answer decoder statistic, not a probability |
 | Normalized NLL | 0.5546 | 0.7077 | — | single-answer decoder statistic, not a probability |
 | Max token entropy | 0.5357 | 0.6737 | — | 11 discrete score values, not a probability |
 | Sequence NLL | 0.5304 | 0.6687 | — | single-answer decoder statistic, not a probability |
+
+AUROC 0.9026 for the hard-even Probe is a different result: fidelity to its
+binarized P(True) training target. The correctness-UQ comparison uses Claude
+`incorrect`. On the exact 382 rows available to ElasticNet, the hard-even
+Probe reaches AUROC 0.7456 / AP 0.8362 versus ElasticNet 0.6532 / 0.7945.
+Thus the continuous regressor does not outperform the hard-even Probe as UQ.
+The reproducible cross-target metrics are in
+`analysis_outputs/bioasq_phase2_linear_probes_seed31_elasticnet_uq_auc_20260723/selected_p_true_models_correctness_metrics.csv`.
 | Sample consistency exact | — | — | — | constant at 1.0 with one generation; not evaluable |
 
 ### Post-hoc provenance sidecar

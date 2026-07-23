@@ -144,24 +144,18 @@ the held-out BioASQ test split.
 | --- | --- | --- | --- |
 | Even-split hard threshold | Binary low/high uncertainty; L2 logistic regression | block 24 / LT | **AUROC 0.9026**; AP 0.8948; Brier 0.1414 |
 | Minimum-within-variance threshold | Binary low/high uncertainty; L2 logistic regression | block 40 / LT | AUROC 0.7677; AP 0.3629; Brier 0.1436 |
-| ElasticNet continuous regression | Continuous blind P(True) uncertainty | block 24 / SLT; 391 valid test rows | **Spearman 0.6057**; MAE 0.2189; even-threshold AUROC **0.8486** / AP 0.8163 |
+| ElasticNet continuous regression | Continuous blind P(True) uncertainty | block 24 / SLT; 391 valid test rows | **Spearman 0.6057**; MAE 0.2189 |
 | Ridge continuous regression | Continuous blind P(True) uncertainty | block 24 / TBG | Spearman 0.2146; MAE 0.4378 |
 
 The two hard-threshold variants are classification Probes and are compared
 with AUROC/AP/Brier. Ridge and ElasticNet predict the continuous uncertainty
-score and are primarily compared with Spearman correlation and MAE. A
-supplemental test also ranks the train-derived even-threshold target with the
-unclipped ElasticNet prediction: overall AUROC is 0.8486, with 0.7178 for
-factoid, 0.6655 for list, and 0.5644 for summary. On the exact same 391 valid
-questions, the hard-even L2 Probe reaches 0.9029 AUROC. This evaluation does
-not turn ElasticNet into a classification-trained Probe, and test AUROC was
-not used for model or feature selection. The frozen P(True)-Probe used
-elsewhere in this report remains the even-split hard-threshold model.
+score and are compared with Spearman correlation and MAE. A continuous
+P(True) target has no native classification AUROC unless it is changed into a
+separate binary target. The frozen P(True)-Probe used elsewhere in this report
+remains the even-split hard-threshold model.
 
 The underlying evidence remains available in
-`analysis_outputs/bioasq_phase2_linear_probes_seed31/candidate_metrics.csv`;
-the new binary-ranking evidence is
-`analysis_outputs/bioasq_phase2_linear_probes_seed31_elasticnet_auc_20260723/elasticnet_even_threshold_test_metrics.csv`.
+`analysis_outputs/bioasq_phase2_linear_probes_seed31/candidate_metrics.csv`.
 
 #### Type-stratified fidelity
 
@@ -206,6 +200,7 @@ incorrect, so AUROC is the more informative ranking comparison for that subset.
 | Accuracy-Probe | **0.8058** | **0.8884** | Dedicated correctness target |
 | Direct blind P(True) uncertainty | 0.7900 | 0.8383 | Strongest non-Probe score |
 | P(True)-Probe | 0.7452 | 0.8357 | Secondary cross-target use only |
+| ElasticNet continuous P(True)-Probe | 0.6532 | 0.7945 | Continuous P(True) fit; 382 SLT-valid rows |
 | Verbalized-confidence uncertainty | 0.6662 | 0.7426 | Discrete self-report score |
 | Mean token entropy | 0.5583 | 0.7096 | Weak single-answer statistic |
 | Normalized NLL | 0.5546 | 0.7077 | Weak single-answer statistic |
@@ -215,6 +210,9 @@ incorrect, so AUROC is the more informative ranking comparison for that subset.
 Main interpretation:
 
 - Accuracy-Probe contains correctness information beyond the P(True)-Probe.
+- On the exact 382 rows available to ElasticNet, hard-even P(True)-Probe
+  reaches 0.7456 AUROC versus ElasticNet 0.6532. Continuous regression is
+  therefore weaker, not stronger, for correctness-UQ ranking.
 - P(True)-Probe should not be judged primarily by Claude correctness because
   it was trained to reproduce a different target.
 - The linear baseline is already strong enough that added model complexity is
