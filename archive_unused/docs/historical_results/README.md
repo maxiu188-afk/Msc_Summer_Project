@@ -22,6 +22,9 @@ They remain useful for reproducing prior runs and checking artifact formats.
 - `bioasq_isambard_results_20260715.md`: historical Isambard summary results,
   including the evidence/direct ablation and three-class Claude evaluation.
 - `bioasq_runpod_results_20260713.md`: historical grounded RunPod batch.
+- `pubmedqa_no_context_transfer_20260721.md`: completed question-only PubMedQA
+  transfer archived because the official decision depends on the omitted
+  article evidence; raw artifacts are retained for provenance.
 - `../../results/server_results/`: local raw summary outputs, related analyses,
   manual-review material, and the PubMedQA Level-4 pilot.
 - `../../results/local_outputs/`: local downloaded BioASQ summary run

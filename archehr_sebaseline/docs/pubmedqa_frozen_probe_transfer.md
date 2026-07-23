@@ -1,6 +1,6 @@
 # PubMedQA Frozen-Probe Transfer Protocol
 
-Last updated: 2026-07-22
+Last updated: 2026-07-23
 
 ## Decision and status
 
@@ -13,136 +13,155 @@ dataset for Phase-2 transfer. The local files passed structural checks:
 - there are no duplicate PMIDs or normalized questions; and
 - there is no exact normalized-question overlap with local BioASQ training13b.
 
-Isambard smoke job `5734703` completed `0:0` in 39 seconds with all three answer
-contracts, P(True) rows, hidden-state rows, and transfer outputs present. The
-no-context full job `5739322` then completed 500/500. Its strict
-decision accuracy was only 25% because the model emitted `maybe` 373 times,
-while the official labels contain only 55 `maybe` questions. This distribution
-shift motivated a second, separately named **context-conditioned** run using
-the provided PubMed abstract `CONTEXTS`. Context smoke `5748203` completed
-`0:0` in 1 minute; dependent full job `5748205` completed `0:0` in 37:43.
+The active result is the completed abstract-context prompt version
+`pubmedqa_context_explanation_v2`, which adds the official PubMedQA paper's
+Appendix-C definitions of `yes`, `no`, and `maybe`. The previous abstract-context
+v1 run remains the direct historical baseline. The question-only/no-context run
+is no longer an active result because the official decision is defined from the
+paper's experiments and results; its complete provenance and metrics are
+retained in
+`../../archive_unused/docs/historical_results/pubmedqa_no_context_transfer_20260721.md`.
 
-The context condition changes only the information/prompt condition. It keeps
-the same 500 IDs, model snapshot, answer contract, generation settings, frozen
-Probe bundle, feature position, and BioASQ-derived threshold. The corresponding
-self-report scores are context-conditioned P(True)/confidence and must not be
-silently labelled blind/no-context P(True).
+The v1 and v2 context runs keep the same 500 IDs, PubMed abstracts, Gemma 3 12B
+snapshot, answer contract, generation settings, frozen Probe bundle,
+block-24/LT feature, and BioASQ-derived threshold. No PubMedQA answer, label,
+hidden state, or metric fits or selects a Probe, calibrates a score, or changes
+the threshold.
 
-## Completed transfer results
+## Evidence and execution health
 
-Both full conditions contain 500/500 examples, prompts, generations,
-self-report rows, hidden-state index rows, and evaluation rows. Context hidden
-states have shape `[500,4,3,3840]`; all 500 prompts use
-`pubmedqa_context_explanation_v1`, contain every supplied context paragraph,
-and have zero full-`LONG_ANSWER` leakage. Both conditions use the identical
-frozen Probe bundle SHA-256
-`05c4dee461cdf789af5fc1ca45ef223dbf8fc4eab54d4724e57c59993d129f5a`.
+| Check | Context v1 | Context v2 |
+| --- | --- | --- |
+| Prompt version | `pubmedqa_context_explanation_v1` | `pubmedqa_context_explanation_v2` |
+| Smoke job | `5748203`, `COMPLETED 0:0`, 1:00 | `5750742`, `COMPLETED 0:0`, 0:46 |
+| Full job | `5748205`, `COMPLETED 0:0`, 37:43 | `5750745`, `COMPLETED 0:0`, 40:16 |
+| Complete rows | 500/500 | 500/500 |
+| Hidden states | `[500,4,3,3840]`, BF16 | `[500,4,3,3840]`, BF16 |
+| Parsed leading labels | 500/500 | 500/500 |
+| Full-`LONG_ANSWER` leakage | 0 | 0 |
+| Frozen Probe bundle SHA-256 | `05c4dee4...d129f5a` | `05c4dee4...d129f5a` |
 
-### Answer behaviour
+The complete local evidence snapshots are ignored generated artifacts rather
+than source files:
 
-| Condition | Accuracy | Predicted yes/no/maybe | Yes recall | No recall | Maybe recall |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| No context | 125/500 (25.0%) | 123 / 4 / 373 | 30.1% | 0.6% | 74.5% |
-| PubMed context | 295/500 (59.0%) | 237 / 100 / 163 | 68.8% | 47.9% | 43.6% |
+```text
+outputs/pubmedqa_context_frozen_probe_transfer_full500_seed31_20260722
+analysis_outputs/pubmedqa_context_frozen_probe_transfer_full500_seed31_20260722
+outputs/pubmedqa_context_appendix_c_v2_full500_seed31_20260722
+analysis_outputs/pubmedqa_context_appendix_c_v2_full500_seed31_20260722
+```
 
-On the paired 500 questions, context changed 197 wrong answers to correct and
-27 correct answers to wrong; 98 were correct in both conditions and 178 wrong
-in both. The paired correctness improvement is large (exact McNemar/binomial
-test, `p=4.41e-33`). Context therefore addresses much of the no-context
-distribution failure, especially for `yes` and `no`, but it still predicts
-`maybe` 163 times against only 55 official `maybe` labels and reduces recall on
-that minority label.
+The v2 snapshot contains all prompts, answers, self-report/token UQ rows,
+hidden-state indices, 500 per-question predictions, metrics, metadata, and
+timing. The large hidden-state tensor remains on Isambard and was verified
+there rather than duplicated locally.
 
-### UQ against official decision error
+## Complete answer-quality comparison
 
-`incorrect=1` is the positive risk class. The error prevalence changes from
-75% without context to 41% with context, so AP values are interpretable within
-each condition but should not be compared as prevalence-free improvements.
+The official labels contain 276 `yes`, 169 `no`, and 55 `maybe` questions.
 
-| Score | No-context AUROC | No-context AP | Context AUROC | Context AP |
+| Metric | Context v1 | Context v2 | Change |
+| --- | ---: | ---: | ---: |
+| Correct | 295/500 | **362/500** | **+67** |
+| Strict accuracy | 59.0% | **72.4%** | **+13.4 pp** |
+| Balanced accuracy | 0.5347 | **0.5652** | +0.0305 |
+| Macro-F1 | 0.5211 | **0.5659** | +0.0448 |
+| Weighted-F1 | 0.6367 | **0.7125** | +0.0758 |
+| Predicted `yes/no/maybe` | 237 / 100 / 163 | **298 / 164 / 38** | closer to 276 / 169 / 55 |
+| `yes` recall | 68.8% | **84.1%** | +15.2 pp |
+| `no` recall | 47.9% | **72.8%** | +24.9 pp |
+| `maybe` recall | **43.6%** | 12.7% | -30.9 pp |
+| Error prevalence | 41.0% | **27.6%** | -13.4 pp |
+
+The paired 500-question comparison is:
+
+| Paired outcome | Count |
+| --- | ---: |
+| Correct in both | 274 |
+| Correct only in v1 | 21 |
+| Correct only in v2 | **88** |
+| Wrong in both | 117 |
+| Leading label changed | 134 |
+
+The exact paired McNemar/binomial test gives `p=6.11e-11`. By official label,
+v2 has a net gain of 42 correct `yes` questions and 42 correct `no` questions,
+offset by a net loss of 17 correct `maybe` questions. The primary result is
+therefore a large and statistically clear overall improvement, with reduced
+minority-class `maybe` recall retained as a type-specific limitation rather
+than treated as a reason to reject v2.
+
+## UQ against official decision error
+
+`incorrect=1` is the positive risk class. AP changes partly because error
+prevalence falls from 0.410 in v1 to 0.276 in v2, so AUROC is the cleaner
+cross-version ranking comparison.
+
+| Score | v1 AUROC | v1 AP | v2 AUROC | v2 AP |
 | --- | ---: | ---: | ---: | ---: |
-| Verbalized-confidence uncertainty | **0.7757** | **0.8766** | **0.7933** | **0.6939** |
-| Direct/context-conditioned P(True) uncertainty | 0.7030 | 0.8431 | 0.6800 | 0.5625 |
-| Frozen P(True)-Probe | 0.4188 | 0.7001 | 0.6630 | 0.5667 |
-| Frozen Accuracy-Probe | 0.5396 | 0.7718 | 0.5960 | 0.5080 |
-| Sequence NLL | 0.5287 | 0.7715 | 0.5716 | 0.4617 |
-| Normalized NLL | 0.5097 | 0.7634 | 0.5668 | 0.4658 |
-| Mean token entropy | 0.5012 | 0.7561 | 0.5668 | 0.4646 |
-| Max token entropy | 0.5053 | 0.7534 | 0.5603 | 0.4431 |
+| Frozen P(True)-Probe | 0.6630 | 0.5667 | **0.6839** | **0.4519** |
+| Blind P(True) uncertainty | 0.6800 | 0.5625 | 0.6490 | 0.4210 |
+| Verbalized-confidence uncertainty | **0.7933** | **0.6939** | 0.6402 | 0.4164 |
+| Frozen Accuracy-Probe | 0.5960 | 0.5080 | 0.5901 | 0.3916 |
+| Sequence NLL | 0.5716 | 0.4617 | 0.5400 | 0.3025 |
+| Normalized NLL | 0.5668 | 0.4658 | 0.5424 | 0.3075 |
+| Mean token entropy | 0.5668 | 0.4646 | 0.5423 | 0.3080 |
+| Max token entropy | 0.5603 | 0.4431 | 0.5372 | 0.2914 |
 
-Verbalized confidence is the strongest error-ranking score in both prompt
-conditions. Context makes the frozen P(True)-Probe useful for correctness
-ranking (`0.6630` rather than the no-context inverse-direction `0.4188`) and it
-outperforms the frozen Accuracy-Probe (`0.5960`). The Accuracy-Probe therefore
-shows only weak cross-dataset transfer despite its strong in-domain BioASQ
-result. Token-only scores improve above chance with context but remain weak.
+The v2 P(True)-Probe is the best retained error-ranking score. Its AUROC rises
+from 0.6630 to 0.6839 while the answer error count falls from 205 to 138.
+Verbalized confidence falls from 0.7933 to 0.6402: the prompt improvement
+removes many errors that were easy for self-reported confidence to identify,
+leaving a smaller and harder error set. Token-only UQ remains weak.
 
-None of the probability-like scores is calibrated to PubMedQA error without
-target calibration, which is intentionally forbidden here. In the context
-condition their Brier scores are 0.3206 (verbal), 0.4019 (P(True)), 0.3253
-(P(True)-Probe), and 0.3463 (Accuracy-Probe), all worse than the prevalence-only
-constant baseline `0.41 × 0.59 = 0.2419`. Treat them as fixed ranking scores,
-not calibrated PubMedQA probabilities.
+### Calibration
 
-### Frozen Probe fidelity to the P(True)-threshold target
-
-The unchanged BioASQ threshold marks 145/500 no-context and 201/500 context
-P(True) uncertainties as high. Context changes the self-report information
-condition, so this is a frozen-threshold teacher target under context shift,
-not the original blind/no-context target.
-
-| Score | No-context AUROC/AP | Context AUROC/AP |
+| Probability-like score | v1 Brier | v2 Brier |
 | --- | ---: | ---: |
-| Verbalized-confidence uncertainty | 0.6829 / 0.3977 | 0.6663 / 0.5357 |
-| Frozen P(True)-Probe | **0.5796 / 0.3382** | **0.6121 / 0.5354** |
-| Frozen Accuracy-Probe | 0.5520 / 0.3313 | 0.5832 / 0.5155 |
-| Sequence NLL | 0.5463 / 0.3342 | 0.5293 / 0.4298 |
-| Normalized NLL | 0.5271 / 0.3246 | 0.5291 / 0.4458 |
-| Mean token entropy | 0.5164 / 0.3138 | 0.5307 / 0.4452 |
-| Max token entropy | 0.4910 / 0.2961 | 0.5066 / 0.4054 |
+| Frozen P(True)-Probe | 0.3253 | 0.3127 |
+| Frozen Accuracy-Probe | 0.3463 | 0.3815 |
+| Blind P(True) uncertainty | 0.4019 | 0.2659 |
+| Verbalized-confidence uncertainty | 0.3206 | **0.2316** |
+| Prevalence-only constant | **0.2419** | **0.1998** |
 
-The P(True)-Probe retains only modest fidelity to its teacher target across the
-dataset shift (`0.6121` AUROC with context versus `0.9026` on held-out BioASQ).
-Its stronger `0.6630` association with PubMedQA decision error should therefore
-be described as cross-target usefulness, not preservation of the original
-BioASQ mapping.
+Every fixed score remains worse than the corresponding prevalence-only Brier
+baseline. These outputs are ranking scores, not calibrated PubMedQA error
+probabilities; target calibration remains intentionally forbidden.
 
-## Interpretation and next prompt experiment
+## Frozen target and continuous P(True) fidelity
 
-The context result is consistent with the expected transfer ordering:
-P(True)-Probe captures a source-model uncertainty signal and ranks PubMedQA
-errors better than the BioASQ/Claude-trained Accuracy-Probe, whose correctness
-mapping is more dataset- and answer-contract-specific. This is supportive
-evidence, not a claim that P(True)-Probe must dominate Accuracy-Probe on every
-external dataset.
+The unchanged BioASQ threshold marks 201/500 v1 and 202/500 v2 blind P(True)
+uncertainties as high.
 
-All fixed UQ methods remain weaker on PubMedQA than their principal BioASQ
-comparators. The clearest task-level failure is excessive `maybe` prediction:
-context reduces it from 373 to 163 but the official test contains only 55
-`maybe` labels. This is the leading hypothesis for why PubMedQA correctness and
-UQ transfer remain limited, but the two completed conditions do not by
-themselves prove that output-label bias causes the AUROC reduction.
+| Score | v1 frozen-target AUROC/AP | v2 frozen-target AUROC/AP |
+| --- | ---: | ---: |
+| Frozen P(True)-Probe | **0.6121 / 0.5354** | 0.5899 / 0.5140 |
+| Frozen Accuracy-Probe | 0.5832 / 0.5155 | **0.6290 / 0.5499** |
+| Verbalized-confidence uncertainty | 0.6663 / 0.5357 | 0.6609 / 0.5458 |
+| Sequence NLL | 0.5293 / 0.4298 | 0.5340 / 0.4215 |
+| Normalized NLL | 0.5291 / 0.4458 | 0.5324 / 0.4127 |
+| Mean token entropy | 0.5307 / 0.4452 | 0.5416 / 0.4253 |
+| Max token entropy | 0.5066 / 0.4054 | 0.5436 / 0.4293 |
 
-The next experiment will improve the **generation prompt**, not either Probe:
+Against continuous blind P(True) uncertainty, P(True)-Probe
+Spearman correlation changes from 0.2395 to 0.1559 and Accuracy-Probe from
+0.1787 to 0.2440. Neither frozen Probe preserves a strong numerical mapping to
+the self-report score across this dataset/prompt shift. The v2 P(True)-Probe's
+0.6839 correctness AUROC is therefore cross-target error-ranking usefulness,
+not preserved source-target fidelity.
 
-1. Freeze the two completed official-test conditions and do not use their
-   per-example labels or UQ outcomes to choose another prompt.
-2. Use the other 500 PQA-L records in `ori_pqal.json` (IDs absent from
-   `test_ground_truth.json`) as the prompt-development pool. Create a
-   deterministic label-stratified development/holdout split before generation.
-3. Compare a small, predeclared prompt family that clarifies that `maybe` is
-   reserved for genuinely inconclusive or mixed abstract evidence and asks for
-   the study conclusion rather than generic biomedical plausibility.
-4. Select the prompt using development-set strict decision accuracy and label
-   distribution diagnostics, without reading Probe/UQ performance.
-5. Freeze the chosen prompt, run the held-out portion once, and apply the same
-   frozen block-24/LT Probes with no fitting, recalibration, threshold tuning,
-   or feature selection.
+## Result interpretation
 
-Because the official 500 test outcomes have already informed the motivation,
-any further run on those same IDs is adaptive/exploratory and must not be
-presented as a fresh untouched confirmation. A clean confirmatory claim must
-come from the pre-frozen non-test holdout or another independent dataset.
+The Appendix-C prompt improvement is successful overall and v2 is the current
+main PubMedQA context result. It increases accuracy, balanced accuracy,
+Macro-F1, Weighted-F1, and the match between predicted and official label
+counts without changing the model, data, generation settings, Probes,
+threshold, or evaluator.
+
+The remaining limitation is specific rather than global: v2 under-predicts the
+minority `maybe` label. A fixed manual review should focus on the 18 official
+`maybe` questions that v1 classified correctly and v2 changed to `yes` or
+`no`. This is error analysis of the completed result, not authorization for
+repeated prompt tuning.
 
 ## What “transfer” means
 
@@ -187,8 +206,9 @@ BioASQ test score vectors with maximum absolute difference `5.551e-17`.
 
 ## Target answer and explanation contract
 
-PubMedQA generation is no-evidence to match the BioASQ Phase-2 inference
-condition. The model sees the question only and must:
+The active PubMedQA result supplies the official PubMed abstract context to
+match the evidence from which the dataset decision was annotated. The model
+must:
 
 1. start with exactly `yes`, `no`, or `maybe`; and
 2. provide a concise one-to-three-sentence explanation.
@@ -206,19 +226,25 @@ Claude alignment as factual-quality supervision, inspect result behaviour and
 manually review a fixed subset. Claude outputs must remain separate artifacts
 and cannot alter this transfer experiment.
 
-The context rerun uses prompt version `pubmedqa_context_explanation_v1`. It
+The historical context baseline uses prompt version
+`pubmedqa_context_explanation_v1`. It
 places the official `CONTEXTS` paragraphs under `PubMed abstract context` and
 requires the decision/explanation to use only that context. `LONG_ANSWER` and
 the official decision remain evaluation-only. All 500 examples have context;
 local/remote preflight found zero `LONG_ANSWER` exposure, and the longest
 rendered context prompt is 3,147 characters.
 
+The completed current run uses `pubmedqa_context_explanation_v2`. It changes
+only the prompt by adding the official Appendix-C `yes`/`no`/`maybe` criteria
+summarized above; all other inputs, model settings, frozen-Probe settings, and
+evaluation contracts remain unchanged. The v1 result remains the direct
+historical baseline.
+
 ## Other UQ comparisons
 
 The same single answer supplies:
 
-- direct blind P(True) uncertainty in the no-context condition, or the
-  separately named context-conditioned P(True) uncertainty;
+- blind P(True) uncertainty;
 - verbalized-confidence uncertainty;
 - sequence NLL and normalized NLL;
 - mean token entropy and max token entropy; and

@@ -16,8 +16,8 @@ Latest validated run: Phase-2 3,930-question single-answer collection and
 Current Phase-2 tracks: P(True)-Probe (direct P(True) fidelity) and
   Claude-label Accuracy-Probe (answer correctness)
 Current result: train-only fitting, validation-only feature selection, and one
-  held-out test evaluation are complete; both PubMedQA no-context and
-  context-conditioned frozen-Probe transfer runs have completed
+  held-out test evaluation are complete; PubMedQA Appendix-C context v2 reaches
+  72.4% decision accuracy and P(True)-Probe reaches 0.6839 error AUROC
 ```
 
 ArchEHR-QA remains useful for testing grounded long-form generation, citation
@@ -63,19 +63,18 @@ The final P(True)-Probe is a train-even-threshold L2 logistic model at block
 24/LT; it reaches 0.9026 AUROC against its P(True) target. The final
 Accuracy-Probe is also block 24/LT and reaches 0.8058 AUROC / 0.8884 AP for
 Claude incorrect, ahead of direct blind P(True) at 0.7900 / 0.8383. No complex
-Probe is justified by this first pass; the next experiment is frozen-model
-cross-dataset transfer, where P(True)-Probe is the primary hypothesis. The
-no-context PubMedQA run showed a strong `maybe` bias and only 25% decision
-accuracy. Supplying official abstract context increased accuracy to 59%;
-verbal confidence was the best error-ranking UQ (AUROC 0.7933), followed by
-context-conditioned P(True) (0.6800), the frozen P(True)-Probe (0.6630), and
-the frozen Accuracy-Probe (0.5960). See
+Probe is justified by this first pass. The completed frozen-model cross-dataset
+transfer used P(True)-Probe as the primary hypothesis. The current PubMedQA
+Appendix-C context v2 result reaches 72.4% strict accuracy, up from 59.0% for
+context v1, with Macro-F1 improving from 0.5211 to 0.5659. P(True)-Probe is the
+strongest v2 error-ranking score at 0.6839 AUROC / 0.4519 AP, followed by
+blind P(True) at 0.6490 / 0.4210 and verbalized confidence at
+0.6402 / 0.4164. The question-only PubMedQA result is archived because it
+omitted the article evidence that defines the official decision. See
 `PHASE2_PROBE_PLAN.md` and
 `archehr_sebaseline/docs/pubmedqa_frozen_probe_transfer.md` for the frozen
-2x2 Probe-target comparison, explanation contract, and other UQ scores.
-The next experiment repairs the PubMedQA prompt/label distribution on a
-separate development/holdout split; it does not adapt either Probe or reuse the
-already inspected official test as a fresh confirmatory set.
+2x2 Probe-target comparison, complete v1/v2 tables, explanation contract, and
+other UQ scores.
 
 ## Active Naming Policy
 
@@ -111,6 +110,7 @@ These root-level files are intentionally kept at the workspace level:
 ```text
 PHASE2_PROBE_PLAN.md
 ISAMBARD_COMMANDS.md
+SIMPSON_MEETING_PHASE2_RESULTS_2026-07-23_FINAL.md
 ```
 
 Their roles are:
@@ -119,6 +119,9 @@ Their roles are:
   collection gates, and evaluation boundaries.
 - `ISAMBARD_COMMANDS.md`: common local and Isambard operational commands;
   historical launch procedures are kept only under `archive_unused/`.
+- `SIMPSON_MEETING_PHASE2_RESULTS_2026-07-23_FINAL.md`: current meeting brief
+  covering the completed Phase-2 BioASQ results, PubMedQA v2 transfer, and
+  proposed remaining research direction.
 
 ## Active Project
 

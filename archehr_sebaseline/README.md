@@ -86,19 +86,20 @@ uses hard-threshold-even L2 logistic regression at block 24/LT (P(True)-target
 AUROC 0.9026); Accuracy-Probe uses L2 logistic regression at block 24/LT
 (Claude-incorrect AUROC 0.8058, AP 0.8884). The 72 blank Claude labels are
 excluded only from Accuracy-Probe (3,090/384/384 valid train/validation/test
-rows). Both PubMedQA transfer conditions are complete. No context produced 25%
-strict accuracy and 373 `maybe` outputs; official abstract context raised
-accuracy to 59% and reduced `maybe` to 163. In the context condition, verbal
-confidence ranks errors best (AUROC 0.7933), followed by context-conditioned
-P(True) (0.6800), frozen P(True)-Probe (0.6630), and frozen Accuracy-Probe
-(0.5960). Both conditions retain explained `yes/no/maybe` answers and use the
-same frozen Probes without target fitting. See
+rows). The current PubMedQA Appendix-C context v2 result reaches 72.4% strict
+accuracy, compared with 59.0% for context v1, and improves Macro-F1 from 0.5211
+to 0.5659. Frozen P(True)-Probe is the strongest v2 error-ranking score
+(AUROC 0.6839, AP 0.4519), followed by blind P(True) (0.6490 /
+0.4210), verbalized confidence (0.6402 / 0.4164), and frozen Accuracy-Probe
+(0.5901 / 0.3916). Both context versions use the same 500 IDs, model settings,
+and frozen Probes without target fitting. The question-only result is archived
+because it omitted the article evidence defining the official labels. See
 `docs/pubmedqa_frozen_probe_transfer.md`, `../PHASE2_PROBE_PLAN.md`, and
 `docs/experiment_runtime_log.md`.
 
-The next planned PubMedQA step changes only the prompt. It will use a frozen
-development/holdout split from the 500 non-test PQA-L records, restrict `maybe`
-to genuinely inconclusive/mixed evidence, and leave both Probes unchanged.
+The current follow-up is fixed error analysis of the completed v2 result,
+especially its 12.7% recall on the minority `maybe` label. This does not reopen
+the prompt or authorize repeated tuning.
 
 New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
 `archehr` prefixes. This does not rename the package, Python imports, or

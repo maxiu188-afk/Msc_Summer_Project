@@ -124,7 +124,8 @@ def main() -> int:
     )
     evidence_mode = str(run_metadata.get("generation", {}).get("evidence_mode") or "none")
     context_conditioned = evidence_mode != "none"
-    p_true_score_name = (
+    p_true_score_name = "blind_p_true_uncertainty"
+    legacy_p_true_score_name = (
         "context_conditioned_p_true_uncertainty"
         if context_conditioned
         else "direct_blind_p_true_uncertainty"
@@ -173,6 +174,8 @@ def main() -> int:
             "label_parse_valid": str(predicted_label is not None).lower(),
             "incorrect": int(predicted_label != gold_label),
             "p_true_blind_uncertainty": uncertainty,
+            # Retain the old condition-specific field for artifact compatibility.
+            legacy_p_true_score_name: uncertainty,
             p_true_score_name: uncertainty,
             "p_true_high_frozen_threshold": int(uncertainty >= p_true_probe.target_threshold),
             "p_true_probe_score": probe_scores["p_true_probe"].get(example_id, ""),

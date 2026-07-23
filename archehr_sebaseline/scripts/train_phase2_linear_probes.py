@@ -31,6 +31,7 @@ if str(SRC_DIR) not in sys.path:
 from archehr_sebaseline.phase2_probe import (
     ThresholdSpec,
     binary_metrics,
+    binary_ranking_metrics,
     continuous_metrics,
     fit_threshold,
 )
@@ -337,6 +338,49 @@ def _metric_rows(
     }
 
 
+def _p_true_model_correctness_ranking_row(
+    *,
+    candidate: Candidate,
+    scores: np.ndarray,
+    incorrect_by_id: dict[str, int],
+    subset: str,
+    mask: np.ndarray,
+) -> dict[str, object]:
+    eligible = np.asarray(
+        [
+            keep and example_id in incorrect_by_id
+            for example_id, keep in zip(candidate.test_ids, mask)
+        ],
+        dtype=bool,
+    )
+    labels = np.asarray(
+        [incorrect_by_id[example_id] for example_id, keep in zip(candidate.test_ids, eligible) if keep],
+        dtype=np.int64,
+    )
+    metrics = binary_ranking_metrics(labels, scores[eligible])
+    return {
+        "track": "p_true",
+        "analysis": candidate.analysis,
+        "fit_target": (
+            "continuous_blind_p_true_uncertainty"
+            if candidate.analysis in {"ridge", "elasticnet"}
+            else candidate.analysis
+        ),
+        "evaluation_target": "claude_answer_incorrect",
+        "split": "test",
+        "subset": subset,
+        "transformer_block": candidate.transformer_block,
+        "token_position": candidate.token_position,
+        "model": candidate.model_name,
+        "num_examples": int(np.sum(eligible)),
+        "num_positive": int(np.sum(labels)),
+        "auroc": metrics["auroc"],
+        "average_precision": metrics["average_precision"],
+        "test_used_for_fitting_or_selection": "false",
+        "diagnostic_only": "true",
+    }
+
+
 def _select_candidate(candidates: list[Candidate], *, binary: bool) -> Candidate:
     if not candidates:
         raise ValueError("No valid feature candidates were available.")
@@ -520,6 +564,20 @@ def main() -> int:
     prediction_rows: list[dict[str, object]] = []
     selected_summary: list[dict[str, object]] = []
     frozen_export_specs: list[dict[str, object]] = []
+    p_true_model_correctness_rows: list[dict[str, object]] = []
+    incorrect_by_id: dict[str, int] = {}
+    if args.include_accuracy_probe:
+        assert data["test"].incorrect is not None
+        assert data["test"].accuracy_label_valid is not None
+        incorrect_by_id = {
+            example_id: int(incorrect)
+            for example_id, incorrect, valid in zip(
+                data["test"].example_ids,
+                data["test"].incorrect,
+                data["test"].accuracy_label_valid,
+            )
+            if valid
+        }
     for candidate, binary in selected:
         # Test predictions are deliberately made only after validation has fixed
         # this candidate.  Other candidates never receive a test metric.
@@ -543,6 +601,28 @@ def main() -> int:
                     binary=binary, subset=bioasq_type,
                 )
             )
+        if candidate.analysis != "accuracy" and incorrect_by_id:
+            overall_mask = np.ones(len(candidate.test_target), dtype=bool)
+            p_true_model_correctness_rows.append(
+                _p_true_model_correctness_ranking_row(
+                    candidate=candidate,
+                    scores=test_scores,
+                    incorrect_by_id=incorrect_by_id,
+                    subset="overall",
+                    mask=overall_mask,
+                )
+            )
+            for bioasq_type in sorted(set(candidate.test_types)):
+                mask = np.asarray([value == bioasq_type for value in candidate.test_types])
+                p_true_model_correctness_rows.append(
+                    _p_true_model_correctness_ranking_row(
+                        candidate=candidate,
+                        scores=test_scores,
+                        incorrect_by_id=incorrect_by_id,
+                        subset=bioasq_type,
+                        mask=mask,
+                    )
+                )
         selected_summary.append({
             "track": track, "analysis": candidate.analysis, "model": candidate.model_name,
             "transformer_block": candidate.transformer_block, "token_position": candidate.token_position,
@@ -576,7 +656,7 @@ def main() -> int:
             })
 
     config = {
-        "schema_version": "phase2_linear_probe_v1",
+        "schema_version": "phase2_linear_probe_v2",
         "random_seed": args.random_seed,
         "run_dir": str(args.run_dir.resolve()),
         "input_artifacts": {
@@ -594,6 +674,13 @@ def main() -> int:
         "selection": {
             "binary": "validation AUROC, then lower Brier; no test candidate metrics are written",
             "continuous": "validation MAE, then higher Spearman; no test candidate metrics are written",
+        },
+        "p_true_model_uq_evaluation": {
+            "evaluation_target": "claude_answer_incorrect",
+            "scores": "selected P(True)-target model outputs",
+            "metrics": ["auroc", "average_precision"],
+            "test_used_for_fitting_or_selection": False,
+            "diagnostic_only": True,
         },
         "accuracy_probe_included": args.include_accuracy_probe,
         "accuracy_label_policy": (
@@ -636,6 +723,12 @@ def main() -> int:
         overwrite=args.overwrite,
     )
     write_csv(args.output_dir / "candidate_metrics.csv", metric_rows, overwrite=args.overwrite)
+    if p_true_model_correctness_rows:
+        write_csv(
+            args.output_dir / "selected_p_true_models_correctness_metrics.csv",
+            p_true_model_correctness_rows,
+            overwrite=args.overwrite,
+        )
     write_csv(args.output_dir / "selected_test_predictions.csv", prediction_rows, overwrite=args.overwrite)
     print(f"wrote {len(metric_rows)} metrics and {len(prediction_rows)} selected test predictions to {args.output_dir}")
     return 0
