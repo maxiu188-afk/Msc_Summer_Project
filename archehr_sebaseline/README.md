@@ -75,7 +75,7 @@ are train-side reference examples; an exact-question-grouped, type-stratified
 manifest creates the remaining train/validation/test split. See
 `docs/phase2_bioasq_dataset_split.md`.
 
-The active research plan is the root `PHASE2_PROBE_PLAN.md`: P(True)-Probe
+The active research plan is the root `../PHASE2_PROBE_PLAN.md`: P(True)-Probe
 approximates direct blind P(True), while Accuracy-Probe predicts the binary
 Claude correctness label. The initial collection contract is fixed at blocks
 `24/32/40/48` and positions `TBG/SLT/LT`; high-temperature multi-sample UQ
@@ -97,9 +97,46 @@ because it omitted the article evidence defining the official labels. See
 `docs/pubmedqa_frozen_probe_transfer.md`, `../PHASE2_PROBE_PLAN.md`, and
 `docs/experiment_runtime_log.md`.
 
-The current follow-up is fixed error analysis of the completed v2 result,
+The PubMedQA follow-up is fixed error analysis of the completed v2 result,
 especially its 12.7% recall on the minority `maybe` label. This does not reopen
 the prompt or authorize repeated tuning.
+
+The in-domain efficiency benchmark is complete on the 384 valid-labelled
+Phase-2 test questions. Smoke job `5761273` passed; full job `5761275` failed
+before model loading because of a nonexistent node-local temporary directory,
+and replacement job `5773786` then completed in `03:31:33` with its health
+check passing. One block-24/LT Probe takes about `60.5 ms/question`, both
+jointly `60.54 ms`, blind P(True) `154.4 ms`, ten-sample normalized NLL
+`30.55 s`, and discrete SE/cluster count `32.75 s`. Both Probes generate zero
+tokens; blind P(True) also generates no free-running tokens but scores fixed
+`True` and `False` continuations in two LM calls. The full AUROC/AP, GPU time,
+token count, and throughput tables are in
+`docs/phase2_uq_efficiency_benchmark.md`.
+
+Phase-2 is now complete. On the same 384 test questions, Accuracy-Probe minus
+blind P(True) has AUROC difference `+0.01584` with paired-bootstrap 95% CI
+`[-0.03890, 0.07173]`, so the point-estimate advantage is not statistically
+resolved. The one validation-fitted two-Probe fusion reaches test AUROC
+`0.8125`, AP `0.8871`, and Brier `0.1688`; its small mixed change versus
+Accuracy-Probe remains exploratory. The frozen protocol and complete tables
+are in `docs/phase2_probe_completion_statistics.md`.
+
+The post-Simpson main line now studies the conditions under which Semantic
+Entropy or blind P(True) performs better. After the current
+efficiency/bootstrap/fusion completion, the next experiment is a paired
+BioASQ-summary prompt intervention. The shorter condition adds only:
+
+```text
+Keep the answer to one or two brief but complete sentences.
+Include only information needed to answer the question, without extra background.
+```
+
+It has no word/token cap or hard truncation, and all other generation, UQ, NLI,
+and judging settings stay fixed. A later Claude-versus-NLI reclustering stage
+is conditional and diagnostic only: it tests whether NLI is a major SE
+bottleneck, not whether Claude-SE should be deployed. Any optional model-scale
+work compares SE and blind P(True) without training additional Probes. See
+`../PHASE2_PROBE_PLAN.md`.
 
 New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
 `archehr` prefixes. This does not rename the package, Python imports, or
@@ -199,6 +236,8 @@ scripts/evaluate_bioasq_nli_isambard.sbatch
 scripts/run_bioasq_llm_judge.py
 scripts/run_bioasq_llm_judge.sbatch
 scripts/run_bioasq_isambard.sbatch
+scripts/benchmark_phase2_uq_efficiency.py
+scripts/run_phase2_uq_efficiency_isambard.sbatch
 scripts/runpod_remaining_experiments.sh
 ```
 
@@ -523,6 +562,7 @@ docs/README.md
 docs/bioasq_medical_uq_protocol.md
 docs/bioasq_medical_uq_results_20260718.md
 docs/phase2_bioasq_dataset_split.md
+docs/phase2_uq_efficiency_benchmark.md
 docs/pubmedqa_frozen_probe_transfer.md
 docs/semantic_entropy_generation_protocol.md
 docs/experiment_runtime_log.md

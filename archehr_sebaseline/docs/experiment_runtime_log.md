@@ -51,6 +51,68 @@ cross-dataset follow-up: no-context PubMedQA transfer completed; the separate
 The server collection is complete. Probe fitting is local and consumes the
 saved artifacts only; it does not add an Isambard allocation.
 
+## Phase-2 UQ efficiency benchmark
+
+```text
+submitted: 2026-07-23; replacement submitted 2026-07-24
+status: complete; full artifact health_check PASS
+smoke job: 5761273, COMPLETED 0:0 in 00:04:05; six questions; health_check PASS
+first full job: 5761275, FAILED 1:0 in 00:00:19 before model loading because
+  the node-provided TMPDIR did not exist; no benchmark rows
+fix: batch script exports a job-specific temporary directory under SCRATCHDIR;
+  incomplete output retained with suffix _failed_job5761275
+replacement full job: 5773786, COMPLETED 0:0 in 03:31:33; 384/384 questions;
+  no dependency because the accepted smoke was reused
+cost boundary: incremental UQ work after the saved T=0.1 main answer exists;
+  common Gemma load and original answer generation excluded from steady state
+selection: Phase-2 test only, 158 factoid / 103 list / 123 summary;
+  252 Claude-incorrect / 132 correct
+Probes: frozen block-24/LT P(True)-Probe and Accuracy-Probe; one hidden-state
+  replay shared by both CPU linear heads; zero extra generated tokens;
+  60.50/60.40 ms per question and 60.54 ms jointly
+blind P(True): 154.37 ms per question, zero freely generated tokens, but two
+  teacher-forced fixed-continuation LM calls per question
+original UQ comparators: blind P(True), ten-sample normalized NLL, discrete SE,
+  and cluster count; verbalized confidence and weaker Phase-1 variants excluded
+sampling / NLI: ten T=1.0 samples, top_p=0.9, top_k=50, max_new_tokens=192;
+  pritamdeka/PubMedBERT-MNLI-MedNLI with the Phase-1 type-specific rules
+reported cost fields: mean/median/p95 latency, CUDA GPU time, extra generated
+  tokens, question/token throughput, causal-LM/NLI calls, and NLI load time
+performance: Accuracy-Probe 0.8058/0.8884 AUROC/AP; blind P(True)
+  0.7900/0.8383; discrete SE 0.7484/0.8446; P(True)-Probe 0.7452/0.8357
+sampling cost: normalized NLL 30.55 s/question; SE 32.75 s/question;
+  191,595 shared generated tokens, 498.95/question
+score repair: job 5773786 initially inverted both already-uncertainty-positive
+  Probe heads; saved scores were repaired without GPU rerun, and original
+  files are retained under archive_probe_direction_pre_fix
+measured benchmark runtime: 03:31:04 internal, versus historical planning
+  projection 02:47--03:04
+```
+
+The complete cost boundary, sharing rules, result tables, and correction
+provenance are in `phase2_uq_efficiency_benchmark.md`.
+
+## Phase-2 statistical completion
+
+```text
+completed: 2026-07-25
+compute: local CPU analysis of saved validation/test artifacts only; no GPU,
+  generation, NLI, or Claude call
+rows: 384 valid-labelled validation questions and 384 test questions
+paired bootstrap: Accuracy-Probe minus blind P(True) test AUROC +0.015843;
+  20,000/20,000 valid resamples; 95% CI [-0.038897, 0.071729]
+fusion: StandardScaler + L2 logistic regression on validation P(True)-Probe
+  and Accuracy-Probe scores, then one frozen test evaluation
+fusion test: AUROC 0.8125, AP 0.8871, Brier 0.1688
+Accuracy-Probe test: AUROC 0.8058, AP 0.8884, Brier 0.2162
+interpretation: Accuracy-Probe advantage over blind P(True) is not
+  statistically resolved; fusion is exploratory and not a new main model
+output: analysis_outputs/bioasq_phase2_probe_completion_20260725
+```
+
+The protocol, coefficients, input hashes, complete metrics, and Phase-2
+completion boundary are in `phase2_probe_completion_statistics.md`.
+
 ## PubMedQA frozen-Probe transfer
 
 ```text

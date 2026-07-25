@@ -27,6 +27,31 @@ accepted for P(True)-Probe training. Accuracy-Probe uses only its frozen
 valid-label subset (train 3,090; validation 384; test 384); P(True)-Probe
 continues to use all 3,930 questions.
 
+The separate incremental-cost comparison is complete.
+Smoke job **5761273** completed its six labelled test questions in `00:04:05`
+and passed the artifact health check. The first 384-question job **5761275**
+then failed during Python startup because its node exposed a nonexistent local
+temporary directory; it produced no benchmark rows. The batch script now
+creates a job-specific temporary directory under `$SCRATCHDIR`; replacement
+full job **5773786** completed in `03:31:33` and passed its 384-question health
+check. Both shared-replay Probes take about `60.5 ms/question`, blind P(True)
+`154.4 ms`, ten-sample normalized NLL `30.55 s`, and SE/cluster count
+`32.75 s`. Both Probes jointly cost `60.54 ms`, confirming that their CPU heads
+are negligible after one replay. Blind P(True) generates no free-running output
+tokens but scores two fixed continuations per question in two causal-LM calls.
+See
+`archehr_sebaseline/docs/phase2_uq_efficiency_benchmark.md`.
+
+The remaining Phase-2 statistics are also complete. On the same 384 test
+questions, Accuracy-Probe minus blind P(True) has AUROC difference `+0.01584`
+with paired-bootstrap 95% CI `[-0.03890, 0.07173]`; the interval includes zero.
+The one pre-declared validation-fitted two-Probe logistic fusion reaches test
+AUROC `0.8125`, AP `0.8871`, and Brier `0.1688`, versus Accuracy-Probe
+`0.8058/0.8884/0.2162`. The small AUROC increase and slightly lower AP are
+retained as an exploratory complementarity diagnostic, not a new main model.
+See
+`archehr_sebaseline/docs/phase2_probe_completion_statistics.md`.
+
 ### First local P(True)-Probe pass (2026-07-20)
 
 `scripts/train_phase2_linear_probes.py` completed a CPU-only first pass over
@@ -142,9 +167,18 @@ asks a different question: can a probe of the source model's hidden states
 recover either its direct blind P(True) uncertainty or the correctness of its
 low-temperature answer at lower inference cost?
 
-This is no longer an SE-baseline stage. Semantic Entropy remains an optional
-comparison score, particularly for list questions, but it is not the organising
-target of this phase.
+The post-Simpson thesis direction is broader than proving that one UQ method is
+always preferable. The main line now asks **under which tested conditions
+Semantic Entropy or blind P(True) performs better, and which mechanism may
+explain the difference**. Answer length is the first controlled factor; the
+semantic-equivalence judge is a conditional mechanism diagnostic.
+
+The Probe study is a connected deployment-oriented branch. It asks whether a
+simple hidden-state score can provide useful uncertainty at lower incremental
+cost and whether a frozen Probe retains any signal under dataset/prompt shift.
+P(True)-Probe fidelity, Accuracy-Probe correctness ranking, efficiency, and
+PubMedQA transfer remain separate claims. The project does not return to the
+discarded adaptive-token-selection phase.
 
 ## Two Probe Tracks
 
@@ -202,15 +236,16 @@ Claude judging is a separate post-processing stage. It produces only the binary
 correct/incorrect target for the corresponding low-temperature answer. It does
 not change generation, direct P(True), or hidden-state artifacts.
 
-### Deferred UQ Decision: ten high-temperature samples
+### Approved efficiency comparison: ten high-temperature samples
 
-The core run does **not** assume that ten high-temperature samples will be
-generated. That costly branch is required for multi-sample scores such as SE,
-cluster count, and sampled-answer disagreement, but is not required to define
-or train the two probes. Decide later whether to run it as an optional UQ
-comparison package. If approved, it must use the same frozen split and report
-its additional compute cost separately; it must not change the main answer or
-either supervision target.
+The completed core run did **not** generate ten high-temperature samples.
+That branch is now approved only as a separate efficiency/comparator package
+on the 384 valid-labelled test questions. It supplies ten-sample normalized
+NLL, discrete SE, and cluster count while measuring the extra sampling and NLI
+cost separately from the saved main answer. It does not change either Probe,
+the main answer, the frozen split, or either supervision target. The submitted
+smoke/full jobs and cost contract are recorded in
+`archehr_sebaseline/docs/phase2_uq_efficiency_benchmark.md`.
 
 ### Initial feature contract: hidden states
 
@@ -361,8 +396,133 @@ preservation of the source mapping.
 
 The main v2 limitation is `maybe` recall: 12.7%, down from 43.6% in v1, while
 `yes` and `no` recall improve to 84.1% and 72.8%. This is a documented
-minority-class limitation of an otherwise clear overall improvement. Further
-work is fixed error analysis, not repeated prompt tuning.
+minority-class limitation of an otherwise clear overall improvement.
+PubMedQA-specific follow-up remains fixed error analysis, not repeated
+PubMedQA prompt tuning.
+
+## Post-Simpson Follow-up Plan
+
+### Stage 1 — complete the current Phase-2 Probe study
+
+Finish the current Probe branch before launching a larger new experiment:
+
+1. **Complete:** the 384-question incremental-efficiency benchmark retains
+   latency, CUDA GPU time, extra generated tokens, throughput, and same-row
+   correctness ranking for both Probes and the selected Phase-1 UQ
+   comparators.
+2. **Complete:** paired-bootstrap uncertainty for Accuracy-Probe versus direct
+   blind P(True) uses all 384 test rows; the AUROC-difference interval includes
+   zero.
+3. **Complete:** one two-score logistic fusion was fitted on validation,
+   frozen, and evaluated once on test. Its small mixed AUROC/AP change remains
+   a post-hoc exploratory complementarity check, not a new main model and not
+   authorization for nonlinear fusion.
+
+The already reported factoid/list/summary tables remain visible, but no new
+type-specific thresholds, type-specific Probes, type-feature optimization, or
+additional question-type decomposition is planned now.
+
+### Stage 2 — controlled summary answer-length experiment
+
+The next main experiment tests whether changing summary-answer length alters
+the relative correctness-ranking performance of blind P(True) and Semantic
+Entropy. It is a paired prompt intervention on the same BioASQ summary
+questions, not a new dataset comparison.
+
+The current condition retains the accepted instruction:
+
+```text
+Write one concise biomedical paragraph that directly answers the question.
+```
+
+The shorter condition changes only the prompt by adding:
+
+```text
+Keep the answer to one or two brief but complete sentences.
+Include only information needed to answer the question, without extra background.
+```
+
+There is no word/token cap and no hard truncation. `max_new_tokens` remains
+192. Model, revision, question IDs, seeds, low- and high-temperature decoding
+settings, sample count, blind-P(True) prompt, NLI model/rule, and correctness
+judge remain unchanged. The prompt versions and exact IDs must be frozen
+before inspecting the new outcomes.
+
+The preferred paired cohort is the 123 valid-labelled summary questions in the
+current 384-question efficiency benchmark. If its full artifacts pass health
+checks, the accepted current-condition main answers, ten samples, blind
+P(True), and NLI clusters are reused rather than regenerated. Only the shorter
+condition requires new generation and judging.
+
+This intervention is feasible but not assumed to force every answer into one
+sentence. Existing Phase-2 summary main answers average about 80--83 words and
+3.2--3.3 sentences. On validation, the shortest independent official ideal
+answer has a median length of 32 words and 72.7% use at most two sentences.
+These figures justify a one-or-two-sentence instruction while avoiding an
+arbitrary numerical cutoff.
+
+For both conditions report:
+
+- realised main-answer and sampled-answer token/word/sentence distributions;
+- compliance with the one-or-two-sentence instruction, without excluding
+  non-compliant rows;
+- answer correctness and error prevalence;
+- blind P(True), discrete SE, cluster count, and normalized-NLL AUROC/AP;
+- cluster count/size distribution and largest-cluster fraction; and
+- paired-bootstrap confidence intervals.
+
+Define the primary relative-performance quantities as:
+
+```text
+D_current = AUROC(blind P(True), current) - AUROC(SE, current)
+D_short   = AUROC(blind P(True), short)   - AUROC(SE, short)
+length effect = D_short - D_current
+```
+
+Bootstrap the paired question IDs across both conditions. Because correctness
+can change after the prompt intervention, preserve the joint correctness
+categories where stratification is needed. The primary analysis remains by
+assigned prompt condition; do not condition it on observed length compliance
+or on answers being correct in both conditions.
+
+### Stage 3 — conditional semantic-judge bottleneck diagnostic
+
+This stage does not propose Claude-based SE as a deployment method. Its only
+question is whether the current biomedical NLI semantic-equivalence judge is a
+major contributor to weak whole-answer SE behaviour for longer summaries.
+
+Reuse fixed generations from Stage 2. Recluster the same answer sets with:
+
+1. the accepted PubMedBERT NLI pipeline; and
+2. a frozen Claude semantic-equivalence rubric.
+
+No answer is regenerated and the correctness labels are not changed. Retain a
+small manually reviewed answer-pair subset to check false splits and false
+merges; otherwise an apparent Claude-SE AUROC gain could reflect shared-model
+bias with the Claude correctness judge rather than better equivalence labels.
+
+Interpret the diagnostic conservatively:
+
+- better manually supported Claude equivalence plus recovery of long-answer
+  SE supports current NLI as an important bottleneck;
+- better equivalence labels without SE recovery means NLI has errors but does
+  not explain the main UQ gap;
+- similar clusters with persistently weak SE point instead toward whole-answer
+  uncertainty, the answer distribution, or systematic model errors.
+
+Diagnosing an NLI bottleneck is a sufficient project outcome. This stage does
+not require inventing or implementing a new NLI method.
+
+### Stage 4 — optional SE/P(True) operating-regime extension
+
+Model scale is not part of the Probe branch. If time and compute remain after
+Stages 1--3, a small within-family comparison may test whether model capability
+changes the relative behaviour of direct blind P(True) and SE. It must compare
+the two original UQ methods under a frozen protocol and report answer accuracy,
+answer length, AUROC/AP, their paired difference, and inference cost.
+
+Do not train model-scale Probes, construct a model-family grid, or make this
+optional extension a prerequisite for the thesis contribution.
 
 ## Milestones
 
@@ -377,16 +537,29 @@ work is fixed error analysis, not repeated prompt tuning.
    low-temperature answers, respecting the frozen splits.
 5. **Complete — Probe development:** trained/selected P(True)-Probe and Accuracy-Probe on
    train/validation.
-6. **Complete — final in-domain evaluation:** one frozen BioASQ test evaluation with
-   type-stratified comparisons and cost accounting.
+6. **Complete — final in-domain evaluation:** one frozen BioASQ test evaluation
+   with type-stratified performance comparisons.
 7. **Complete — initial transfer evaluation:** ran both frozen Probes on the
    PubMedQA question-only diagnostic and official-context v1 condition; the
    question-only result is now archived.
 8. **Complete — PubMedQA prompt improvement:** added the official Appendix-C
    label definitions once and completed context v2 without changing either
    Probe or tuning on PubMedQA metrics.
-9. **Next — fixed error analysis:** inspect the completed v2 error set,
-   especially official `maybe` regressions, without changing the frozen result.
+9. **Complete — in-domain efficiency comparison:** measured the two
+   shared-replay Probes against selected Phase-1 UQ methods on the 384 labelled
+   test questions; replacement job 5773786 completed and passed its health
+   check after the node-environment failure from job 5761275 was archived.
+10. **Complete — Phase-2 statistical completion:** paired bootstrap and the
+    exploratory validation-fitted two-Probe fusion diagnostic are recorded;
+    no type-aware Probe optimization was started.
+11. **Planned — summary length intervention:** compare the accepted summary
+    prompt with the frozen one-or-two-sentence instruction on paired questions.
+12. **Conditional — semantic-judge diagnosis:** on the fixed length-experiment
+    generations, test whether replacing NLI changes the identified SE failure.
+13. **Optional — SE/P(True) model-capability check:** compare only the original
+    UQ methods within one model family; do not train scale-specific Probes.
+14. **Secondary — PubMedQA error analysis:** inspect the completed v2 error set,
+    especially official `maybe` regressions, without further prompt tuning.
 
 ## Non-negotiable Boundaries
 
@@ -394,11 +567,19 @@ work is fixed error analysis, not repeated prompt tuning.
 - Do not train an unsupported multi-target SE/NLL/P(True) probe.
 - Do not let answers, hidden states, P(True), UQ rows, or Claude labels cross
   their manifest split.
-- Do not present optional high-temperature UQ as part of the core run unless it
-  was actually approved and generated.
+- Do not present the approved high-temperature efficiency package as part of
+  the core run, or as a result before its queued jobs and health checks finish.
 - Do not alter the initial `24/32/40/48 × TBG/SLT/LT` feature grid or replace
   the linear baseline after test outcomes are visible; any expansion is a new
   experiment.
+- Do not impose a word/token cap or hard decoding truncation in the summary
+  length intervention; only the frozen natural-language prompt addition may
+  differ.
+- Do not describe Claude reclustering as a stronger production UQ method. It is
+  a fixed-generation diagnostic of whether NLI is a major bottleneck.
+- Do not train Probes for the optional model-scale comparison.
+- Label analyses motivated by already inspected test outcomes as exploratory;
+  do not use them to replace the frozen primary Probe results.
 
 ## Historical Context
 

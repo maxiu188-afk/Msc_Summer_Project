@@ -10,7 +10,8 @@ ArchEHR-QA SE baseline: implemented and tested as an engineering baseline
 ArchEHR-QA final evaluation/training target: paused because no usable gold labels
 BioASQ Task B: prior summary results archived as low-usability diagnostics
 Current compute host: Isambard (Runpod was a completed temporary recovery path)
-Active direction: Phase-2 BioASQ hidden-state probes, stratified by answer type
+Active direction: study when SE or blind P(True) performs better, beginning
+  with the paired BioASQ-summary answer-length intervention
 Latest validated run: Phase-2 3,930-question single-answer collection and
   two frozen linear hidden-state Probes on Gemma 3 12B
 Current Phase-2 tracks: P(True)-Probe (direct P(True) fidelity) and
@@ -18,6 +19,10 @@ Current Phase-2 tracks: P(True)-Probe (direct P(True) fidelity) and
 Current result: train-only fitting, validation-only feature selection, and one
   held-out test evaluation are complete; PubMedQA Appendix-C context v2 reaches
   72.4% decision accuracy and P(True)-Probe reaches 0.6839 error AUROC
+Current Phase-2 status: complete; the efficiency benchmark, paired bootstrap,
+  and one validation-fitted two-Probe fusion diagnostic are finished
+Approved next experiment: paired BioASQ summary prompts differing only by a
+  one-or-two-sentence/no-extra-background instruction; no word/token cap
 ```
 
 ArchEHR-QA remains useful for testing grounded long-form generation, citation
@@ -76,6 +81,40 @@ omitted the article evidence that defines the official decision. See
 2x2 Probe-target comparison, complete v1/v2 tables, explanation contract, and
 other UQ scores.
 
+The current in-domain follow-up measures incremental UQ cost after the saved
+main answer exists. Six-question smoke job `5761273` completed and passed its
+health check. The first full job `5761275` failed before model loading because
+its node exposed a nonexistent local temporary directory; the batch script now
+uses a job-specific `$SCRATCHDIR` temporary directory. Replacement full job
+`5773786` completed all 384 questions in `03:31:33` and passed its health
+check. One Probe takes about `60.5 ms/question`, both jointly `60.54 ms`,
+blind P(True) `154.4 ms`, ten-sample normalized NLL `30.55 s`, and SE
+`32.75 s`. Probes are about `2.55x` faster than blind P(True) and over `500x`
+faster than the sampling methods. Blind P(True) has zero freely generated
+tokens but still scores fixed `True` and `False` continuations in two LM calls.
+See `archehr_sebaseline/docs/phase2_uq_efficiency_benchmark.md`.
+
+Phase-2 statistical closure is also complete. Accuracy-Probe exceeds blind
+P(True) by `0.01584` AUROC on the 384 test questions, but the 20,000-resample
+paired-bootstrap 95% CI is `[-0.03890, 0.07173]`, so the improvement is not
+statistically resolved. A validation-fitted two-Probe fusion reaches test
+AUROC `0.8125` and AP `0.8871`, only `0.0067` AUROC above Accuracy-Probe while
+slightly lowering AP. It remains an exploratory diagnostic rather than a new
+main model. See
+`archehr_sebaseline/docs/phase2_probe_completion_statistics.md`.
+
+After the Phase-2 efficiency/bootstrap/fusion completion, the main research
+line asks when Semantic Entropy or blind P(True) performs better rather than
+assuming one method is universally preferable. The next controlled experiment
+uses the same BioASQ summary questions and changes only the generation prompt:
+the shorter condition requests one or two brief but complete sentences and no
+extra background. It uses no fixed word/token cap and no hard truncation. A
+later fixed-generation Claude-versus-NLI comparison is conditional and serves
+only to diagnose whether semantic-equivalence judging is an SE bottleneck.
+Any model-capability extension compares SE with blind P(True) only; it does not
+train model-scale Probes. The canonical sequence and frozen boundaries are in
+`PHASE2_PROBE_PLAN.md`.
+
 ## Active Naming Policy
 
 New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
@@ -116,12 +155,13 @@ SIMPSON_MEETING_PHASE2_RESULTS_2026-07-23_FINAL.md
 Their roles are:
 
 - `PHASE2_PROBE_PLAN.md`: active two-track probe plan, frozen BioASQ split,
-  collection gates, and evaluation boundaries.
+  collection gates, completed results, and the post-Simpson SE/P(True)
+  operating-regime follow-up.
 - `ISAMBARD_COMMANDS.md`: common local and Isambard operational commands;
   historical launch procedures are kept only under `archive_unused/`.
-- `SIMPSON_MEETING_PHASE2_RESULTS_2026-07-23_FINAL.md`: current meeting brief
-  covering the completed Phase-2 BioASQ results, PubMedQA v2 transfer, and
-  proposed remaining research direction.
+- `SIMPSON_MEETING_PHASE2_RESULTS_2026-07-23_FINAL.md`: frozen meeting brief
+  covering the results presented at the completed supervisor meeting. Later
+  research decisions are owned by `PHASE2_PROBE_PLAN.md`.
 
 ## Active Project
 
