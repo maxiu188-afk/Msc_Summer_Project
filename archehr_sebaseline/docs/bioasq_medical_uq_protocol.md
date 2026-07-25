@@ -4,7 +4,7 @@ This is the Phase-1 closing protocol and the direct reference for Phase 2. It
 tests whether Semantic Entropy remains useful at a larger scale while preserving
 a direct blind P(True) target and a binary Claude correctness target for the
 P(True)-Probe and Accuracy-Probe respectively. The active Phase-2 work plan is
-the root `PHASE2_PROBE_PLAN.md`.
+the root `../../PHASE2_PROBE_PLAN.md`.
 
 - Use `bioasq_medical_uq`: factoid, list, and summary questions only. Yes/no
   questions are excluded.

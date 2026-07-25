@@ -7,14 +7,19 @@ this directory. Historical material is kept under the repository-level
 ## Current research documents
 
 - `../../PHASE2_PROBE_PLAN.md`: canonical Phase-2 Probe plan, frozen choices,
-  and cross-dataset experiment boundaries.
-- `../../SIMPSON_MEETING_PHASE2_RESULTS_2026-07-23_FINAL.md`: current meeting
-  brief with the completed results and proposed remaining research direction.
+  cross-dataset boundaries, and the approved post-Simpson SE/P(True)
+  operating-regime follow-up.
+- `../../SIMPSON_MEETING_PHASE2_RESULTS_2026-07-23_FINAL.md`: frozen brief from
+  the completed meeting; later research decisions are recorded in the
+  canonical Phase-2 plan rather than retroactively added to the meeting record.
 - `phase2_bioasq_dataset_split.md`: leakage-safe BioASQ split contract.
-- `phase2_uq_efficiency_benchmark.md`: submitted 384-question incremental-cost
+- `phase2_uq_efficiency_benchmark.md`: completed 384-question incremental-cost
   comparison of the two Probes, blind P(True), sampled normalized NLL, SE, and
-  cluster count; job state and future output contract are recorded without
-  claiming pending results.
+  cluster count, including AUROC/AP, latency, GPU time, generated tokens,
+  throughput, and correction provenance.
+- `phase2_probe_completion_statistics.md`: Phase-2 statistical closure with
+  the paired Accuracy-Probe-versus-blind-P(True) AUROC bootstrap and the
+  validation-fitted two-Probe fusion diagnostic.
 - `pubmedqa_frozen_probe_transfer.md`: frozen-Probe PubMedQA transfer protocol,
   complete context-v1/context-v2 results, comparison tables, and evidence
   pointers. The question-only result is archived under

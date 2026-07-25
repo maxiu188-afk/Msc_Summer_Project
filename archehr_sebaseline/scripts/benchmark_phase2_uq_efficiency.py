@@ -398,6 +398,24 @@ def ranking_metrics(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return result
 
 
+def frozen_probe_uncertainties(
+    *,
+    p_true_probe_score: float,
+    accuracy_probe_score: float,
+) -> dict[str, float]:
+    """Return uncertainty scores using the frozen heads' positive-class probabilities.
+
+    The P(True)-Probe positive class is high blind-P(True) uncertainty and the
+    Accuracy-Probe positive class is answer incorrect.  Both head probabilities
+    therefore already have the required higher-means-more-uncertain direction.
+    """
+
+    return {
+        "p_true_probe_uncertainty": float(p_true_probe_score),
+        "accuracy_probe_uncertainty": float(accuracy_probe_score),
+    }
+
+
 def _format_duration(seconds: float) -> str:
     rounded = max(0, int(round(seconds)))
     hours, remainder = divmod(rounded, 3600)
@@ -766,13 +784,16 @@ def main() -> int:
                     )
                 )
 
+        probe_uncertainties = frozen_probe_uncertainties(
+            p_true_probe_score=p_true_score,
+            accuracy_probe_score=accuracy_score,
+        )
         score_row = {
             "example_id": example_id,
             "bioasq_type": selection["bioasq_type"],
             "correctness_label": selection["correctness_label"],
             "incorrect": selection["incorrect"],
-            "p_true_probe_uncertainty": 1.0 - p_true_score,
-            "accuracy_probe_uncertainty": 1.0 - accuracy_score,
+            **probe_uncertainties,
             "blind_p_true_uncertainty": 1.0 - float(blind_p_true),
             "normalized_nll_10_samples": normalized_nll,
             "discrete_semantic_entropy": discrete_entropy,
