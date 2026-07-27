@@ -113,6 +113,13 @@ tokens; blind P(True) also generates no free-running tokens but scores fixed
 token count, and throughput tables are in
 `docs/phase2_uq_efficiency_benchmark.md`.
 
+The Phase-1 factoid/list/summary samples give a natural descriptive
+answer-length/UQ contrast. Mean sampled-answer lengths are about `8/35/111`
+generated tokens, while blind-P(True)-minus-discrete-SE AUROC is about
+`+0.075`, `0.000/-0.029`, and `+0.243/+0.231` across seeds 31/47. SE is
+competitive on structured lists but falls far behind on long summaries; this
+is an operating-regime observation rather than a causal length effect.
+
 Phase-2 is now complete. On the same 384 test questions, Accuracy-Probe minus
 blind P(True) has AUROC difference `+0.01584` with paired-bootstrap 95% CI
 `[-0.03890, 0.07173]`, so the point-estimate advantage is not statistically
@@ -121,21 +128,38 @@ resolved. The one validation-fitted two-Probe fusion reaches test AUROC
 Accuracy-Probe remains exploratory. The frozen protocol and complete tables
 are in `docs/phase2_probe_completion_statistics.md`.
 
-The post-Simpson main line now studies the conditions under which Semantic
-Entropy or blind P(True) performs better. After the current
-efficiency/bootstrap/fusion completion, the next experiment is a paired
-BioASQ-summary prompt intervention. The shorter condition adds only:
+The post-Simpson main line studies the conditions under which Semantic Entropy
+or blind P(True) performs better. The paired BioASQ-summary prompt intervention
+is complete. The shorter condition added only:
 
 ```text
 Keep the answer to one or two brief but complete sentences.
 Include only information needed to answer the question, without extra background.
 ```
 
-It has no word/token cap or hard truncation, and all other generation, UQ, NLI,
-and judging settings stay fixed. A later Claude-versus-NLI reclustering stage
-is conditional and diagnostic only: it tests whether NLI is a major SE
-bottleneck, not whether Claude-SE should be deployed. Any optional model-scale
-work compares SE and blind P(True) without training additional Probes. See
+It had no word/token cap or new hard truncation, and all other generation, UQ,
+NLI, and judging settings stayed fixed. Mean main-answer length fell from
+82.88 to 52.11 words and short-answer compliance was 123/123. On 121 paired
+valid labels, accuracy was 56/121 in both conditions. Blind P(True) AUROC
+changed `0.7948 -> 0.8040`, discrete SE `0.5782 -> 0.5468`, and the
+pre-declared relative length effect was `+0.0405` with 95% CI
+`[-0.0713, 0.1531]`. Shortening therefore did not establish an SE recovery.
+See `docs/summary_length_intervention.md`.
+
+The fixed-generation Claude-versus-NLI mechanism diagnostic is quantitatively
+complete on 93/96 long-summary questions. Claude-clustered SE reaches AUROC
+0.781 versus 0.595 for NLI-SE; the paired change is +0.187 with 95% CI
+[+0.080,+0.291]. This strongly implicates long-answer NLI clustering
+difficulty, but Claude is an expensive diagnostic rather than the proposed
+deployment method, and blinded pair review remains pending. Any optional
+model-scale work compares SE and blind P(True) without training additional
+Probes. Official Gemma 3 core sizes are 270M, 1B, 4B, 12B, and 27B. The first
+added 4B point completed smoke `5785064` and exact-Phase-1-aligned full job
+`5785065`; Level-4 health and exact 1,000-question alignment passed. On 990
+paired valid questions, P(True)-minus-SE AUROC changes from +0.047 at 12B to
+-0.009 at 4B; the paired 4B-minus-12B change is -0.056 with 95% CI
+[-0.103,-0.010]. Lower capability removes blind P(True)'s advantage,
+especially on summary, rather than making SE intrinsically strong. See
 `../PHASE2_PROBE_PLAN.md`.
 
 New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
@@ -238,6 +262,10 @@ scripts/run_bioasq_llm_judge.sbatch
 scripts/run_bioasq_isambard.sbatch
 scripts/benchmark_phase2_uq_efficiency.py
 scripts/run_phase2_uq_efficiency_isambard.sbatch
+scripts/run_summary_length_intervention.py
+scripts/run_summary_length_intervention_isambard.sbatch
+scripts/repair_summary_length_sentence_counts.py
+analysis/run_summary_length_comparison.py
 scripts/runpod_remaining_experiments.sh
 ```
 
@@ -563,7 +591,9 @@ docs/bioasq_medical_uq_protocol.md
 docs/bioasq_medical_uq_results_20260718.md
 docs/phase2_bioasq_dataset_split.md
 docs/phase2_uq_efficiency_benchmark.md
+docs/phase2_probe_completion_statistics.md
 docs/pubmedqa_frozen_probe_transfer.md
+docs/summary_length_intervention.md
 docs/semantic_entropy_generation_protocol.md
 docs/experiment_runtime_log.md
 ```

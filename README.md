@@ -10,8 +10,8 @@ ArchEHR-QA SE baseline: implemented and tested as an engineering baseline
 ArchEHR-QA final evaluation/training target: paused because no usable gold labels
 BioASQ Task B: prior summary results archived as low-usability diagnostics
 Current compute host: Isambard (Runpod was a completed temporary recovery path)
-Active direction: study when SE or blind P(True) performs better, beginning
-  with the paired BioASQ-summary answer-length intervention
+Active direction: study when SE or blind P(True) performs better; the paired
+  BioASQ-summary answer-length intervention is complete
 Latest validated run: Phase-2 3,930-question single-answer collection and
   two frozen linear hidden-state Probes on Gemma 3 12B
 Current Phase-2 tracks: P(True)-Probe (direct P(True) fidelity) and
@@ -21,8 +21,14 @@ Current result: train-only fitting, validation-only feature selection, and one
   72.4% decision accuracy and P(True)-Probe reaches 0.6839 error AUROC
 Current Phase-2 status: complete; the efficiency benchmark, paired bootstrap,
   and one validation-fitted two-Probe fusion diagnostic are finished
-Approved next experiment: paired BioASQ summary prompts differing only by a
-  one-or-two-sentence/no-extra-background instruction; no word/token cap
+Current follow-up result: shortening from 82.88 to 52.11 mean words did not
+  recover SE relative to blind P(True); paired length-effect CI includes zero
+Current mechanism result: on 93 fixed-generation long-summary questions,
+  Claude reclustering raises SE AUROC from 0.595 to 0.781, strongly
+  implicating NLI clustering difficulty; Claude is diagnostic, not deployable
+Current model-scale result: on 990 paired 4B/12B questions, P(True)-minus-SE
+  AUROC changes from +0.047 at 12B to -0.009 at 4B; lower capability removes
+  P(True)'s relative advantage, especially on summary
 ```
 
 ArchEHR-QA remains useful for testing grounded long-form generation, citation
@@ -94,6 +100,14 @@ faster than the sampling methods. Blind P(True) has zero freely generated
 tokens but still scores fixed `True` and `False` continuations in two LM calls.
 See `archehr_sebaseline/docs/phase2_uq_efficiency_benchmark.md`.
 
+The Phase-1 factoid/list/summary samples give a natural descriptive
+answer-length/UQ contrast. Mean sampled-answer lengths are about `8/35/111`
+generated tokens. Blind-P(True)-minus-discrete-SE AUROC is about
+`+0.075`, `0.000/-0.029`, and `+0.243/+0.231` across the two seeds:
+SE is competitive on structured lists but falls far behind on long summaries.
+Because type, answer structure, prompt, and NLI rule also vary, this is an
+operating-regime observation rather than a causal length effect.
+
 Phase-2 statistical closure is also complete. Accuracy-Probe exceeds blind
 P(True) by `0.01584` AUROC on the 384 test questions, but the 20,000-resample
 paired-bootstrap 95% CI is `[-0.03890, 0.07173]`, so the improvement is not
@@ -103,17 +117,29 @@ slightly lowering AP. It remains an exploratory diagnostic rather than a new
 main model. See
 `archehr_sebaseline/docs/phase2_probe_completion_statistics.md`.
 
-After the Phase-2 efficiency/bootstrap/fusion completion, the main research
-line asks when Semantic Entropy or blind P(True) performs better rather than
-assuming one method is universally preferable. The next controlled experiment
-uses the same BioASQ summary questions and changes only the generation prompt:
-the shorter condition requests one or two brief but complete sentences and no
-extra background. It uses no fixed word/token cap and no hard truncation. A
-later fixed-generation Claude-versus-NLI comparison is conditional and serves
-only to diagnose whether semantic-equivalence judging is an SE bottleneck.
-Any model-capability extension compares SE with blind P(True) only; it does not
-train model-scale Probes. The canonical sequence and frozen boundaries are in
-`PHASE2_PROBE_PLAN.md`.
+The paired BioASQ-summary answer-length intervention is complete. The short
+prompt reduced mean main-answer length from 82.88 to 52.11 words and from 3.25
+to 2.00 sentences, with 123/123 main answers satisfying the one-or-two-sentence
+instruction. On 121 questions with valid labels in both conditions, accuracy
+was unchanged at 56/121. Blind P(True) AUROC changed from 0.7948 to 0.8040,
+while discrete SE changed from 0.5782 to 0.5468. The pre-declared relative
+length effect was +0.0405 with paired-bootstrap 95% CI
+`[-0.0713, 0.1531]`; shortening therefore did not establish an SE recovery
+relative to blind P(True). See
+`archehr_sebaseline/docs/summary_length_intervention.md`.
+
+The fixed-generation Claude-versus-NLI mechanism diagnostic is complete on
+93/96 long-summary questions: Claude-clustered SE reaches 0.781 AUROC versus
+0.595 under the accepted NLI clusters, strongly implicating long-answer NLI
+over-merging. Claude remains an expensive diagnostic rather than a deployment
+proposal.
+
+The exact-cohort Gemma 3 4B/12B comparison is also complete. On 990 paired
+questions, P(True)-minus-SE AUROC changes from +0.047 at 12B to -0.009 at 4B;
+the paired change is -0.056 with 95% CI [-0.103,-0.010]. The strongest scale
+effect is on summary, where P(True)'s 12B advantage disappears at 4B. No
+model-scale Probe is trained. The canonical results and remaining boundaries
+are in `PHASE2_PROBE_PLAN.md`.
 
 ## Active Naming Policy
 

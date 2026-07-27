@@ -54,6 +54,104 @@ The question-level artifacts and full overall/type-specific AUROC, rejection,
 and AURAC CSVs are retained in the ignored local `server_results/` download and
 on Isambard. They are generated data, not Git-tracked source.
 
+## Natural answer-length contrast and UQ effect
+
+Factoid, list, and summary provide an existing observational length gradient.
+Because Semantic Entropy is computed from the ten `T=1.0` samples, the relevant
+length is the mean generated-token count of those sampled answers, not the
+length of the separately judged `T=0.1` main answer.
+
+Values below are seed 31 / seed 47. AUROC is preferred for this cross-type
+comparison because type-specific error prevalence differs.
+
+| Type | Valid labels | Mean sampled-answer tokens | Discrete-SE AUROC | Blind-P(True) AUROC | P(True) minus SE, paired 95% CI |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Factoid | 477 / 479 | 8.08 / 8.01 | 0.720 / 0.725 | 0.795 / 0.800 | +0.075 `[+0.026,+0.123]` / +0.075 `[+0.024,+0.124]` |
+| List | 317 / 317 | 35.42 / 35.41 | 0.845 / 0.881 | 0.845 / 0.852 | +0.000 `[-0.078,+0.068]` / -0.029 `[-0.088,+0.024]` |
+| Summary | 197 / 195 | 111.13 / 110.92 | 0.565 / 0.595 | 0.808 / 0.826 | +0.243 `[+0.172,+0.311]` / +0.231 `[+0.155,+0.304]` |
+
+This replicated pattern identifies different UQ operating regimes:
+
+- on very short factoid answers, blind P(True) has a moderate advantage;
+- on medium-length list answers, SE matches blind P(True), and cluster count is
+  the strongest list point estimate in both seeds; and
+- on long summary answers, whole-answer SE is weak while blind P(True) retains
+  strong discrimination, producing by far the largest gap.
+
+The contrast is not a causal estimate of answer length because answer
+structure, question type, prompt, and NLI rule also change. It is nevertheless
+the direct existing evidence that the SE-versus-P(True) relationship varies
+with answer regime. The completed within-summary shortening intervention did
+not recover SE, so length alone is not sufficient to explain the summary
+failure and no additional length-specific generation experiment is required.
+
+## Bounded long-summary clustering diagnostic
+
+A fixed-generation, label-balanced mechanism diagnostic compared the accepted
+PubMedBERT NLI clusters with a frozen Claude semantic-equivalence rubric on 48
+current-condition summary questions. One repeatedly truncated correct-class
+row was excluded without further retry, leaving 47 complete cases (23 correct,
+24 incorrect).
+
+| UQ score | AUROC | Average precision |
+| --- | ---: | ---: |
+| Blind P(True) | 0.825 | 0.812 |
+| Original NLI Semantic Entropy | 0.579 | 0.579 |
+| Claude-clustered Semantic Entropy | 0.727 | 0.749 |
+
+Claude-clustered SE improved by `+0.149` AUROC over NLI-SE, but its
+20,000-resample paired-bootstrap 95% interval `[-0.016,+0.313]` crosses zero.
+The P(True)-minus-Claude-SE gap was `+0.098`, 95% interval
+`[-0.061,+0.254]`.
+
+The structural signal is strong: Claude produced 3.98 clusters per question
+on average versus 1.23 for NLI, and 821 answer pairs were NLI-same but
+Claude-different versus only 41 in the opposite direction. This makes NLI
+over-merging a credible contributor to weak long-summary SE, but not a proven
+dominant cause. The AUROC interval is unresolved, Claude's direct decisions
+contain non-transitive triples, one row is missing, and the blinded 24-pair
+human review remains pending. Full protocol and artifacts are recorded in
+`summary_clustering_diagnostic.md`.
+
+The terminal nested extension produced 93/96 complete cases (46 correct,
+47 incorrect). Claude-clustered SE reached AUROC 0.781 versus 0.595 for
+NLI-SE, a `+0.187` change with paired-bootstrap 95% CI
+`[+0.080,+0.291]`. Blind P(True) was 0.815; its gap over SE fell from
+`+0.220 [+0.110,+0.325]` under NLI clustering to
+`+0.034 [-0.079,+0.147]` under Claude clustering. The alternative clustering
+therefore closes about 85% of the original point-estimate gap.
+
+With fixed generated answers, this is strong evidence that long-answer NLI
+clustering difficulty is an important cause of the observed summary-SE
+weakness. It is not a proposal to use Claude clustering in practice: the API
+cost and latency are too high, shared-model bias remains possible because
+Claude also supplied correctness labels, and the blinded pair review remains
+pending.
+
+## Gemma 3 4B versus 12B model-scale diagnostic
+
+The Gemma 3 4B run changes only the generator checkpoint and uses the exact
+Phase-1 seed-31 1,000-question cohort. The final comparison contains 990
+questions with valid correctness labels for both models. `incorrect` is the
+positive class.
+
+| Model | Accuracy | Blind P(True) AUROC | Discrete-SE AUROC | P(True) minus SE |
+| --- | ---: | ---: | ---: | ---: |
+| Gemma 3 4B | 0.203 | 0.758 | 0.768 | -0.009 `[-0.051,+0.031]` |
+| Gemma 3 12B | 0.332 | 0.811 | 0.764 | +0.047 `[+0.017,+0.076]` |
+
+The paired 4B-minus-12B change in the P(True)-minus-SE gap is
+`-0.056 [-0.103,-0.010]`. The clearest type-specific result is summary:
+the gap changes from `+0.243 [+0.173,+0.313]` at 12B to
+`+0.005 [-0.085,+0.094]` at 4B, a paired change of
+`-0.238 [-0.347,-0.129]`.
+
+Model capability therefore changes the UQ operating regime. Blind P(True)'s
+self-evaluation advantage is present at 12B and disappears at 4B. This is not
+evidence that SE becomes a strong small-model summary method: 4B summary
+AUROC is only 0.648 for P(True) and 0.643 for SE, while normalized NLL reaches
+0.794. The scale result is primarily P(True) weakening with lower capability.
+
 ## Statistical comparison and conclusion
 
 The paired bootstrap AUROC difference, P(True)-blind minus discrete SE, is:

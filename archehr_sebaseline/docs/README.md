@@ -20,6 +20,15 @@ this directory. Historical material is kept under the repository-level
 - `phase2_probe_completion_statistics.md`: Phase-2 statistical closure with
   the paired Accuracy-Probe-versus-blind-P(True) AUROC bootstrap and the
   validation-fitted two-Probe fusion diagnostic.
+- `summary_length_intervention.md`: completed paired BioASQ-summary
+  current-versus-one-or-two-sentence intervention, including realised length,
+  correctness, SE/P(True) ranking, paired bootstrap, and correction provenance.
+- `summary_clustering_diagnostic.md`: completed 93/96-question
+  fixed-generation Claude-versus-PubMedBERT clustering mechanism diagnostic
+  for the original longer summary condition.
+- `gemma3_model_scale_experiment.md`: completed Gemma 3 4B versus aligned
+  Phase-1 12B model-scale result, including paired AUROC bootstrap and
+  generation/runtime context.
 - `pubmedqa_frozen_probe_transfer.md`: frozen-Probe PubMedQA transfer protocol,
   complete context-v1/context-v2 results, comparison tables, and evidence
   pointers. The question-only result is archived under
