@@ -113,6 +113,168 @@ output: analysis_outputs/bioasq_phase2_probe_completion_20260725
 The protocol, coefficients, input hashes, complete metrics, and Phase-2
 completion boundary are in `phase2_probe_completion_statistics.md`.
 
+## BioASQ summary answer-length intervention
+
+```text
+submitted/completed: 2026-07-26
+cohort: all 123 valid-labelled summary questions from the Phase-2 efficiency
+  test cohort; current/short correctness-UQ comparison uses 121 paired rows
+smoke job: 5781225, COMPLETED 0:0 in 00:06:28; three questions; health PASS
+full job: 5781246, COMPLETED 0:0 in 03:59:14; dependency afterok:5781225;
+  123/123 questions and both-condition health check PASS
+model / prompts: unchanged google/gemma-3-12b-it and current direct-summary
+  prompt versus the frozen one-or-two-sentence/no-extra-background addition
+generation: one T=0.1 main answer and ten T=1.0 samples; top_p=0.9, top_k=50,
+  max_new_tokens=192, seed 31; no answer reached 192 tokens
+NLI: pritamdeka/PubMedBERT-MNLI-MedNLI, question-conditioned bidirectional
+  entailment, matching the accepted summary rule
+artifact health: each condition has 123 main answers, 1,230 samples, 123
+  complete cluster records, and 123 condition-score rows
+current reuse: accepted main answer, Claude label, and blind P(True); current
+  high-temperature samples were deterministically regenerated because the
+  efficiency output lacked answer texts/full clusters; all four UQ score
+  fields exactly reproduce the prior 123 summary rows
+short Claude batches: msgbatch_01GyM5xLBcp7oyMV8BSUZ8rc plus same-config
+  retries msgbatch_019upAX3uH2X1joZvufjNZe2 and
+  msgbatch_01NAapx7qM5MBw54LCZ7hBdf; 121 valid / 123, two blanks excluded only
+  from paired correctness-UQ analysis
+length result: main words 82.88 -> 52.11; sentences 3.25 -> 2.00;
+  short main/sample one-or-two-sentence compliance 123/123 and 1,230/1,230
+paired accuracy: 56/121 in both conditions; 8 current-only correct and 8
+  short-only correct
+UQ AUROC current -> short: blind P(True) 0.7948 -> 0.8040; discrete SE
+  0.5782 -> 0.5468; cluster count 0.5805 -> 0.5451; normalized NLL
+  0.7533 -> 0.7511
+primary length effect: [blind-P(True) AUROC - SE AUROC] short minus current
+  +0.04052; 20,000-resample paired-bootstrap 95% CI [-0.07126, 0.15306]
+interpretation: shortening clearly changed length but did not recover SE
+  relative to blind P(True); the relative-performance change is unresolved
+sentence repair: abbreviation-aware deterministic repair of derived fields
+  only; original tables archived and hashes recorded; no GPU rerun
+```
+
+Complete protocol, result tables, and artifact pointers are in
+`summary_length_intervention.md`.
+
+## Bounded long-summary clustering diagnostic
+
+```text
+submitted: 2026-07-26
+scope: 48 current-condition summary questions selected by deterministic
+  label-stratified sampling (24 correct, 24 incorrect), with ten fixed saved
+  samples per question; no answer regeneration and no short-condition run
+Claude batch: msgbatch_01BcAEtYs7FmcPVtNgaMaz2D; 48 requests;
+  claude-sonnet-5, low effort, max_tokens=128
+first batch outcome: all 48 API requests succeeded, but only 2/48 outputs were
+  complete; 20 ended normally with 42/45 decisions and 26 hit max_tokens
+repair boundary: preserve the first batch; retry only the 46 invalid rows with
+  the same cohort, rubric, and pair order, changing only serialization to
+  schema-constrained JSON and max_tokens to 512
+repair smoke: one invalid row returned 45/45 valid decisions with end_turn
+repair batch: msgbatch_01DvxtFBPJoeBtGequbL4Wpc; 46 requests
+first repair outcome: 46/46 API requests succeeded; 37 passed strict 45-item
+  validation and 9 hit max_tokens, giving 39/48 valid rows in total
+second repair: msgbatch_0147chhsAUMSZxS7zkTiBaE9; only the 9 truncated rows,
+  same schema and scientific inputs, max_tokens=2048
+second repair outcome: 9/9 API requests succeeded; 8 passed strict validation
+  and one correct-class row again hit max_tokens
+final analysis set: 47/48 complete cases, 23 correct and 24 incorrect; no
+  further retry
+UQ AUROC: blind P(True) 0.8252; original NLI-SE 0.5788;
+  Claude-clustered SE 0.7274
+Claude-SE minus NLI-SE AUROC: +0.1486; 20,000-resample paired-bootstrap
+  95% CI [-0.0163, 0.3125]
+P(True) minus Claude-SE AUROC: +0.0978; 95% CI [-0.0607, 0.2536]
+cluster structure: mean clusters NLI 1.23 versus Claude 3.98; mean pair
+  agreement 0.592; mean ARI 0.396; 821 NLI-same/Claude-different pairs versus
+  41 in the opposite direction
+interpretation: NLI over-merging is a credible contributor to weak summary SE,
+  but the AUROC-change CI crosses zero and blinded human review is pending
+local validation: 115/115 current unit tests, compileall, git diff --check,
+  and the earlier 48-question synthetic-copy analysis smoke passed
+monitoring: no recurring monitor started
+initial quantitative result: complete; expanded result follows below
+```
+
+The frozen bounded protocol is in `summary_clustering_diagnostic.md`.
+
+Nested extension:
+
+```text
+submitted: 2026-07-26
+target: 96 long-summary questions, 48 correct and 48 incorrect
+reuse: original 48-question cohort is an exact subset; only 48 new Claude
+  requests are submitted
+purpose: mechanism diagnosis of long-answer NLI difficulty, not a practical
+  Claude-clustering improvement
+batch: msgbatch_015tEX5qdiBHpb2sUUME4gDW; claude-sonnet-5, low effort,
+  structured output, max_tokens=2048
+batch outcome: 48/48 API requests succeeded; 46 passed strict validation and
+  2 hit max_tokens
+retry boundary: retain valid complete cases and do not retry invalid rows
+final expanded analysis: 93/96 complete cases, 46 correct and 47 incorrect
+UQ AUROC: blind P(True) 0.8148; original NLI-SE 0.5946;
+  Claude-clustered SE 0.7812
+Claude-SE minus NLI-SE AUROC: +0.1866; 20,000-resample paired-bootstrap
+  95% CI [0.0800, 0.2907]
+P(True) minus NLI-SE: +0.2202 [0.1098, 0.3254]
+P(True) minus Claude-SE: +0.0335 [-0.0786, 0.1466]
+cluster structure: mean clusters NLI 1.19 versus Claude 3.88; mean pair
+  agreement 0.588; mean ARI 0.368; 1,673 NLI-same/Claude-different pairs
+  versus 50 in the opposite direction
+interpretation: fixed-answer reclustering closes about 85% of the original
+  P(True)-minus-SE point-estimate gap, strongly implicating long-answer NLI
+  clustering difficulty; Claude remains an expensive diagnostic, not the
+  proposed practical method, and blinded pair review remains pending
+```
+
+## Gemma 3 4B Phase-1-aligned model-scale run
+
+```text
+submitted: 2026-07-26
+model: google/gemma-3-4b-it, bfloat16 CUDA, seed 31
+reference: accepted Gemma 3 12B Phase-1 seed-31 examples.jsonl
+reference SHA-256:
+  4c40280a6ab234d204ad1f60e9c7d06a588f8387ee5ee21a4d2c1028e907b7d0
+alignment: source-derived preflight plus saved-output postflight; full requires
+  exact 480/320/200 ID and record equality, smoke requires a 2/2/2 subset
+generation/UQ: unchanged Phase-1 no-evidence prompts; one T=0.1 main answer,
+  ten T=1.0 samples, top_p=0.9, top_k=50, max_new_tokens=192,
+  PubMedBERT NLI, token/NLL fields, verbal confidence, blind P(True)
+smoke job: 5785064, six questions, COMPLETED 0:0, 00:03:37
+full job: 5785065, 1,000 questions, dependency afterok:5785064,
+  COMPLETED 0:0, 05:46:48
+full internal timing: 20,798 seconds / 05:46:38
+health: Level-4 PASS; 1,000 examples, 10,000 generations, 1,000 clusters,
+  complete token/UQ fields, CUDA bfloat16, no NaN/Infinity markers
+postflight alignment: PASS exact; 480 factoid, 320 list, 200 summary;
+  all records identical to accepted 12B Phase-1 seed-31 cohort
+Claude correctness batch: msgbatch_01AbxKWPN4pdgYoh3CF2V42G;
+  1,000/1,000 API successes; 986 valid labels (787 incorrect, 199 correct);
+  11 truncated and 3 refusal rows invalid
+bounded retry: msgbatch_01NtMndSj62sKhvhMrkQbopS; only 14 invalid rows,
+  14/14 API successes; final 997/1,000 valid labels (796 incorrect,
+  201 correct); 3 invalid rows excluded, no second retry
+paired comparison: 990 questions with valid labels for both 4B and 12B
+overall AUROC 4B: blind P(True) 0.7582, discrete SE 0.7675,
+  normalized NLL 0.7549
+overall AUROC 12B: blind P(True) 0.8107, discrete SE 0.7641,
+  normalized NLL 0.7291
+P(True)-minus-SE gap: 4B -0.0093 [-0.0509, 0.0311];
+  12B +0.0466 [0.0169, 0.0757]
+primary model-size gap change, 4B minus 12B: -0.0560,
+  95% CI [-0.1032, -0.0102]
+summary gap change: -0.2382, 95% CI [-0.3474, -0.1285];
+  4B P(True)/SE AUROC 0.6478/0.6427 versus 12B 0.8079/0.5645
+interpretation: lower model capability removes blind P(True)'s overall and
+  summary advantage; this is P(True) weakening, not SE becoming a strong 4B
+  summary method
+monitoring: no recurring monitor started
+scientific result: complete
+```
+
+The frozen protocol is in `gemma3_model_scale_experiment.md`.
+
 ## PubMedQA frozen-Probe transfer
 
 ```text

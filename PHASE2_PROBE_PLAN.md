@@ -1,8 +1,8 @@
 # Phase 2 Probe Research Plan
 
-Last updated: 2026-07-23
+Last updated: 2026-07-26
 
-## Execution Status (2026-07-20)
+## Execution Status (updated 2026-07-26)
 
 The single-answer artifact collector passed local unit/CLI/shell validation and
 a server-side interface preflight. The Isambard Gemma 3 environment reports 48
@@ -422,9 +422,9 @@ The already reported factoid/list/summary tables remain visible, but no new
 type-specific thresholds, type-specific Probes, type-feature optimization, or
 additional question-type decomposition is planned now.
 
-### Stage 2 — controlled summary answer-length experiment
+### Stage 2 — controlled summary answer-length experiment — complete
 
-The next main experiment tests whether changing summary-answer length alters
+This completed experiment tested whether changing summary-answer length alters
 the relative correctness-ranking performance of blind P(True) and Semantic
 Entropy. It is a paired prompt intervention on the same BioASQ summary
 questions, not a new dataset comparison.
@@ -485,13 +485,59 @@ categories where stratification is needed. The primary analysis remains by
 assigned prompt condition; do not condition it on observed length compliance
 or on answers being correct in both conditions.
 
+Smoke job `5781225` and dependency-gated full job `5781246` completed `0:0`
+and passed their artifact health checks. The short prompt reduced mean
+main-answer length from 82.88 to 52.11 words and from 3.25 to 2.00 sentences;
+all 123 short main answers and all 1,230 short samples satisfied the
+one-or-two-sentence instruction after an abbreviation-aware derived-field
+repair. No generation or UQ value was changed by that repair.
+
+The final correctness/UQ comparison uses 121 IDs with valid Claude labels in
+both conditions; two short labels remained blank after the initial batch and
+two same-configuration retries. Both conditions were correct on 56/121, with
+eight current-only and eight short-only correct answers. Blind P(True) AUROC
+changed from 0.7948 to 0.8040; discrete SE from 0.5782 to 0.5468; cluster count
+from 0.5805 to 0.5451; and ten-sample normalized NLL from 0.7533 to 0.7511.
+
+The pre-declared quantities are:
+
+```text
+D_current = 0.2166, 95% CI [0.1119, 0.3158]
+D_short   = 0.2571, 95% CI [0.1542, 0.3562]
+length effect = +0.0405, 95% CI [-0.0713, 0.1531]
+```
+
+The intervention clearly changed length, but shortening did not recover SE
+relative to blind P(True). The relative-performance change is not statistically
+resolved, and its point estimate slightly widens the P(True)-over-SE gap. See
+`archehr_sebaseline/docs/summary_length_intervention.md`.
+
+No additional answer-length intervention is planned. The two-seed Phase-1
+factoid/list/summary results already provide a natural observational length
+contrast using the samples from which SE is calculated. Mean sampled-answer
+lengths are approximately `8/35/111` generated tokens. Corresponding
+blind-P(True)-minus-discrete-SE AUROC gaps are approximately `+0.075`,
+`0.000/-0.029`, and `+0.243/+0.231`: SE is competitive on medium-length
+structured lists but fails on long summaries. This is descriptive rather than
+causal because answer structure, prompt, and NLI rule also vary by type. The
+replicated cross-type pattern plus the completed paired shortening result is
+sufficient for the answer-length/UQ summary; see
+`archehr_sebaseline/docs/bioasq_medical_uq_results_20260718.md`.
+
 ### Stage 3 — conditional semantic-judge bottleneck diagnostic
 
 This stage does not propose Claude-based SE as a deployment method. Its only
 question is whether the current biomedical NLI semantic-equivalence judge is a
 major contributor to weak whole-answer SE behaviour for longer summaries.
 
-Reuse fixed generations from Stage 2. Recluster the same answer sets with:
+Reuse fixed generations from Stage 2. The first bounded diagnostic uses only
+the original longer-answer condition: 48 label-balanced questions (24 correct
+and 24 incorrect under the frozen Claude correctness labels), selected by
+SHA-256 ranking with seed `20260726`. This is 480 saved answers and 48 batch
+requests, not all 1,230 answers in either condition. It is intended to detect a
+large mechanism signal and must not expand automatically when inconclusive.
+
+Recluster those fixed answer sets with:
 
 1. the accepted PubMedBERT NLI pipeline; and
 2. a frozen Claude semantic-equivalence rubric.
@@ -513,6 +559,42 @@ Interpret the diagnostic conservatively:
 Diagnosing an NLI bottleneck is a sufficient project outcome. This stage does
 not require inventing or implementing a new NLI method.
 
+The frozen bounded protocol is recorded in
+`archehr_sebaseline/docs/summary_clustering_diagnostic.md`.
+
+The quantitative diagnostic is complete on 47/48 valid Claude-clustered
+questions (23 correct, 24 incorrect); the one repeatedly truncated row is
+excluded without further retry. Claude-clustered SE reached AUROC 0.727 versus
+0.579 under the accepted NLI clusters, a `+0.149` change with paired-bootstrap
+95% CI `[-0.016,+0.313]`. Blind P(True) remained higher at 0.825. Claude
+produced many more clusters (mean 3.98 versus 1.23), with 821
+NLI-same/Claude-different answer pairs versus 41 in the opposite direction.
+This supports NLI over-merging as a credible contributor, but not a proven
+dominant cause: the AUROC-change interval crosses zero and the blinded
+24-pair human review remains pending.
+
+Because 47 complete cases remain small for that mechanism inference, one
+nested extension is authorized to a 96-question label-balanced target. It
+reuses the original 48 questions and calls Claude only for 48 new questions;
+batch `msgbatch_015tEX5qdiBHpb2sUUME4gDW` completed with 48/48 API successes.
+Two new rows hit `max_tokens`; with the invalid base row excluded, the final
+analysis contains 93 complete cases (46 correct, 47 incorrect). The same
+answers, rubric, pair order, and clustering conversion are frozen. This is the
+terminal scale expansion: do not extend to the 1,000-question Phase-1 corpus.
+
+On 93 complete cases, Claude-clustered SE reaches AUROC 0.781 versus 0.595 for
+NLI-SE, a `+0.187` change with paired-bootstrap 95% CI
+`[+0.080,+0.291]`. Blind P(True) is 0.815. Its gap over SE falls from
+`+0.220 [+0.110,+0.325]` under NLI clustering to
+`+0.034 [-0.079,+0.147]` under Claude clustering. The cluster structure
+replicates strong NLI merging: mean 1.19 versus 3.88 clusters, with 1,673
+NLI-same/Claude-different pairs and 50 in the opposite direction.
+
+The scientific target remains diagnosis: determine whether an alternative
+semantic-equivalence judge materially changes long-summary SE and therefore
+implicates NLI difficulty. Claude clustering is too expensive for the intended
+practical pipeline and must not be presented as the proposed improvement.
+
 ### Stage 4 — optional SE/P(True) operating-regime extension
 
 Model scale is not part of the Probe branch. If time and compute remain after
@@ -523,6 +605,47 @@ answer length, AUROC/AP, their paired difference, and inference cost.
 
 Do not train model-scale Probes, construct a model-family grid, or make this
 optional extension a prerequisite for the thesis contribution.
+
+The current generator is `google/gemma-3-12b-it`. Official Gemma 3 core
+instruction-tuned checkpoints exist at:
+
+| Size | Hugging Face checkpoint | Release/context note |
+| ---: | --- | --- |
+| 270M | `google/gemma-3-270m-it` | later 2025-08 release; text-only, 32K context |
+| 1B | `google/gemma-3-1b-it` | original scale release; text-only, 32K context |
+| 4B | `google/gemma-3-4b-it` | original scale release; text/image, 128K context |
+| 12B | `google/gemma-3-12b-it` | current experimental anchor; text/image, 128K context |
+| 27B | `google/gemma-3-27b-it` | original scale release; text/image, 128K context |
+
+For a bounded primary comparison, `4B/12B/27B` is the preferred three-point
+grid: it retains the existing 12B anchor and brackets it with materially
+smaller and larger checkpoints from the original release. The 1B checkpoint
+can extend the lower end if resources allow. The later 270M model is a
+capability-floor smoke rather than a primary scale point. This candidate choice
+does not by itself authorize the 27B or additional lower-end runs.
+
+The first added scale point is frozen as Gemma 3 4B, seed 31, aligned exactly
+to the accepted Phase-1 1,000-question seed-31 cohort. All Phase-1 prompts,
+type quotas, generation/sampling settings, NLI rules, and original UQ methods
+remain unchanged; no Probe is trained. Smoke job `5785064` and dependency-gated
+full job `5785065` completed successfully. The full run passed Level-4 health
+and exact 480/320/200 pre/post cohort alignment. Initial Claude correctness
+batch `msgbatch_01AbxKWPN4pdgYoh3CF2V42G` and its single bounded retry produced
+997/1,000 valid labels. The final paired comparison uses 990 questions valid
+for both 4B and 12B. Overall P(True)-minus-SE AUROC changes from
+`+0.047 [+0.017,+0.076]` at 12B to `-0.009 [-0.051,+0.031]` at 4B; the
+4B-minus-12B change is `-0.056 [-0.103,-0.010]`. On summary it changes from
+`+0.243 [+0.173,+0.313]` to `+0.005 [-0.085,+0.094]`, a
+`-0.238 [-0.347,-0.129]` scale effect. Lower capability therefore removes
+blind P(True)'s advantage; SE itself is not strong on 4B summary, where
+normalized NLL is best. See
+`archehr_sebaseline/docs/gemma3_model_scale_experiment.md`.
+
+Official sources:
+
+- https://ai.google.dev/gemma/docs/get_started
+- https://ai.google.dev/gemma/docs/core/model_card_3
+- https://ai.google.dev/gemma/docs/releases
 
 ## Milestones
 
@@ -552,12 +675,19 @@ optional extension a prerequisite for the thesis contribution.
 10. **Complete — Phase-2 statistical completion:** paired bootstrap and the
     exploratory validation-fitted two-Probe fusion diagnostic are recorded;
     no type-aware Probe optimization was started.
-11. **Planned — summary length intervention:** compare the accepted summary
-    prompt with the frozen one-or-two-sentence instruction on paired questions.
-12. **Conditional — semantic-judge diagnosis:** on the fixed length-experiment
-    generations, test whether replacing NLI changes the identified SE failure.
-13. **Optional — SE/P(True) model-capability check:** compare only the original
-    UQ methods within one model family; do not train scale-specific Probes.
+11. **Complete — summary length intervention:** the short prompt changed
+    realised length but did not recover SE relative to blind P(True); the
+    paired-bootstrap length-effect interval includes zero.
+12. **Complete quantitative mechanism diagnostic; human review pending:**
+    93/96 complete cases show a bootstrap-supported Claude-SE recovery and
+    close about 85% of the original P(True)-minus-SE point-estimate gap,
+    strongly implicating long-answer NLI clustering difficulty. Do not frame
+    Claude as a deployable improvement or claim better semantic correctness
+    before the frozen blinded pair review.
+13. **Complete — SE/P(True) model-capability check:** the aligned 4B/12B
+    comparison shows a significant reduction in P(True)'s relative advantage
+    at 4B, driven most clearly by summary questions. Do not train
+    scale-specific Probes or interpret this as SE improving at smaller scale.
 14. **Secondary — PubMedQA error analysis:** inspect the completed v2 error set,
     especially official `maybe` regressions, without further prompt tuning.
 
