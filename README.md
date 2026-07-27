@@ -26,9 +26,11 @@ Current follow-up result: shortening from 82.88 to 52.11 mean words did not
 Current mechanism result: on 93 fixed-generation long-summary questions,
   Claude reclustering raises SE AUROC from 0.595 to 0.781, strongly
   implicating NLI clustering difficulty; Claude is diagnostic, not deployable
-Current model-scale result: on 990 paired 4B/12B questions, P(True)-minus-SE
-  AUROC changes from +0.047 at 12B to -0.009 at 4B; lower capability removes
-  P(True)'s relative advantage, especially on summary
+Current model-scale result: on 196 common valid summary questions,
+  P(True)-minus-SE AUROC changes from +0.243 at 12B to +0.008 at 4B and
+  -0.096 at 1B; the 1B-versus-4B incremental change is not resolved
+Current 1B feasibility result: factoid accuracy 8/50 and list accuracy 3/50;
+  neither remaining full type cohort is recommended
 ```
 
 ArchEHR-QA remains useful for testing grounded long-form generation, citation
@@ -138,8 +140,35 @@ The exact-cohort Gemma 3 4B/12B comparison is also complete. On 990 paired
 questions, P(True)-minus-SE AUROC changes from +0.047 at 12B to -0.009 at 4B;
 the paired change is -0.056 with 95% CI [-0.103,-0.010]. The strongest scale
 effect is on summary, where P(True)'s 12B advantage disappears at 4B. No
-model-scale Probe is trained. The canonical results and remaining boundaries
-are in `PHASE2_PROBE_PLAN.md`.
+model-scale Probe is trained.
+
+The staged Gemma 3 1B generation is complete. Initial smoke `5802163` passed its
+cohort and CUDA preflights but failed before generation because the 1B weights
+were absent from the shared cache; dependent staged job `5802164` never ran and
+was cancelled. The fixed 1B revision was then downloaded and checksum-verified.
+Replacement smoke `5807823` still failed because the shared generator
+incorrectly treated the text-only 1B checkpoint as multimodal. That route now
+uses the saved model configuration: 1B selects
+`AutoTokenizer`/`AutoModelForCausalLM`, while 4B/12B retain their existing
+multimodal path. Dependent job `5807824` never ran and was cancelled. Second
+replacement smoke `5808905` completed `0:0` in `00:02:06`; staged job
+`5808906`, held by `afterok:5808905`, then completed `0:0` in `02:06:35`.
+Both passed Level-4 health and exact frozen-cohort checks. The staged output
+contains all 200 summary questions aligned to the existing 4B/12B cohort, plus
+frozen 50-question factoid and list subsets. The 300-request protocol-matched
+Claude correctness batch `msgbatch_01LCGoC6Mh4EBNKHAq3XEB5U` completed with
+300/300 API successes and 298 valid labels. Its single protocol-matched
+64-token retry `msgbatch_01AWNB4xt1h86wyfRdm6fq2F` raised this to 299/300;
+the one remaining invalid summary response is excluded without another retry.
+Factoid accuracy is 8/50 (16%) and list accuracy is 3/50 (6%), so neither full
+type expansion is recommended. On 196 summary questions with valid labels for
+all three models, 1B accuracy is 12.2%. Blind P(True), discrete SE, and
+normalized-NLL AUROC are 0.501, 0.597, and 0.789. P(True)-minus-SE is
+`-0.096 [-0.244,+0.060]` at 1B versus `+0.008 [-0.081,+0.096]` at 4B and
+`+0.243 [+0.171,+0.312]` at 12B. The point estimate continues downward, but
+the 1B-minus-4B change `-0.104 [-0.267,+0.059]` is not statistically resolved.
+No further PubMedQA error analysis or prompt tuning is planned. The canonical
+design and remaining boundaries are in `PHASE2_PROBE_PLAN.md`.
 
 ## Active Naming Policy
 

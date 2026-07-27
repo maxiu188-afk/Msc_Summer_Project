@@ -27,8 +27,8 @@ this directory. Historical material is kept under the repository-level
   fixed-generation Claude-versus-PubMedBERT clustering mechanism diagnostic
   for the original longer summary condition.
 - `gemma3_model_scale_experiment.md`: completed Gemma 3 4B versus aligned
-  Phase-1 12B model-scale result, including paired AUROC bootstrap and
-  generation/runtime context.
+  Phase-1 12B result plus the completed staged 1B generation, feasibility
+  gates, and formal three-model summary comparison.
 - `pubmedqa_frozen_probe_transfer.md`: frozen-Probe PubMedQA transfer protocol,
   complete context-v1/context-v2 results, comparison tables, and evidence
   pointers. The question-only result is archived under

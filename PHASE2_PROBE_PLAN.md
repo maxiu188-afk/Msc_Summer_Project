@@ -1,8 +1,8 @@
 # Phase 2 Probe Research Plan
 
-Last updated: 2026-07-26
+Last updated: 2026-07-27
 
-## Execution Status (updated 2026-07-26)
+## Execution Status (updated 2026-07-27)
 
 The single-answer artifact collector passed local unit/CLI/shell validation and
 a server-side interface preflight. The Isambard Gemma 3 environment reports 48
@@ -51,6 +51,35 @@ AUROC `0.8125`, AP `0.8871`, and Brier `0.1688`, versus Accuracy-Probe
 retained as an exploratory complementarity diagnostic, not a new main model.
 See
 `archehr_sebaseline/docs/phase2_probe_completion_statistics.md`.
+
+Initial Gemma 3 1B smoke **5802163** passed cohort/CUDA preflights but failed
+`3:0` before generation because the 1B weights were absent from the shared
+cache. Dependent staged job **5802164** never ran and was cancelled. The fixed
+1B revision was then downloaded and checksum-verified; replacement smoke
+**5807823** and staged job **5807824** were submitted with dependency
+`afterok:5807823`. That smoke exposed a second issue before generation: the
+shared generator incorrectly routed the text-only 1B checkpoint through the
+multimodal Gemma 3 processor/model. The generator now selects the causal-LM
+route from `model_type=gemma3_text`; 118 tests pass, and the existing
+multimodal 4B/12B route is unchanged. Job **5807824** never ran and was
+cancelled. Second replacement smoke **5808905** completed `0:0` in `00:02:06`;
+staged job **5808906**, submitted with `afterok:5808905`, then completed `0:0`
+in `02:06:35`. Both passed Level-4 health and exact frozen-cohort checks. The
+frozen staged cohort is 50 factoid / 50 list / 200 summary questions. Local and
+Isambard preflights passed with cohort-ID SHA-256
+`f2b4a85281f2bf0604b6effa7a7ae238f3832ca88cb489678e03b4bb46b38108`.
+The 300-question output is downloaded locally. Protocol-matched correctness
+batch **`msgbatch_01LCGoC6Mh4EBNKHAq3XEB5U`** ended with 300/300 API successes
+and 298 valid labels. The single bounded 64-token retry
+**`msgbatch_01AWNB4xt1h86wyfRdm6fq2F`** returned two API successes and raised
+the final total to 299/300 valid labels; the remaining invalid summary response
+is excluded without another retry. Factoid has 8/50 correct (16%) and list has
+3/50 correct (6%), so neither full type expansion is recommended. The formal
+196-question common-valid summary analysis is complete: 1B accuracy is 12.2%,
+and blind-P(True)/SE/normalized-NLL AUROC is 0.501/0.597/0.789.
+P(True)-minus-SE is `-0.096 [-0.244,+0.060]` at 1B; its 1B-minus-4B change is
+`-0.104 [-0.267,+0.059]`, so the continued point-estimate decline below 4B is
+not itself statistically resolved. No recurring monitor was used.
 
 ### First local P(True)-Probe pass (2026-07-20)
 
@@ -397,8 +426,9 @@ preservation of the source mapping.
 The main v2 limitation is `maybe` recall: 12.7%, down from 43.6% in v1, while
 `yes` and `no` recall improve to 84.1% and 72.8%. This is a documented
 minority-class limitation of an otherwise clear overall improvement.
-PubMedQA-specific follow-up remains fixed error analysis, not repeated
-PubMedQA prompt tuning.
+No further PubMedQA-specific error analysis or prompt tuning is planned. The
+completed v2 result and its `maybe` limitation remain documented as final
+frozen transfer evidence.
 
 ## Post-Simpson Follow-up Plan
 
@@ -595,7 +625,7 @@ semantic-equivalence judge materially changes long-summary SE and therefore
 implicates NLI difficulty. Claude clustering is too expensive for the intended
 practical pipeline and must not be presented as the proposed improvement.
 
-### Stage 4 — optional SE/P(True) operating-regime extension
+### Stage 4 — SE/P(True) operating-regime extension — complete
 
 Model scale is not part of the Probe branch. If time and compute remain after
 Stages 1--3, a small within-family comparison may test whether model capability
@@ -617,12 +647,10 @@ instruction-tuned checkpoints exist at:
 | 12B | `google/gemma-3-12b-it` | current experimental anchor; text/image, 128K context |
 | 27B | `google/gemma-3-27b-it` | original scale release; text/image, 128K context |
 
-For a bounded primary comparison, `4B/12B/27B` is the preferred three-point
-grid: it retains the existing 12B anchor and brackets it with materially
-smaller and larger checkpoints from the original release. The 1B checkpoint
-can extend the lower end if resources allow. The later 270M model is a
-capability-floor smoke rather than a primary scale point. This candidate choice
-does not by itself authorize the 27B or additional lower-end runs.
+The completed comparison uses the 1B, 4B, and 12B original-release checkpoints.
+The 1B run used a staged design because the 4B accuracy was already low: 20.3%
+overall, 23.5% on factoid, 10.7% on list, and 27.9% on summary. The 270M and
+27B checkpoints are not authorized.
 
 The first added scale point is frozen as Gemma 3 4B, seed 31, aligned exactly
 to the accepted Phase-1 1,000-question seed-31 cohort. All Phase-1 prompts,
@@ -640,6 +668,40 @@ for both 4B and 12B. Overall P(True)-minus-SE AUROC changes from
 blind P(True)'s advantage; SE itself is not strong on 4B summary, where
 normalized NLL is best. See
 `archehr_sebaseline/docs/gemma3_model_scale_experiment.md`.
+
+The staged Gemma 3 1B extension keeps seed 31 and changes only the generator
+checkpoint to `google/gemma-3-1b-it`. It preserves the accepted Phase-1
+no-evidence prompts, temperature/top-p/top-k settings, ten SE samples, blind
+P(True), type-specific NLI rules, correctness judge, and existing 4B/12B
+cohort mapping. No Probe is trained.
+
+Execution is deliberately staged:
+
+1. Run a six-question smoke with two exactly aligned questions per type and
+   the complete generation/UQ path. The staged collection may proceed only
+   through a Slurm `afterok` dependency after the smoke exits successfully and
+   passes its artifact health and alignment checks. Do not start a continuous
+   monitor.
+2. Freeze a 300-question 1B cohort before inspecting any 1B outcome: all 200
+   summary questions from the aligned 4B/12B cohort, plus deterministic
+   50-question subsets from the aligned 480 factoid and 320 list questions.
+3. Treat the aligned 200-summary result as the planned formal 1B/4B/12B
+   comparison of answer accuracy, blind P(True), discrete SE, normalized NLL,
+   and the P(True)-minus-SE AUROC gap.
+4. Treat the 50 factoid and 50 list questions only as feasibility gates. Report
+   their accuracy and valid correct/incorrect label counts first; do not treat
+   their small-sample UQ metrics as final type-level scale estimates.
+5. After those accuracy results are reviewed, decide separately whether either
+   type has enough non-floor correctness signal to justify completing its full
+   aligned cohort. The 50-question runs do not automatically authorize the
+   remaining 430 factoid or 270 list questions.
+
+The completed common-valid summary result shows P(True)-minus-SE AUROC
+declining from `+0.243` at 12B to `+0.008` at 4B and `-0.096` at 1B. The
+1B-minus-4B change is `-0.104 [-0.267,+0.059]`, so the below-4B continuation
+is a point-estimate trend rather than a resolved incremental effect. The
+factoid/list gates returned only 8/50 and 3/50 correct; neither full expansion
+is recommended.
 
 Official sources:
 
@@ -688,8 +750,11 @@ Official sources:
     comparison shows a significant reduction in P(True)'s relative advantage
     at 4B, driven most clearly by summary questions. Do not train
     scale-specific Probes or interpret this as SE improving at smaller scale.
-14. **Secondary — PubMedQA error analysis:** inspect the completed v2 error set,
-    especially official `maybe` regressions, without further prompt tuning.
+14. **Complete — staged Gemma 3 1B extension:** smoke and staged jobs
+    completed, 299/300 correctness labels are valid, and the formal
+    196-question common-valid summary analysis is complete. Factoid/list
+    accuracy is 8/50 and 3/50, so do not expand either full type cohort. No
+    PubMedQA follow-up is planned.
 
 ## Non-negotiable Boundaries
 

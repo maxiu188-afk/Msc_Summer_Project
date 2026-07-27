@@ -16,6 +16,67 @@ Queueing time is excluded: elapsed time is measured from Slurm start to end.
 - Estimates should include a safety margin and should not silently substitute a
   different model, device, precision, sample count, or evaluation stage.
 
+## Gemma 3 1B staged model-scale generation — completed
+
+```text
+initial submission: 2026-07-27
+initial smoke job: 5802163, FAILED 3:0 in 00:00:30 during model loading;
+  cohort preflight passed and CUDA was available, but no answers were generated
+initial staged job: 5802164; never ran because afterok:5802163 could not be
+  satisfied; explicitly cancelled before replacement submission
+failure cause: the gated 1B repository was accessible and config/tokenizer
+  loaded, but model.safetensors was absent from the shared cache; the compute
+  node failed while attempting to load the uncached weights
+repair: downloaded and verified all 10 files for fixed model revision
+  dcc83ea841ab6100d6b47a070329e1ba4cf78752 on the login node; the replacement
+  entrypoint requires that snapshot and uses local_files_only for model and NLI
+first replacement smoke job: 5807823, FAILED 3:0 in 00:00:24 during model
+  construction despite the complete cache
+first replacement staged job: 5807824; never ran because afterok:5807823 could
+  not be satisfied; explicitly cancelled before the second replacement
+confirmed code cause: the shared generator routed every gemma-3 checkpoint
+  through AutoProcessor + Gemma3ForConditionalGeneration, but 1B is text-only
+  Gemma3TextConfig + Gemma3ForCausalLM and has no image processor
+code repair: route model_type=gemma3_text through AutoTokenizer +
+  AutoModelForCausalLM while preserving the multimodal 4B/12B path; 118 local
+  unit tests passed, including a dedicated route test
+second replacement smoke job: 5808905; COMPLETED 0:0 in 00:02:06; internal
+  pipeline 00:01:55; six questions, factoid/list/summary = 2/2/2
+second replacement staged job: 5808906; COMPLETED 0:0 in 02:06:35; internal
+  pipeline 02:05:58; 300 questions, factoid/list/summary = 50/50/200;
+  dependency afterok:5808905 was satisfied
+model / generation: google/gemma-3-1b-it, seed 31; otherwise the accepted
+  Phase-1 no-evidence prompts, ten T=1.0 samples, one T=0.1 main answer,
+  top_p=0.9, top_k=50, max_new_tokens=192, PubMedBERT NLI, and blind P(True)
+reference cohort SHA-256:
+  4c40280a6ab234d204ad1f60e9c7d06a588f8387ee5ee21a4d2c1028e907b7d0
+smoke cohort ID SHA-256:
+  64ffbd1a52375afe632549726890d95b015b107dfefb35cf200d81e4c9ffdb01
+staged cohort ID SHA-256:
+  f2b4a85281f2bf0604b6effa7a7ae238f3832ca88cb489678e03b4bb46b38108
+preflight: local and Isambard source-derived subset/record checks PASS
+health/postflight: both final jobs PASS Level-4 health, reference-subset, and
+  exact frozen-cohort checks; staged artifacts contain 300 main generations,
+  3,000 high-temperature generations, and 300 complete SE/self-report/UQ rows
+correctness judging: protocol-matched 300-request Claude batch
+  msgbatch_01LCGoC6Mh4EBNKHAq3XEB5U ended with 300/300 API successes and
+  298 valid labels; factoid 8/50 correct, list 3/50 correct; two summary rows
+  stopped at the 32-token limit
+bounded label repair: msgbatch_01AWNB4xt1h86wyfRdm6fq2F, exactly two summary
+  requests, same model/low effort with max_tokens increased once to 64; two API
+  successes, one additional valid label; final 299/300 valid, no further retry
+monitoring: no recurring or continuous monitor started
+formal common-valid summary analysis: n=196; 1B accuracy 0.122; blind P(True),
+  discrete SE, normalized NLL AUROC = 0.501/0.597/0.789;
+  P(True)-minus-SE = -0.096, 95% CI [-0.244,+0.060];
+  1B-minus-4B gap change = -0.104, 95% CI [-0.267,+0.059]
+decision: do not expand the remaining factoid or list cohorts
+status: staged 1B experiment and planned analysis complete
+```
+
+The dependency gate worked as intended: staged job `5808906` started only after
+smoke `5808905` exited `0:0`. Scientific analysis is complete.
+
 ## Phase-2 collection and local linear-Probe pass
 
 ```text

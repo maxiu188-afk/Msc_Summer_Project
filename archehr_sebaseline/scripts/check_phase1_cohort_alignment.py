@@ -25,6 +25,13 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
         return [json.loads(line) for line in infile if line.strip()]
 
 
+def write_jsonl_exclusive(path: Path, rows: list[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("x", encoding="utf-8") as outfile:
+        for row in rows:
+            outfile.write(json.dumps(row, sort_keys=True) + "\n")
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as infile:
@@ -134,6 +141,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--split", default="train13b")
     parser.add_argument("--expected-reference-sha256")
     parser.add_argument("--write-report", type=Path)
+    parser.add_argument(
+        "--write-candidate-examples",
+        type=Path,
+        help="Write the validated candidate cohort as an exclusive JSONL manifest.",
+    )
     return parser.parse_args()
 
 
@@ -189,6 +201,8 @@ def main() -> int:
     if args.write_report is not None:
         args.write_report.parent.mkdir(parents=True, exist_ok=True)
         args.write_report.write_text(rendered, encoding="utf-8")
+    if args.write_candidate_examples is not None:
+        write_jsonl_exclusive(args.write_candidate_examples, candidate_rows)
     return 0
 
 

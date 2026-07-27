@@ -1,6 +1,6 @@
 # PubMedQA Frozen-Probe Transfer Protocol
 
-Last updated: 2026-07-23
+Last updated: 2026-07-27
 
 ## Decision and status
 
@@ -158,10 +158,10 @@ counts without changing the model, data, generation settings, Probes,
 threshold, or evaluator.
 
 The remaining limitation is specific rather than global: v2 under-predicts the
-minority `maybe` label. A fixed manual review should focus on the 18 official
-`maybe` questions that v1 classified correctly and v2 changed to `yes` or
-`no`. This is error analysis of the completed result, not authorization for
-repeated prompt tuning.
+minority `maybe` label. The 18 official `maybe` questions that v1 classified
+correctly and v2 changed to `yes` or `no` remain documented as part of that
+limitation, but no dedicated manual error review or further PubMedQA prompt
+tuning is planned.
 
 ## What “transfer” means
 
