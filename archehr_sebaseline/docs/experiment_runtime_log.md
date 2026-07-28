@@ -167,7 +167,8 @@ fusion: StandardScaler + L2 logistic regression on validation P(True)-Probe
 fusion test: AUROC 0.8125, AP 0.8871, Brier 0.1688
 Accuracy-Probe test: AUROC 0.8058, AP 0.8884, Brier 0.2162
 interpretation: Accuracy-Probe advantage over blind P(True) is not
-  statistically resolved; fusion is exploratory and not a new main model
+  statistically resolved; fusion is exploratory, archived, and not a new main
+  model
 output: analysis_outputs/bioasq_phase2_probe_completion_20260725
 ```
 
@@ -250,7 +251,8 @@ cluster structure: mean clusters NLI 1.23 versus Claude 3.98; mean pair
   agreement 0.592; mean ARI 0.396; 821 NLI-same/Claude-different pairs versus
   41 in the opposite direction
 interpretation: NLI over-merging is a credible contributor to weak summary SE,
-  but the AUROC-change CI crosses zero and blinded human review is pending
+  but this initial AUROC-change CI crosses zero; the terminal extension and
+  completed human review below own the final mechanism conclusion
 local validation: 115/115 current unit tests, compileall, git diff --check,
   and the earlier 48-question synthetic-copy analysis smoke passed
 monitoring: no recurring monitor started
@@ -286,7 +288,13 @@ cluster structure: mean clusters NLI 1.19 versus Claude 3.88; mean pair
 interpretation: fixed-answer reclustering closes about 85% of the original
   P(True)-minus-SE point-estimate gap, strongly implicating long-answer NLI
   clustering difficulty; Claude remains an expensive diagnostic, not the
-  proposed practical method, and blinded pair review remains pending
+  proposed practical method
+blinded 24-pair review completed: original NLI agreement 9/24 with 5 false
+  merges and 10 false splits; Claude clustering agreement 19/24 with 0 false
+  merges and 5 false splits; Claude direct judgement agreement 17/24 with
+  0 false merges and 7 false splits
+review boundary: four comparison cells were deliberately sampled as 8/8/4/4;
+  agreement rates are diagnostic and not population accuracy estimates
 ```
 
 ## Gemma 3 4B Phase-1-aligned model-scale run

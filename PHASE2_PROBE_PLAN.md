@@ -1,8 +1,17 @@
 # Phase 2 Probe Research Plan
 
-Last updated: 2026-07-27
+Last updated: 2026-07-28
 
-## Execution Status (updated 2026-07-27)
+## Final status and research boundary
+
+All three research phases and the bounded follow-up diagnostics are complete.
+The final thesis-oriented result map is
+`RESEARCH_RESULTS_SYNTHESIS_ZH.md`. Before the next supervisor discussion, no
+new experiment, prompt revision, model scale, Probe, or type-level expansion
+is planned. This file is retained as the detailed frozen Phase-2 protocol and
+decision record.
+
+## Execution Status (updated 2026-07-28)
 
 The single-answer artifact collector passed local unit/CLI/shell validation and
 a server-side interface preflight. The Isambard Gemma 3 environment reports 48
@@ -45,12 +54,11 @@ See
 The remaining Phase-2 statistics are also complete. On the same 384 test
 questions, Accuracy-Probe minus blind P(True) has AUROC difference `+0.01584`
 with paired-bootstrap 95% CI `[-0.03890, 0.07173]`; the interval includes zero.
-The one pre-declared validation-fitted two-Probe logistic fusion reaches test
-AUROC `0.8125`, AP `0.8871`, and Brier `0.1688`, versus Accuracy-Probe
-`0.8058/0.8884/0.2162`. The small AUROC increase and slightly lower AP are
-retained as an exploratory complementarity diagnostic, not a new main model.
-See
-`archehr_sebaseline/docs/phase2_probe_completion_statistics.md`.
+The validation-fitted two-Probe fusion produced only a small mixed AUROC/AP
+change and is not part of the main result. Its provenance is retained under
+`archive_unused/docs/historical_results/feature_fusion_diagnostics_20260728.md`.
+The active statistical conclusion is the paired Accuracy-Probe versus blind
+P(True) interval above.
 
 Initial Gemma 3 1B smoke **5802163** passed cohort/CUDA preflights but failed
 `3:0` before generation because the 1B weights were absent from the shared
@@ -443,10 +451,9 @@ Finish the current Probe branch before launching a larger new experiment:
 2. **Complete:** paired-bootstrap uncertainty for Accuracy-Probe versus direct
    blind P(True) uses all 384 test rows; the AUROC-difference interval includes
    zero.
-3. **Complete:** one two-score logistic fusion was fitted on validation,
-   frozen, and evaluated once on test. Its small mixed AUROC/AP change remains
-   a post-hoc exploratory complementarity check, not a new main model and not
-   authorization for nonlinear fusion.
+3. **Archived exploration:** the validation-fitted two-Probe fusion produced
+   only a small mixed AUROC/AP change and did not become a main model. Its
+   result is retained under `archive_unused/`.
 
 The already reported factoid/list/summary tables remain visible, but no new
 type-specific thresholds, type-specific Probes, type-feature optimization, or
@@ -599,9 +606,8 @@ excluded without further retry. Claude-clustered SE reached AUROC 0.727 versus
 95% CI `[-0.016,+0.313]`. Blind P(True) remained higher at 0.825. Claude
 produced many more clusters (mean 3.98 versus 1.23), with 821
 NLI-same/Claude-different answer pairs versus 41 in the opposite direction.
-This supports NLI over-merging as a credible contributor, but not a proven
-dominant cause: the AUROC-change interval crosses zero and the blinded
-24-pair human review remains pending.
+This initial bounded result motivated the already authorized 96-question
+extension; it is not the final mechanism estimate.
 
 Because 47 complete cases remain small for that mechanism inference, one
 nested extension is authorized to a 96-question label-balanced target. It
@@ -624,6 +630,12 @@ The scientific target remains diagnosis: determine whether an alternative
 semantic-equivalence judge materially changes long-summary SE and therefore
 implicates NLI difficulty. Claude clustering is too expensive for the intended
 practical pipeline and must not be presented as the proposed improvement.
+The completed stratified 24-pair human review agrees with original NLI on
+9/24 pairs, Claude clustering on 19/24, and Claude direct judgement on 17/24.
+Original NLI made five false merges and ten false splits; Claude clustering
+made no false merge and five false splits. This supports NLI as an important
+long-answer SE error source while retaining Claude's conservative
+over-splitting and non-deployability as limitations.
 
 ### Stage 4 — SE/P(True) operating-regime extension — complete
 
@@ -734,18 +746,17 @@ Official sources:
    shared-replay Probes against selected Phase-1 UQ methods on the 384 labelled
    test questions; replacement job 5773786 completed and passed its health
    check after the node-environment failure from job 5761275 was archived.
-10. **Complete — Phase-2 statistical completion:** paired bootstrap and the
-    exploratory validation-fitted two-Probe fusion diagnostic are recorded;
-    no type-aware Probe optimization was started.
+10. **Complete — Phase-2 statistical completion:** the paired Accuracy-Probe
+    versus blind-P(True) bootstrap is recorded. The exploratory two-Probe
+    fusion is archived and no type-aware Probe optimization was started.
 11. **Complete — summary length intervention:** the short prompt changed
     realised length but did not recover SE relative to blind P(True); the
     paired-bootstrap length-effect interval includes zero.
-12. **Complete quantitative mechanism diagnostic; human review pending:**
-    93/96 complete cases show a bootstrap-supported Claude-SE recovery and
-    close about 85% of the original P(True)-minus-SE point-estimate gap,
-    strongly implicating long-answer NLI clustering difficulty. Do not frame
-    Claude as a deployable improvement or claim better semantic correctness
-    before the frozen blinded pair review.
+12. **Complete — clustering mechanism and human review:** 93/96 complete
+    cases show a bootstrap-supported Claude-SE recovery and close about 85% of
+    the original P(True)-minus-SE point-estimate gap. The stratified 24-pair
+    review agrees with Claude clustering on 19/24 pairs versus 9/24 for NLI.
+    Claude remains a diagnostic rather than a deployable improvement.
 13. **Complete — SE/P(True) model-capability check:** the aligned 4B/12B
     comparison shows a significant reduction in P(True)'s relative advantage
     at 4B, driven most clearly by summary questions. Do not train

@@ -1,7 +1,8 @@
 # Archived Documentation Index
 
 The files below are retained for provenance and are not active instructions.
-They were consolidated here on 2026-07-22.
+The archive was consolidated on 2026-07-22 and updated on 2026-07-28 when the
+three-phase research narrative was frozen.
 
 ## `project_history/`
 
@@ -16,13 +17,16 @@ They were consolidated here on 2026-07-22.
 - `ISAMBARD_COMMANDS_legacy.md`, `ISAMBARD_BIOASQ.md`, `RUNPOD.md`, and
   `SERVER_RUN.md`: completed, duplicated, or superseded server workflows.
 - `naming_policy.md`: forward-naming rule now summarized in the active READMEs.
+- `SIMPSON_MEETING_PHASE2_RESULTS_2026-07-23_FINAL.md`: superseded supervisor
+  brief, replaced by the complete three-phase synthesis.
 
 ## `historical_results/`
 
 Historical grounded/summary BioASQ reports that use protocols or targets not
 comparable to the current Phase-1/Phase-2 experiments, plus the archived
 question-only PubMedQA transfer result whose official article evidence was
-omitted.
+omitted. This directory also retains post-hoc feature-fusion diagnostics that
+did not become main methods.
 
 ## `literature_extracts/`
 

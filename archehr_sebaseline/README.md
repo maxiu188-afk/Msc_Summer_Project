@@ -32,6 +32,11 @@ The goal is to evaluate uncertainty in LLM answers, not to build a complex answe
 
 ## Current Research Status
 
+The completed three-phase research narrative and final no-new-experiment
+boundary are owned by `../RESEARCH_RESULTS_SYNTHESIS_ZH.md`. This package
+README retains implementation context; it should not be used as a separate
+progress plan.
+
 ArchEHR-QA is no longer the planned final evaluation/training dataset for this project. The pipeline is implemented and useful as an engineering baseline, but the available test key contains only clinician reference answers:
 
 ```text
@@ -97,9 +102,8 @@ because it omitted the article evidence defining the official labels. See
 `docs/pubmedqa_frozen_probe_transfer.md`, `../PHASE2_PROBE_PLAN.md`, and
 `docs/experiment_runtime_log.md`.
 
-The PubMedQA follow-up is fixed error analysis of the completed v2 result,
-especially its 12.7% recall on the minority `maybe` label. This does not reopen
-the prompt or authorize repeated tuning.
+No further PubMedQA error-case review or prompt tuning is planned. The completed
+v2 result is retained only as a bounded frozen-Probe transfer evaluation.
 
 The in-domain efficiency benchmark is complete on the 384 valid-labelled
 Phase-2 test questions. Smoke job `5761273` passed; full job `5761275` failed
@@ -123,10 +127,9 @@ is an operating-regime observation rather than a causal length effect.
 Phase-2 is now complete. On the same 384 test questions, Accuracy-Probe minus
 blind P(True) has AUROC difference `+0.01584` with paired-bootstrap 95% CI
 `[-0.03890, 0.07173]`, so the point-estimate advantage is not statistically
-resolved. The one validation-fitted two-Probe fusion reaches test AUROC
-`0.8125`, AP `0.8871`, and Brier `0.1688`; its small mixed change versus
-Accuracy-Probe remains exploratory. The frozen protocol and complete tables
-are in `docs/phase2_probe_completion_statistics.md`.
+resolved. The validation-fitted two-Probe fusion did not become a main model
+and is archived under `../archive_unused/`. The frozen primary protocol and
+complete tables are in `docs/phase2_probe_completion_statistics.md`.
 
 The post-Simpson main line studies the conditions under which Semantic Entropy
 or blind P(True) performs better. The paired BioASQ-summary prompt intervention
@@ -149,18 +152,15 @@ See `docs/summary_length_intervention.md`.
 The fixed-generation Claude-versus-NLI mechanism diagnostic is quantitatively
 complete on 93/96 long-summary questions. Claude-clustered SE reaches AUROC
 0.781 versus 0.595 for NLI-SE; the paired change is +0.187 with 95% CI
-[+0.080,+0.291]. This strongly implicates long-answer NLI clustering
-difficulty, but Claude is an expensive diagnostic rather than the proposed
-deployment method, and blinded pair review remains pending. Any optional
-model-scale work compares SE and blind P(True) without training additional
-Probes. Official Gemma 3 core sizes are 270M, 1B, 4B, 12B, and 27B. The first
-added 4B point completed smoke `5785064` and exact-Phase-1-aligned full job
-`5785065`; Level-4 health and exact 1,000-question alignment passed. On 990
-paired valid questions, P(True)-minus-SE AUROC changes from +0.047 at 12B to
--0.009 at 4B; the paired 4B-minus-12B change is -0.056 with 95% CI
-[-0.103,-0.010]. Lower capability removes blind P(True)'s advantage,
-especially on summary, rather than making SE intrinsically strong. See
-`../PHASE2_PROBE_PLAN.md`.
+[+0.080,+0.291]. The completed stratified 24-pair review agrees with Claude
+clustering on 19/24 pairs versus 9/24 for original NLI. Claude eliminates false
+merges in this diagnostic sample but remains biased toward over-splitting and
+is not the proposed deployment method.
+
+The aligned model-scale work is also complete. On 196 common-valid summary
+questions, P(True)-minus-SE changes from +0.243 at 12B to +0.008 at 4B and
+-0.096 at 1B. This is primarily P(True) weakening with model capability, not
+SE becoming intrinsically strong. See `../RESEARCH_RESULTS_SYNTHESIS_ZH.md`.
 
 New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
 `archehr` prefixes. This does not rename the package, Python imports, or
