@@ -81,6 +81,36 @@ recovering internal self-evaluation and supervising answer error.
 Either Probe costs about 60.5 ms/question, versus 154.4 ms for blind P(True)
 and 32.75 s for ten-sample SE.
 
+The frozen heads were also evaluated without retraining or target
+recalibration on the official 500-question PubMedQA PQA-L test set. Under the
+final Appendix-C context-v2 prompt, answer accuracy is 72.4% and the
+single-answer error-ranking comparison is:
+
+| Method | BioASQ test AUROC | PubMedQA v2 AUROC | PubMedQA v2 AP |
+| --- | ---: | ---: | ---: |
+| P(True)-Probe | 0.7452 | **0.6839** | **0.4519** |
+| Blind P(True) | 0.7900 | 0.6490 | 0.4210 |
+| Verbalized confidence | — | 0.6402 | 0.4164 |
+| Accuracy-Probe | **0.8058** | 0.5901 | 0.3916 |
+| Normalized NLL | — | 0.5424 | 0.3075 |
+| Mean token entropy | — | 0.5423 | 0.3080 |
+| Sequence NLL | — | 0.5400 | 0.3025 |
+| Max token entropy | — | 0.5372 | 0.2914 |
+
+The source-domain correctness-supervised Accuracy-Probe degrades more than the
+P(True)-Probe, which becomes the strongest PubMedQA-v2 ranking score. However,
+the P(True)-Probe's fidelity to its original frozen teacher target also falls
+from 0.9026 in BioASQ to 0.5899 in PubMedQA. The transfer result is therefore
+limited cross-target error-ranking usefulness, not preservation of the source
+mapping or dataset-independent generalization. AP is not compared across
+datasets because error prevalence differs.
+
+PubMedQA used a one-answer transfer protocol, so SE, cluster count, and other
+ten-sample disagreement methods were not run there. Their absence is a
+protocol boundary, not a negative result. The BioASQ normalized-NLL result is
+also omitted from the cross-dataset column because it averages ten sampled
+answers, unlike the single-answer PubMedQA score.
+
 ## Three completed phases
 
 ### Phase 1 — answer-form operating regimes

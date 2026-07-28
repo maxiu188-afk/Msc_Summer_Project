@@ -135,7 +135,9 @@ summary；P(True) 在 factoid 和 12B summary 上更强。
 | Accuracy-Probe 对答案错误 | 0.8058 | 0.8884 | 直接 correctness ranking |
 | Blind P(True) 对答案错误 | 0.7900 | 0.8383 | 二次 self-evaluation |
 | Discrete SE 对答案错误 | 0.7484 | 0.8446 | 十次采样加聚类 |
+| Cluster count 对答案错误 | 0.7475 | 0.8368 | 十次采样加聚类 |
 | P(True)-Probe 对答案错误 | 0.7452 | 0.8357 | 跨目标的次要比较 |
+| 10-sample normalized NLL 对答案错误 | 0.7382 | 0.8466 | 十次采样 token baseline |
 
 Accuracy-Probe minus blind P(True) 为 `+0.01584` AUROC，配对 bootstrap
 95% CI `[-0.03890,0.07173]`。Probe 的主要优势因此是竞争力与成本，而不是
@@ -154,9 +156,52 @@ Accuracy-Probe minus blind P(True) 为 `+0.01584` AUROC，配对 bootstrap
 
 Probe 约比 blind P(True) 快 2.55 倍，比采样方法快 500 倍以上。
 
-冻结 Probe 在 PubMedQA Appendix-C context v2 上作为有限的跨数据集检查：
-P(True)-Probe error AUROC 为 0.6839，Accuracy-Probe 为 0.5901。该结果支持
-“监督目标会影响迁移方式”，但 PubMedQA 不替代 BioASQ 主结果。
+### 冻结 Probe 的跨数据集结果
+
+两个 block-24/LT Probe 随后不经重新训练、重校准、阈值调整或特征选择，
+直接应用到官方 PubMedQA PQA-L 500 题。最终 Appendix-C context v2 prompt
+使用与 BioASQ 相同的 Gemma 3 12B checkpoint，并把官方 abstract 作为证据；
+模型决策准确率为 362/500（72.4%），错误率为 27.6%。
+
+先用 AUROC 比较三个在两个数据集上都按相同定义计算的
+correctness-ranking score：
+
+| 方法 | BioASQ test AUROC | PubMedQA v2 AUROC | 变化 |
+| --- | ---: | ---: | ---: |
+| Accuracy-Probe | 0.8058 | 0.5901 | -0.2157 |
+| Blind P(True) | 0.7900 | 0.6490 | -0.1410 |
+| P(True)-Probe | 0.7452 | **0.6839** | -0.0613 |
+
+这里的 P(True)-Probe BioASQ 数字是它对答案错误的跨目标排名，不是其
+0.9026 的原始 teacher-target fidelity。三种方法在 PubMedQA 上均下降，
+但 P(True)-Probe 下降最小，并成为 v2 上最强的错误排序方法；相反，
+直接以 BioASQ correctness 训练的 Accuracy-Probe 下降到 0.5901。这个结果
+说明“源域目标更直接”不保证跨数据集迁移更强。
+
+PubMedQA v2 同批 500 题的完整单答案方法对比如下：
+
+| 方法 | Error AUROC | AP |
+| --- | ---: | ---: |
+| Frozen P(True)-Probe | **0.6839** | **0.4519** |
+| Blind P(True) | 0.6490 | 0.4210 |
+| Verbalized confidence | 0.6402 | 0.4164 |
+| Frozen Accuracy-Probe | 0.5901 | 0.3916 |
+| Normalized NLL | 0.5424 | 0.3075 |
+| Mean token entropy | 0.5423 | 0.3080 |
+| Sequence NLL | 0.5400 | 0.3025 |
+| Max token entropy | 0.5372 | 0.2914 |
+
+AP 必须结合 PubMedQA v2 的 27.6% 错误率理解，不能与 BioASQ AP 直接比较。
+此外，P(True)-Probe 对其原始 frozen blind-P(True) teacher target 的 AUROC
+只有 0.5899，远低于 BioASQ 的 0.9026；因此 0.6839 应解释为迁移后的
+cross-target error-ranking usefulness，而不是原始内部映射得到保留。
+
+这次 transfer 没有生成十个高温答案，也没有运行 NLI 聚类，所以没有
+PubMedQA SE、cluster count 或 sample-disagreement 结果。它是低成本
+单答案方法的外部压力测试，不替代 BioASQ 主结果，也不支持某个 Probe
+已经获得数据集无关的泛化能力。BioASQ 表中的 normalized NLL 是十次采样
+平均，而 PubMedQA 表中是单个主答案的 normalized NLL，因此也不把两者的
+数值差解释为严格的跨数据集退化。
 
 完整证据见：
 

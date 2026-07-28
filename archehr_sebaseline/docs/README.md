@@ -31,10 +31,13 @@ Start with:
 - `phase2_probe_completion_statistics.md`: primary paired
   Accuracy-Probe-versus-blind-P(True) uncertainty result.
 - `pubmedqa_frozen_probe_transfer.md`: bounded frozen-Probe transfer under the
-  official PubMedQA evidence context.
+  official PubMedQA evidence context, including comparison with blind P(True),
+  verbalized confidence, NLL, and token-entropy baselines.
 
 The P(True)-Probe and Accuracy-Probe remain distinct: one targets direct
-P(True)-derived uncertainty, while the other targets answer error.
+P(True)-derived uncertainty, while the other targets answer error. Their
+different PubMedQA transfer behavior is part of the main Phase-2 comparison;
+the transfer protocol has no ten-sample SE result.
 
 ## Phase 3 — conditions and mechanisms
 
