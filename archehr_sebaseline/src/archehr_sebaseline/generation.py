@@ -53,14 +53,20 @@ class MissingGenerationDependency(RuntimeError):
     """Raised when generation dependencies are unavailable."""
 
 
-def _load_transformers() -> tuple[Any, Any, Any, Any, Any, Any]:
+def _load_transformers() -> tuple[Any, Any, Any, Any, Any, Any, Any]:
     cache_dir = Path(__file__).resolve().parents[2] / ".cache" / "torchinductor"
     cache_dir.mkdir(parents=True, exist_ok=True)
     os.environ.setdefault("TORCHINDUCTOR_CACHE_DIR", str(cache_dir))
 
     try:
         import torch
-        from transformers import AutoModelForCausalLM, AutoProcessor, AutoTokenizer, set_seed
+        from transformers import (
+            AutoConfig,
+            AutoModelForCausalLM,
+            AutoProcessor,
+            AutoTokenizer,
+            set_seed,
+        )
 
         try:
             from transformers import Gemma3ForConditionalGeneration
@@ -71,7 +77,15 @@ def _load_transformers() -> tuple[Any, Any, Any, Any, Any, Any]:
             "HuggingFace generation requires torch and transformers. "
             "Install the project environment from requirements.txt."
         ) from exc
-    return torch, AutoModelForCausalLM, AutoProcessor, AutoTokenizer, Gemma3ForConditionalGeneration, set_seed
+    return (
+        torch,
+        AutoConfig,
+        AutoModelForCausalLM,
+        AutoProcessor,
+        AutoTokenizer,
+        Gemma3ForConditionalGeneration,
+        set_seed,
+    )
 
 
 def _resolve_torch_dtype(torch: Any, dtype_name: str | None) -> Any | None:
@@ -88,6 +102,10 @@ def _is_gemma3_model(model_name: str) -> bool:
     return "gemma-3" in normalized
 
 
+def _is_text_only_gemma3_config(model_config: Any) -> bool:
+    return str(getattr(model_config, "model_type", "")).lower() == "gemma3_text"
+
+
 class HuggingFaceCausalLMGenerator:
     """HuggingFace causal-LM generator used by model-backed levels."""
 
@@ -96,6 +114,7 @@ class HuggingFaceCausalLMGenerator:
         self.config = config
         (
             torch,
+            auto_config,
             auto_model,
             auto_processor,
             auto_tokenizer,
@@ -115,20 +134,43 @@ class HuggingFaceCausalLMGenerator:
             model_kwargs["torch_dtype"] = torch_dtype
 
         if _is_gemma3_model(config.model_name):
-            if gemma3_model is None:
-                raise MissingGenerationDependency(
-                    "Gemma 3 requires transformers>=4.50.0. "
-                    "Upgrade the server environment with: python -m pip install -U 'transformers>=4.50.0'"
-                )
-            self.processor = auto_processor.from_pretrained(
+            pretrained_config = auto_config.from_pretrained(
                 config.model_name,
                 local_files_only=config.local_files_only,
                 trust_remote_code=config.trust_remote_code,
             )
-            self.tokenizer = getattr(self.processor, "tokenizer", None)
-            if self.tokenizer is not None:
+            if _is_text_only_gemma3_config(pretrained_config):
+                self.tokenizer = auto_tokenizer.from_pretrained(
+                    config.model_name,
+                    local_files_only=config.local_files_only,
+                    trust_remote_code=config.trust_remote_code,
+                )
                 self.tokenizer.truncation_side = "left"
-            self.model = gemma3_model.from_pretrained(config.model_name, **model_kwargs)
+                self.model = auto_model.from_pretrained(
+                    config.model_name,
+                    config=pretrained_config,
+                    **model_kwargs,
+                )
+            else:
+                if gemma3_model is None:
+                    raise MissingGenerationDependency(
+                        "Multimodal Gemma 3 requires transformers>=4.50.0. "
+                        "Upgrade the server environment with: "
+                        "python -m pip install -U 'transformers>=4.50.0'"
+                    )
+                self.processor = auto_processor.from_pretrained(
+                    config.model_name,
+                    local_files_only=config.local_files_only,
+                    trust_remote_code=config.trust_remote_code,
+                )
+                self.tokenizer = getattr(self.processor, "tokenizer", None)
+                if self.tokenizer is not None:
+                    self.tokenizer.truncation_side = "left"
+                self.model = gemma3_model.from_pretrained(
+                    config.model_name,
+                    config=pretrained_config,
+                    **model_kwargs,
+                )
         else:
             self.tokenizer = auto_tokenizer.from_pretrained(
                 config.model_name,

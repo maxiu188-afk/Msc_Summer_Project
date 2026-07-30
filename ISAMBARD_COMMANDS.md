@@ -104,6 +104,71 @@ P(True)-minus-SE AUROC is -0.009 at 4B versus +0.047 at 12B, with paired
 4B-minus-12B change -0.056 and 95% CI [-0.103,-0.010]. Full results are in
 `archehr_sebaseline/docs/gemma3_model_scale_experiment.md`.
 
+## Completed Gemma 3 1B staged generation
+
+The 1B run changes only the generator checkpoint. It first runs the same 2/2/2
+smoke structure, then a separately authorized staged cohort containing all 200
+summary questions and frozen 50-question factoid/list subsets:
+
+```bash
+cd "$SCRATCHDIR/final_project/archehr_sebaseline"
+
+SMOKE_ID="$(sbatch --parsable --time=01:00:00 \
+  --job-name=gemma3-1b-smoke \
+  --export=ALL,SCALE_STAGE=smoke \
+  scripts/run_gemma3_1b_phase1_scale_isambard.sbatch)"
+
+STAGED_ID="$(sbatch --parsable \
+  --job-name=gemma3-1b-staged \
+  --dependency="afterok:${SMOKE_ID}" \
+  --export=ALL,SCALE_STAGE=staged \
+  scripts/run_gemma3_1b_phase1_scale_isambard.sbatch)"
+
+printf 'smoke=%s staged=%s\n' "$SMOKE_ID" "$STAGED_ID"
+```
+
+The staged job is submitted immediately but cannot start unless the smoke
+finishes with exit code 0. The smoke script exits nonzero if its Level-4 health
+check, Phase-1 subset check, or frozen-cohort postflight fails. No recurring or
+continuous monitor is started.
+
+Initial submission on 2026-07-27:
+
+```text
+5802163  gemma3-1b-smoke, FAILED 3:0 during uncached model loading
+5802164  gemma3-1b-staged, never ran and cancelled after dependency failure
+```
+
+The full fixed 1B snapshot at revision
+`dcc83ea841ab6100d6b47a070329e1ba4cf78752` was then downloaded and verified in
+the shared Hugging Face cache. The first replacement exposed a separate code
+issue: 1B is a text-only `Gemma3ForCausalLM`, while the shared generator had
+routed all Gemma 3 checkpoints through the multimodal processor/model path.
+That route is now selected from the saved model config.
+
+```text
+5807823  gemma3-1b-smoke-r1, FAILED 3:0 on the incorrect multimodal route
+5807824  gemma3-1b-staged-r1, never ran and cancelled
+5808905  gemma3-1b-smoke-r2, COMPLETED 0:0, 00:02:06
+5808906  gemma3-1b-staged-r2, COMPLETED 0:0, 02:06:35, afterok:5808905
+```
+
+The staged output path is:
+
+```bash
+RUN="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/bioasq_gemma3_1b_300x10_phase1_aligned_seed31_20260727"
+```
+
+The 200 summary questions form the planned formal scale comparison. Factoid
+and list accuracy on 50 questions each are feasibility gates only; do not
+submit the remaining 430/270 questions without a separate decision.
+Both final outputs passed health and cohort alignment. Correctness batch
+`msgbatch_01LCGoC6Mh4EBNKHAq3XEB5U` returned 298/300 valid labels: factoid
+8/50 correct and list 3/50 correct. One bounded two-summary retry,
+`msgbatch_01AWNB4xt1h86wyfRdm6fq2F`, raised the final total to 299/300 valid
+labels. The formal 196-summary analysis is complete; do not submit the
+remaining factoid/list questions.
+
 ## Current PubMedQA context result
 
 The active result is the completed Appendix-C context v2 run. The question-only

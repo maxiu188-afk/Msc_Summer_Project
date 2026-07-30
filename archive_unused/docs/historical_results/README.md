@@ -25,6 +25,9 @@ They remain useful for reproducing prior runs and checking artifact formats.
 - `pubmedqa_no_context_transfer_20260721.md`: completed question-only PubMedQA
   transfer archived because the official decision depends on the omitted
   article evidence; raw artifacts are retained for provenance.
+- `feature_fusion_diagnostics_20260728.md`: Phase-1 P(True)/SE/NLL fusion and
+  Phase-2 two-Probe fusion, archived because neither justified a new main
+  method.
 - `../../results/server_results/`: local raw summary outputs, related analyses,
   manual-review material, and the PubMedQA Level-4 pilot.
 - `../../results/local_outputs/`: local downloaded BioASQ summary run
@@ -34,4 +37,6 @@ They remain useful for reproducing prior runs and checking artifact formats.
 
 This archived report deliberately does not describe the active direction. Use
 `../../../archehr_sebaseline/docs/README.md` and
-`../../../PHASE2_PROBE_PLAN.md` for the current protocol and experiment state.
+`../../../RESEARCH_RESULTS_SYNTHESIS_ZH.md` for the completed three-phase
+result narrative and `../../../PHASE2_PROBE_PLAN.md` for the frozen detailed
+Phase-2 protocol.

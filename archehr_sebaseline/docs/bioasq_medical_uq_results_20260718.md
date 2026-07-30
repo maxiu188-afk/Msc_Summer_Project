@@ -1,4 +1,6 @@
-# BioASQ medical-UQ results — Phase 1 complete (2026-07-19)
+# BioASQ medical-UQ results — Phase 1 complete
+
+Last updated: 2026-07-28
 
 This is the canonical result record for the active BioASQ medical-QA UQ
 direction. Earlier 100-question evidence/no-evidence and summary experiments
@@ -85,7 +87,7 @@ with answer regime. The completed within-summary shortening intervention did
 not recover SE, so length alone is not sufficient to explain the summary
 failure and no additional length-specific generation experiment is required.
 
-## Bounded long-summary clustering diagnostic
+## Phase-3 clustering follow-up pointer
 
 A fixed-generation, label-balanced mechanism diagnostic compared the accepted
 PubMedBERT NLI clusters with a frozen Claude semantic-equivalence rubric on 48
@@ -106,11 +108,9 @@ The P(True)-minus-Claude-SE gap was `+0.098`, 95% interval
 
 The structural signal is strong: Claude produced 3.98 clusters per question
 on average versus 1.23 for NLI, and 821 answer pairs were NLI-same but
-Claude-different versus only 41 in the opposite direction. This makes NLI
-over-merging a credible contributor to weak long-summary SE, but not a proven
-dominant cause. The AUROC interval is unresolved, Claude's direct decisions
-contain non-transitive triples, one row is missing, and the blinded 24-pair
-human review remains pending. Full protocol and artifacts are recorded in
+Claude-different versus only 41 in the opposite direction. This initial result
+motivated the terminal extension below and is not the final mechanism
+estimate. Full protocol and artifacts are recorded in
 `summary_clustering_diagnostic.md`.
 
 The terminal nested extension produced 93/96 complete cases (46 correct,
@@ -123,12 +123,13 @@ therefore closes about 85% of the original point-estimate gap.
 
 With fixed generated answers, this is strong evidence that long-answer NLI
 clustering difficulty is an important cause of the observed summary-SE
-weakness. It is not a proposal to use Claude clustering in practice: the API
-cost and latency are too high, shared-model bias remains possible because
-Claude also supplied correctness labels, and the blinded pair review remains
-pending.
+weakness. The completed stratified 24-pair review agrees with Claude clustering
+on 19/24 pairs, compared with 9/24 for original NLI. Claude makes no false
+merge in that diagnostic sample but remains biased toward over-splitting. It
+is not a proposal to use Claude clustering in practice: API cost, latency,
+non-transitivity, and shared-model bias remain important limitations.
 
-## Gemma 3 4B versus 12B model-scale diagnostic
+## Phase-3 model-scale follow-up pointer
 
 The Gemma 3 4B run changes only the generator checkpoint and uses the exact
 Phase-1 seed-31 1,000-question cohort. The final comparison contains 990
@@ -176,24 +177,12 @@ The paired bootstrap AUROC difference, P(True)-blind minus discrete SE, is:
   fidelity/cost against direct blind P(True), not by an unsupported claim of
   beating it.
 
-## Final post-hoc fusion diagnostic
+## Archived post-hoc fusion
 
-The reproducible CPU-only `analysis/run_uq_feature_fusion.py` was rerun on the
-final 991 labels per seed with repeated 5-fold OOF logistic regression and
-2,000 paired bootstrap resamples. It neither calls a model nor changes the
-Phase-1 artifacts.
-
-| Comparison with P(True)-blind | Seed 31 AUROC change (95% CI) | Seed 47 AUROC change (95% CI) |
-|---|---:|---:|
-| P(True)-blind + discrete SE | +0.013 [-0.005, +0.035] | +0.014 [-0.005, +0.034] |
-| P(True)-blind + normalized NLL | -0.040 [-0.074, -0.006] | -0.036 [-0.068, -0.004] |
-| P(True)-blind + discrete SE + normalized NLL | +0.001 [-0.025, +0.031] | +0.005 [-0.022, +0.033] |
-
-Discrete SE has a positive conditional coefficient in both seeds, but no
-fusion clears the paired-bootstrap criterion. NLL fusion is reliably worse.
-Therefore do not pursue a multi-target SE/NLL/P(True) Probe. A narrow
-single-target P(True)-Probe remains a valid next experiment only as a
-lower-cost fidelity study against direct blind P(True).
+The Phase-1 P(True)/SE/NLL feature-fusion analysis did not clear its
+paired-bootstrap criterion and is not part of the main three-phase narrative.
+Its metrics and provenance are retained under
+`../../archive_unused/docs/historical_results/feature_fusion_diagnostics_20260728.md`.
 
 ## Superseded 100-question pilot
 

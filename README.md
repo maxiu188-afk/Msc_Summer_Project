@@ -1,245 +1,188 @@
-# FinalProject Code Workspace
+# Clinical QA Uncertainty Research Workspace
 
-This folder contains the code-side workspace for the lightweight uncertainty
-quantification project on grounded clinical question answering.
+This repository studies:
 
-Current status:
+> **When different uncertainty methods are appropriate in clinical QA, and
+> how answer form, model scale, and semantic-clustering quality affect
+> Semantic Entropy, P(True), and hidden-state probes.**
 
-```text
-ArchEHR-QA SE baseline: implemented and tested as an engineering baseline
-ArchEHR-QA final evaluation/training target: paused because no usable gold labels
-BioASQ Task B: prior summary results archived as low-usability diagnostics
-Current compute host: Isambard (Runpod was a completed temporary recovery path)
-Active direction: study when SE or blind P(True) performs better; the paired
-  BioASQ-summary answer-length intervention is complete
-Latest validated run: Phase-2 3,930-question single-answer collection and
-  two frozen linear hidden-state Probes on Gemma 3 12B
-Current Phase-2 tracks: P(True)-Probe (direct P(True) fidelity) and
-  Claude-label Accuracy-Probe (answer correctness)
-Current result: train-only fitting, validation-only feature selection, and one
-  held-out test evaluation are complete; PubMedQA Appendix-C context v2 reaches
-  72.4% decision accuracy and P(True)-Probe reaches 0.6839 error AUROC
-Current Phase-2 status: complete; the efficiency benchmark, paired bootstrap,
-  and one validation-fitted two-Probe fusion diagnostic are finished
-Current follow-up result: shortening from 82.88 to 52.11 mean words did not
-  recover SE relative to blind P(True); paired length-effect CI includes zero
-Current mechanism result: on 93 fixed-generation long-summary questions,
-  Claude reclustering raises SE AUROC from 0.595 to 0.781, strongly
-  implicating NLI clustering difficulty; Claude is diagnostic, not deployable
-Current model-scale result: on 990 paired 4B/12B questions, P(True)-minus-SE
-  AUROC changes from +0.047 at 12B to -0.009 at 4B; lower capability removes
-  P(True)'s relative advantage, especially on summary
-```
+The three research phases and their bounded diagnostics are complete. Before
+the next supervisor discussion, no new experiment, prompt tuning, model-scale
+extension, or Probe training is planned.
 
-ArchEHR-QA remains useful for testing grounded long-form generation, citation
-parsing, answer Semantic Entropy, and citation uncertainty. It should not be the
-main SEP training or final SE-evaluation dataset unless additional gold
-answer-quality/evidence labels become available.
+The thesis-oriented Chinese synthesis is
+[`RESEARCH_RESULTS_SYNTHESIS_ZH.md`](RESEARCH_RESULTS_SYNTHESIS_ZH.md).
+Detailed protocols and provenance remain in
+[`archehr_sebaseline/docs/`](archehr_sebaseline/docs/).
 
-PubMedQA remains unsuitable as the main research target because its
-yes/no/maybe task differs from BioASQ free-form QA. Its official 500-question
-PQA-L test subset is now deliberately used as an external frozen-Probe transfer
-test, with an explained decision output and no target-dataset fitting.
+## Four connected conclusions
 
-BioASQ Task B remains the active dataset family, but all completed summary
-results are now archived rather than treated as active UQ evidence. They mix
-summary prompts, evidence-conditioned generation, a generic NLI clustering
-model, and non-binary quality targets. The archived results are useful only for
-provenance and artifact-format reference; they do not decide whether SE,
-P(True), or a future probe is the preferred medical-QA UQ method.
+### 1. Relative UQ performance depends on answer form
 
-The completed Phase-1 no-evidence BioASQ baseline uses 1,000 fixed stratified
-questions (480 factoid, 320 list, 200 summary), free biomedical set-aware NLI,
-and a low-temperature main answer judged only as `correct` or `incorrect`.
-With 991 valid Claude labels per seed, P(True)-blind is best overall (AUROC
-0.811/0.821), while SE is especially strong on list questions (discrete SE
-0.845/0.881). Those are Phase-1 comparators for the current P(True)-Probe and
-Claude-label Accuracy-Probe; direct blind P(True), not P(True)-10, is the
-P(True)-Probe target. See
-`archehr_sebaseline/docs/bioasq_medical_uq_results_20260718.md` for the full
-result and `archive_unused/` for retired material.
+The final Phase-1 BioASQ baseline used 1,000 fixed questions at two seeds.
+Factoid, list, and summary exhibit different operating regimes:
 
-Phase 2 uses the full eligible BioASQ training13b corpus. The Phase-1
-1,000-question cohort is already observed, so it is retained only on the
-training side; an exact-question-grouped and type-stratified manifest reserves
-unobserved questions for validation and final test. The active plan is
-`PHASE2_PROBE_PLAN.md`; the fixed data procedure is in
-`archehr_sebaseline/docs/phase2_bioasq_dataset_split.md`.
+| Type | Mean sampled tokens | Discrete-SE AUROC | Blind-P(True) AUROC | P(True) minus SE |
+| --- | ---: | ---: | ---: | ---: |
+| Factoid | 8.08 / 8.01 | 0.720 / 0.725 | 0.795 / 0.800 | +0.075 / +0.075 |
+| List | 35.42 / 35.41 | 0.845 / 0.881 | 0.845 / 0.852 | +0.000 / -0.029 |
+| Summary | 111.13 / 110.92 | 0.565 / 0.595 | 0.808 / 0.826 | +0.243 / +0.231 |
 
-The completed Phase-2 run preserves that separation: parameters are trained on
-the 3,144-question train split, the Probe type/layer/token is selected on 393
-validation questions, and the resulting configuration is evaluated once on the
-393-question test split (384 valid Claude labels for the Accuracy track).
-The final P(True)-Probe is a train-even-threshold L2 logistic model at block
-24/LT; it reaches 0.9026 AUROC against its P(True) target. The final
-Accuracy-Probe is also block 24/LT and reaches 0.8058 AUROC / 0.8884 AP for
-Claude incorrect, ahead of direct blind P(True) at 0.7900 / 0.8383. No complex
-Probe is justified by this first pass. The completed frozen-model cross-dataset
-transfer used P(True)-Probe as the primary hypothesis. The current PubMedQA
-Appendix-C context v2 result reaches 72.4% strict accuracy, up from 59.0% for
-context v1, with Macro-F1 improving from 0.5211 to 0.5659. P(True)-Probe is the
-strongest v2 error-ranking score at 0.6839 AUROC / 0.4519 AP, followed by
-blind P(True) at 0.6490 / 0.4210 and verbalized confidence at
-0.6402 / 0.4164. The question-only PubMedQA result is archived because it
-omitted the article evidence that defines the official decision. See
-`PHASE2_PROBE_PLAN.md` and
-`archehr_sebaseline/docs/pubmedqa_frozen_probe_transfer.md` for the frozen
-2x2 Probe-target comparison, complete v1/v2 tables, explanation contract, and
-other UQ scores.
+SE is competitive for structured lists, while blind P(True) is stronger for
+factoid and 12B summary answers. A paired summary-shortening intervention did
+not recover SE, so answer length alone is not a sufficient explanation.
 
-The current in-domain follow-up measures incremental UQ cost after the saved
-main answer exists. Six-question smoke job `5761273` completed and passed its
-health check. The first full job `5761275` failed before model loading because
-its node exposed a nonexistent local temporary directory; the batch script now
-uses a job-specific `$SCRATCHDIR` temporary directory. Replacement full job
-`5773786` completed all 384 questions in `03:31:33` and passed its health
-check. One Probe takes about `60.5 ms/question`, both jointly `60.54 ms`,
-blind P(True) `154.4 ms`, ten-sample normalized NLL `30.55 s`, and SE
-`32.75 s`. Probes are about `2.55x` faster than blind P(True) and over `500x`
-faster than the sampling methods. Blind P(True) has zero freely generated
-tokens but still scores fixed `True` and `False` continuations in two LM calls.
-See `archehr_sebaseline/docs/phase2_uq_efficiency_benchmark.md`.
+### 2. P(True) depends more strongly on model capability
 
-The Phase-1 factoid/list/summary samples give a natural descriptive
-answer-length/UQ contrast. Mean sampled-answer lengths are about `8/35/111`
-generated tokens. Blind-P(True)-minus-discrete-SE AUROC is about
-`+0.075`, `0.000/-0.029`, and `+0.243/+0.231` across the two seeds:
-SE is competitive on structured lists but falls far behind on long summaries.
-Because type, answer structure, prompt, and NLI rule also vary, this is an
-operating-regime observation rather than a causal length effect.
+On 196 common-valid summary questions:
 
-Phase-2 statistical closure is also complete. Accuracy-Probe exceeds blind
-P(True) by `0.01584` AUROC on the 384 test questions, but the 20,000-resample
-paired-bootstrap 95% CI is `[-0.03890, 0.07173]`, so the improvement is not
-statistically resolved. A validation-fitted two-Probe fusion reaches test
-AUROC `0.8125` and AP `0.8871`, only `0.0067` AUROC above Accuracy-Probe while
-slightly lowering AP. It remains an exploratory diagnostic rather than a new
-main model. See
-`archehr_sebaseline/docs/phase2_probe_completion_statistics.md`.
+| Model | Accuracy | Blind P(True) AUROC | SE AUROC | Normalized-NLL AUROC | P(True) minus SE |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Gemma 3 1B | 0.122 | 0.501 | 0.597 | 0.789 | -0.096 |
+| Gemma 3 4B | 0.281 | 0.652 | 0.644 | 0.796 | +0.008 |
+| Gemma 3 12B | 0.459 | 0.807 | 0.564 | 0.756 | +0.243 |
 
-The paired BioASQ-summary answer-length intervention is complete. The short
-prompt reduced mean main-answer length from 82.88 to 52.11 words and from 3.25
-to 2.00 sentences, with 123/123 main answers satisfying the one-or-two-sentence
-instruction. On 121 questions with valid labels in both conditions, accuracy
-was unchanged at 56/121. Blind P(True) AUROC changed from 0.7948 to 0.8040,
-while discrete SE changed from 0.5782 to 0.5468. The pre-declared relative
-length effect was +0.0405 with paired-bootstrap 95% CI
-`[-0.0713, 0.1531]`; shortening therefore did not establish an SE recovery
-relative to blind P(True). See
-`archehr_sebaseline/docs/summary_length_intervention.md`.
+The 12B P(True) advantage disappears at 4B and declines further in point
+estimate at 1B. The incremental 1B-minus-4B gap-change interval crosses zero,
+so the below-4B continuation is a trend rather than a newly resolved effect.
 
-The fixed-generation Claude-versus-NLI mechanism diagnostic is complete on
-93/96 long-summary questions: Claude-clustered SE reaches 0.781 AUROC versus
-0.595 under the accepted NLI clusters, strongly implicating long-answer NLI
-over-merging. Claude remains an expensive diagnostic rather than a deployment
-proposal.
+### 3. SE is relatively stable across scale but sensitive to clustering
 
-The exact-cohort Gemma 3 4B/12B comparison is also complete. On 990 paired
-questions, P(True)-minus-SE AUROC changes from +0.047 at 12B to -0.009 at 4B;
-the paired change is -0.056 with 95% CI [-0.103,-0.010]. The strongest scale
-effect is on summary, where P(True)'s 12B advantage disappears at 4B. No
-model-scale Probe is trained. The canonical results and remaining boundaries
-are in `PHASE2_PROBE_PLAN.md`.
+Replacing only the semantic-equivalence layer on 93 fixed-generation summary
+questions raises SE AUROC from 0.595 with PubMedBERT NLI clustering to 0.781
+with Claude clustering. The change is `+0.187`, 95% CI
+`[+0.080,+0.291]`, and closes about 85% of the original P(True)-minus-SE point
+estimate gap.
 
-## Active Naming Policy
+The completed stratified 24-pair human review supports the mechanism:
 
-New BioASQ-main-track artifacts use BioASQ/`bioasq_se` names rather than new
-`archehr` prefixes. This is forward-only: the `archehr_sebaseline/` package,
-existing imports and historical ArchEHR-QA artifact names remain unchanged to
-preserve working paths and provenance.
+| Method | Human agreement | False merges | False splits |
+| --- | ---: | ---: | ---: |
+| Original NLI clustering | 9/24 | 5 | 10 |
+| Claude clustering | 19/24 | 0 | 5 |
+| Claude direct judgement | 17/24 | 0 | 7 |
 
-The BioASQ evaluator uses versioned post-processing with type-specific
-quality diagnostics, threshold sensitivity, continuous-risk association, and
-bootstrap intervals. It follows BioASQ metric families but is not the official
-evaluator. A fixed Qwen judge was completed, but its ceiling effect produced no
-low-quality labels and only weak continuous agreement. A stronger API judge is
-deferred until conventional SE behaviour and the evaluation target are better
-understood.
+These agreement rates describe the diagnostic sample, not population accuracy.
+Claude remains too costly and non-transitive to be proposed as the production
+clustering method.
 
-## Folder Structure
+### 4. Single-generation probes offer a competitive low-cost alternative
 
-```text
-code/
-  archehr_sebaseline/        Active maintained SE/UQ package and dataset adapters
-  semantic_uncertainty/      Reference implementation from the Semantic Entropy work
-  server_results/            Active server-result snapshots
-  archive_unused/            Superseded docs, data inventories, and old results
-  .agents/                   Local Codex/agent state
-  .git/                      Repository metadata
-```
+The frozen Accuracy-Probe reaches 0.8058 AUROC / 0.8884 AP for answer-error
+ranking, compared with 0.7900 / 0.8383 for blind P(True) and 0.7484 / 0.8446
+for SE. Its AUROC advantage over blind P(True) is not statistically resolved:
+`+0.01584`, 95% CI `[-0.03890,0.07173]`.
 
-## Root-Level Planning Files
+The P(True)-Probe answers a different question. It reproduces the model's
+direct P(True)-derived target with held-out AUROC 0.9026; the Accuracy-Probe
+directly predicts correctness. This distinction exposes the trade-off between
+recovering internal self-evaluation and supervising answer error.
 
-These root-level files are intentionally kept at the workspace level:
+Either Probe costs about 60.5 ms/question, versus 154.4 ms for blind P(True)
+and 32.75 s for ten-sample SE.
 
-```text
-PHASE2_PROBE_PLAN.md
-ISAMBARD_COMMANDS.md
-SIMPSON_MEETING_PHASE2_RESULTS_2026-07-23_FINAL.md
-```
+The frozen heads were also evaluated without retraining or target
+recalibration on the official 500-question PubMedQA PQA-L test set. Under the
+final Appendix-C context-v2 prompt, answer accuracy is 72.4% and the
+single-answer error-ranking comparison is:
 
-Their roles are:
+| Method | BioASQ test AUROC | PubMedQA v2 AUROC | PubMedQA v2 AP |
+| --- | ---: | ---: | ---: |
+| P(True)-Probe | 0.7452 | **0.6839** | **0.4519** |
+| Blind P(True) | 0.7900 | 0.6490 | 0.4210 |
+| Verbalized confidence | — | 0.6402 | 0.4164 |
+| Accuracy-Probe | **0.8058** | 0.5901 | 0.3916 |
+| Normalized NLL | — | 0.5424 | 0.3075 |
+| Mean token entropy | — | 0.5423 | 0.3080 |
+| Sequence NLL | — | 0.5400 | 0.3025 |
+| Max token entropy | — | 0.5372 | 0.2914 |
 
-- `PHASE2_PROBE_PLAN.md`: active two-track probe plan, frozen BioASQ split,
-  collection gates, completed results, and the post-Simpson SE/P(True)
-  operating-regime follow-up.
-- `ISAMBARD_COMMANDS.md`: common local and Isambard operational commands;
-  historical launch procedures are kept only under `archive_unused/`.
-- `SIMPSON_MEETING_PHASE2_RESULTS_2026-07-23_FINAL.md`: frozen meeting brief
-  covering the results presented at the completed supervisor meeting. Later
-  research decisions are owned by `PHASE2_PROBE_PLAN.md`.
+The source-domain correctness-supervised Accuracy-Probe degrades more than the
+P(True)-Probe, which becomes the strongest PubMedQA-v2 ranking score. However,
+the P(True)-Probe's fidelity to its original frozen teacher target also falls
+from 0.9026 in BioASQ to 0.5899 in PubMedQA. The transfer result is therefore
+limited cross-target error-ranking usefulness, not preservation of the source
+mapping or dataset-independent generalization. AP is not compared across
+datasets because error prevalence differs.
 
-## Active Project
+PubMedQA used a one-answer transfer protocol, so SE, cluster count, and other
+ten-sample disagreement methods were not run there. Their absence is a
+protocol boundary, not a negative result. The BioASQ normalized-NLL result is
+also omitted from the cross-dataset column because it averages ten sampled
+answers, unlike the single-answer PubMedQA score.
 
-The active maintained code lives in:
+## Three completed phases
+
+### Phase 1 — answer-form operating regimes
+
+- established the two-seed, 1,000-question no-evidence BioASQ benchmark;
+- compared SE, P(True), NLL/token scores, cluster count, and simple
+  disagreement;
+- established the replicated factoid/list/summary contrast.
+
+Primary documents:
+
+- [`bioasq_medical_uq_protocol.md`](archehr_sebaseline/docs/bioasq_medical_uq_protocol.md)
+- [`bioasq_medical_uq_results_20260718.md`](archehr_sebaseline/docs/bioasq_medical_uq_results_20260718.md)
+
+### Phase 2 — hidden-state probes
+
+- collected leakage-safe train/validation/test hidden states for 3,930
+  questions;
+- selected and froze block-24/LT P(True)-Probe and Accuracy-Probe;
+- completed held-out correctness, fidelity, calibration, efficiency, and
+  bounded PubMedQA transfer evaluation.
+
+Primary documents:
+
+- [`PHASE2_PROBE_PLAN.md`](PHASE2_PROBE_PLAN.md)
+- [`phase2_bioasq_dataset_split.md`](archehr_sebaseline/docs/phase2_bioasq_dataset_split.md)
+- [`phase2_uq_efficiency_benchmark.md`](archehr_sebaseline/docs/phase2_uq_efficiency_benchmark.md)
+- [`phase2_probe_completion_statistics.md`](archehr_sebaseline/docs/phase2_probe_completion_statistics.md)
+- [`pubmedqa_frozen_probe_transfer.md`](archehr_sebaseline/docs/pubmedqa_frozen_probe_transfer.md)
+
+### Phase 3 — conditions and mechanisms
+
+- showed that controlled summary shortening does not restore SE;
+- showed that P(True)'s relative advantage declines with model scale;
+- showed that long-answer semantic-clustering quality is a major SE
+  bottleneck, supported by the completed human review.
+
+Primary documents:
+
+- [`summary_length_intervention.md`](archehr_sebaseline/docs/summary_length_intervention.md)
+- [`summary_clustering_diagnostic.md`](archehr_sebaseline/docs/summary_clustering_diagnostic.md)
+- [`gemma3_model_scale_experiment.md`](archehr_sebaseline/docs/gemma3_model_scale_experiment.md)
+
+## Scope boundary
+
+The following work is explicitly closed before supervisor review:
+
+- no additional PubMedQA prompt or error-case tuning;
+- no full 1B factoid/list expansion after the 8/50 and 3/50 feasibility
+  results;
+- no 270M or 27B scale point;
+- no new Probe, multi-target Probe, or fusion model;
+- no larger Claude clustering experiment;
+- no claim that Claude clustering is deployable.
+
+The next activity is thesis and supervisor-discussion preparation, not another
+experiment.
+
+## Repository layout
 
 ```text
-archehr_sebaseline/
+archehr_sebaseline/        Active code, protocols, and primary result documents
+semantic_uncertainty/      Reference implementation from the SE literature
+server_results/            Active local server-result snapshots
+archive_unused/            Superseded, exploratory, and low-usability material
+literature/                Local source material; intentionally not Git-tracked
 ```
 
-See:
+Operational commands and chronological job provenance remain in:
 
-```text
-archehr_sebaseline/README.md
-```
+- [`ISAMBARD_COMMANDS.md`](ISAMBARD_COMMANDS.md)
+- [`experiment_runtime_log.md`](archehr_sebaseline/docs/experiment_runtime_log.md)
 
-for code layout, script entry points, tests, and server run commands.
-
-Use `archehr_sebaseline/docs/README.md` as the active documentation index.
-Superseded plans, handoff notes, legacy runbooks, and historical result reports
-are consolidated under `archive_unused/`.
-
-## Reference Code
-
-The directory:
-
-```text
-semantic_uncertainty/
-```
-
-contains reference code for the original Semantic Entropy project. Treat it as
-reference material, not as the active codebase.
-
-## Archived Material
-
-Material that is not part of the current workflow belongs under:
-
-```text
-archive_unused/
-```
-
-See `archive_unused/README.md` before moving obsolete documents, generated data,
-or results. The local `literature/` directory is separate source material and
-was not changed by this cleanup.
-
-## Server Packages
-
-Server upload archives may appear at the root, for example:
-
-```text
-bioasq_se_runpod_*.tar.gz
-```
-
-These are transport artifacts, not source code. Regenerate them from
-`archehr_sebaseline/` when the code changes. Existing legacy archive names are
-not renamed retroactively.
+Archived material must not be presented as current evidence. See
+[`archive_unused/README.md`](archive_unused/README.md).

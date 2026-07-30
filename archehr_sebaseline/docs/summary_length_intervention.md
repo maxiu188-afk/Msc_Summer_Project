@@ -1,6 +1,6 @@
 # BioASQ Summary Answer-Length Intervention
 
-Last updated: 2026-07-26
+Last updated: 2026-07-28
 
 ## Status
 
@@ -162,10 +162,10 @@ explanation for the SE-versus-P(True) gap in this cohort.
 The bounded follow-up reused these fixed generations to compare the accepted
 PubMedBERT NLI clusters with a frozen Claude semantic-equivalence rubric. On
 93/96 complete cases, Claude-clustered SE reached 0.781 AUROC versus 0.595 for
-NLI-SE, strongly implicating long-answer NLI over-merging. The follow-up
-remains a mechanism diagnostic rather than a deployment method, and its
-blinded answer-pair review remains pending. See
-`summary_clustering_diagnostic.md`.
+NLI-SE. The completed stratified 24-pair review agrees with Claude clustering
+on 19/24 pairs versus 9/24 for original NLI, strongly implicating long-answer
+NLI errors. The follow-up remains a mechanism diagnostic rather than a
+deployment method. See `summary_clustering_diagnostic.md`.
 
 ## Reproducibility
 

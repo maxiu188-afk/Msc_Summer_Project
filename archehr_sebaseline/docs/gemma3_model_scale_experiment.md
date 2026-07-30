@@ -144,3 +144,137 @@ This does not mean SE becomes a strong 4B summary method. Both P(True) and SE
 are weak there (0.648 and 0.643 AUROC), while normalized NLL reaches 0.794.
 The main scale signal is therefore loss of P(True)'s self-evaluation advantage
 at lower model capability, not a general improvement in SE.
+
+## Completed Gemma 3 1B staged extension
+
+The next scale point is `google/gemma-3-1b-it`, seed 31. It tests whether the
+P(True)-versus-SE operating regime continues to change below 4B. It is not a
+Probe experiment: no hidden-state Probe is trained or transferred.
+
+The first jobs were submitted on 2026-07-27. Smoke `5802163` passed its cohort
+preflight and reached a CUDA node but failed `3:0` during model loading because
+the 1B weights were not yet present in the shared Hugging Face cache. It
+generated no answers. Dependent staged job `5802164` never ran and was
+cancelled after its dependency became unsatisfiable.
+
+All ten repository files for fixed revision
+`dcc83ea841ab6100d6b47a070329e1ba4cf78752` were then downloaded on the login
+node and passed `hf cache verify`. The replacement entrypoint checks that
+snapshot before allocation work and uses `local_files_only` for both the
+generator and NLI model.
+
+Replacement smoke `5807823` still failed during construction. A metadata-only
+reproduction then identified the code error: the shared generator treated
+every Gemma 3 checkpoint as multimodal and called `AutoProcessor` plus
+`Gemma3ForConditionalGeneration`. The 1B checkpoint is instead
+`Gemma3TextConfig` / `Gemma3ForCausalLM` and deliberately has no image
+processor. The generator now routes `model_type=gemma3_text` through
+`AutoTokenizer` and `AutoModelForCausalLM`, while leaving the accepted
+multimodal 4B/12B route unchanged. All 118 local unit tests passed, including a
+dedicated route test. Dependent job `5807824` never ran and was cancelled.
+
+| Stage | Job | Cohort | Dependency | Final status |
+| --- | ---: | --- | --- | --- |
+| Smoke | `5808905` | 2 factoid / 2 list / 2 summary | none | `COMPLETED 0:0`, 00:02:06 |
+| Staged | `5808906` | 50 factoid / 50 list / 200 summary | `afterok:5808905` | `COMPLETED 0:0`, 02:06:35 |
+
+Local and Isambard preflights reproduced cohort-ID SHA-256 values
+`64ffbd1a...db01` for smoke and `f2b4a852...8108` for staged. Both final
+outputs passed Level-4 health, exact reference-subset checks, and exact frozen
+cohort checks. The staged output has 300 examples, 300 main generations, 3,000
+high-temperature generations, 300 cluster/SE rows, complete self-report and
+example-UQ rows, CUDA/bfloat16 provenance, and no NaN/Infinity markers.
+
+The output was downloaded to
+`outputs/bioasq_gemma3_1b_300x10_phase1_aligned_seed31_20260727`. Correctness
+batch `msgbatch_01LCGoC6Mh4EBNKHAq3XEB5U` used the accepted
+`claude-sonnet-5`, low-effort, 32-token binary main-answer protocol for all 300
+questions. It ended with 300/300 API successes and 298 valid labels. The two
+invalid rows are both summary responses stopped by `max_tokens`; one bounded
+low-effort 64-token retry, `msgbatch_01AWNB4xt1h86wyfRdm6fq2F`, returned two
+API successes and one additional valid label. The final result is 299/300
+valid; the remaining invalid summary response again stopped at `max_tokens`
+and is excluded without another retry.
+
+The complete feasibility subsets already give 8/50 correct factoid answers
+(16%, Wilson 95% CI 8.3%--28.5%) and 3/50 correct list answers (6%, Wilson 95%
+CI 2.1%--16.2%). These are accuracy-gate results, not complete type-level UQ
+experiments. Neither remaining full type cohort is recommended: list is at a
+clear correctness floor, while factoid's limited additional scientific value
+does not justify expanding beyond the completed summary scale test.
+
+A full 1,000-question run is not authorized initially. The 4B model reached
+only 20.3% overall accuracy, including 23.5% on factoid, 10.7% on list, and
+27.9% on summary. A still smaller model may leave too few correct factoid/list
+answers for a meaningful correctness-ranking comparison.
+
+The staged protocol is:
+
+1. Run a six-question smoke containing two exactly aligned questions per type,
+   with the complete ten-sample SE, NLI, normalized-NLL, blind-P(True), and
+   low-temperature main-answer path. Submit the staged job with a Slurm
+   `afterok` dependency so it can continue only after a successful smoke exit
+   and artifact health/alignment pass. Do not start continuous monitoring.
+2. Before inspecting 1B outcomes, freeze all 200 aligned summary questions and
+   deterministic 50-question subsets from the aligned 480 factoid and 320 list
+   cohorts.
+3. Preserve the Phase-1 seed-31 prompts, sampling settings, maximum lengths,
+   type-specific NLI rules, correctness judge, and 4B/12B question mapping;
+   only the generator checkpoint changes.
+4. Use the 200-summary cohort for the formal aligned 1B/4B/12B comparison,
+   reporting accuracy, answer length, blind-P(True), discrete-SE and
+   normalized-NLL AUROC/AP, paired P(True)-minus-SE gaps, bootstrap intervals,
+   and runtime.
+5. For the 50 factoid and 50 list questions, report accuracy and the valid
+   correct/incorrect label counts as feasibility evidence. Any UQ metrics from
+   these subsets are preliminary and must not be presented as final type-level
+   scale results.
+6. Decide separately, after reviewing those accuracy results, whether either
+   type retains enough correctness signal to justify collecting the remaining
+   430 factoid or 270 list questions. Neither expansion is automatic.
+
+The frozen local analysis entrypoint is
+`analysis/run_gemma3_1b_staged_scale_comparison.py`. It enforces exact record
+alignment, uses only summary questions with valid labels for all three models,
+and runs a 20,000-resample joint-label-stratified paired bootstrap with seed
+`20260727`. It writes factoid/list accuracy with valid correct/incorrect counts
+and Wilson intervals separately; it does not automate the expansion decision.
+
+## Completed 1B/4B/12B summary comparison
+
+The formal cohort contains 196 summary questions with valid correctness labels
+for all three models. `incorrect` is the positive class. AP is retained in the
+artifacts but is not compared across models because error prevalence changes
+sharply with scale.
+
+| Model | Accuracy | Main words | Blind P(True) AUROC | Discrete-SE AUROC | Normalized-NLL AUROC |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1B | 0.122 | 66.14 | 0.501 | 0.597 | 0.789 |
+| 4B | 0.281 | 80.94 | 0.652 | 0.644 | 0.796 |
+| 12B | 0.459 | 82.52 | 0.807 | 0.564 | 0.756 |
+
+| Comparison | P(True) minus SE or gap change | 95% CI |
+| --- | ---: | ---: |
+| 1B P(True) minus SE | -0.096 | [-0.244,+0.060] |
+| 4B P(True) minus SE | +0.008 | [-0.081,+0.096] |
+| 12B P(True) minus SE | +0.243 | [+0.171,+0.312] |
+| 1B minus 4B gap change | -0.104 | [-0.267,+0.059] |
+| 4B minus 12B gap change | -0.234 | [-0.341,-0.128] |
+| 1B minus 12B gap change | -0.338 | [-0.508,-0.157] |
+
+Intervals use 20,000 joint-correctness-label-stratified paired resamples with
+seed `20260727`. The P(True)-minus-SE point estimate continues downward from
+12B through 4B to 1B, and the total 1B-versus-12B change is resolved. However,
+the incremental 1B-versus-4B interval crosses zero, so the experiment does not
+establish that 1B differs from 4B beyond the already resolved 12B-to-4B shift.
+
+At 1B, blind P(True) is essentially chance-ranked and SE has the better point
+estimate, but their within-1B difference is not resolved. Normalized NLL is
+clearly the strongest 1B point estimate. Together with 12.2% summary accuracy,
+this supports a capability-collapse interpretation rather than claiming a
+general SE improvement at small scale.
+
+Final artifacts are under
+`analysis_outputs/gemma3_1b_4b_12b_summary_scale_seed31_20260727`.
+
+The 270M and 27B checkpoints remain outside the authorized experiment.

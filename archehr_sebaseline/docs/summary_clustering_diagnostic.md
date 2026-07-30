@@ -1,6 +1,6 @@
 # Bounded summary clustering diagnostic
 
-Last updated: 2026-07-26
+Last updated: 2026-07-28
 
 ## Question and boundary
 
@@ -65,10 +65,9 @@ explicitly authorized nested 96-question extension, report:
   P(True)-minus-SE gaps.
 
 The analysis creates a deterministic blinded 24-pair human-review worksheet,
-with a separate comparison key. A claim that Claude gives better semantic
-equivalence remains conditional on that human review; shared-model bias is
-otherwise a live alternative because Claude also supplied the correctness
-labels.
+with a separate comparison key. The review is now complete and is reported
+below. Shared-model bias remains a limitation because Claude also supplied the
+correctness labels used by the UQ ranking analysis.
 
 ## Current status
 
@@ -120,13 +119,9 @@ The cluster structures differ materially:
 
 This is evidence that the accepted NLI pipeline merges many distinctions that
 Claude preserves, and replacing that clustering produces a sizeable SE AUROC
-point-estimate recovery. It does not yet establish that Claude is the more
-semantically correct judge: the frozen 24-pair blinded human review remains
-pending, the Claude pair decisions are sometimes non-transitive, the
-correctness labels also come from Claude, and one correct-class question is
-missing. The bounded conclusion is therefore that NLI over-merging is a
-credible contributor to weak long-summary SE, but it is not proven to be the
-sole or dominant cause.
+point-estimate recovery. The initial 47-question estimate was retained only as
+the bounded first step; the terminal 93-question extension and human review
+below own the final mechanism conclusion.
 
 ## Nested 96-question extension
 
@@ -175,13 +170,46 @@ The expanded structural result replicates the original direction:
 - 1,673 pairs are NLI-same/Claude-different, versus 50 in the opposite
   direction.
 
+## Blinded 24-pair human review
+
+The completed worksheet contains a deliberately diagnostic, not population
+random, sample:
+
+- eight NLI-same/Claude-different pairs;
+- eight NLI-different/Claude-same pairs;
+- four pairs where both methods judged same; and
+- four pairs where both methods judged different.
+
+| Method | Agreement with human | Diagnostic accuracy | False merges | False splits |
+| --- | ---: | ---: | ---: | ---: |
+| Original NLI clustering | 9/24 | 37.5% | 5 | 10 |
+| Claude clustering | 19/24 | 79.2% | 0 | 5 |
+| Claude direct equivalence judgement | 17/24 | 70.8% | 0 | 7 |
+
+Original NLI made both severe error types. It merged directly contradictory
+answers, including opposite kinase effects or different disease/gene
+mechanisms, and split answers whose core conclusion was unchanged despite
+different wording, examples, or supplementary mechanisms.
+
+Claude was more conservative. It correctly rejected all seven pairs the human
+review marked non-equivalent, so it made no false merge in this diagnostic
+sample. Its remaining errors were false splits where the core conclusion was
+the same but molecular mechanisms, indications, or examples differed. The
+cluster-level Claude procedure also outperformed direct pair questioning; the
+direct judgement made two additional false splits on CYP1A2/caffeine answers.
+
+Because the 24 pairs were stratified by the four NLI/Claude comparison cells,
+79.2% and 37.5% are diagnostic-sample agreement rates, not estimates of either
+method's accuracy over all generated-answer pairs.
+
 Because the ten generated answers and correctness labels are fixed, this shows
 that the semantic-equivalence layer is a major contributor to the observed
 long-summary SE weakness under this diagnostic. It does not make Claude
 clustering the proposed method: its API cost and latency are impractical, its
 direct decisions contain 210 transitivity-violating triples, and using Claude
 for both correctness labels and alternative clustering creates shared-model
-bias. The blinded 24-pair human review therefore remains necessary before
-claiming that Claude is semantically more correct. The bounded project
-conclusion is that long-answer NLI clustering difficulty is strongly
-implicated; a practical replacement is outside this diagnostic's scope.
+bias. The final bounded conclusion is that the original NLI is an important
+error source for long-answer SE; Claude substantially reduces false merging
+and better matches human semantic judgement in the stratified review, but
+remains biased toward over-splitting. A practical replacement is outside this
+diagnostic's scope.

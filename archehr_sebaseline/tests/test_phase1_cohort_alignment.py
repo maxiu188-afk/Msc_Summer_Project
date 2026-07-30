@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -76,6 +78,19 @@ class Phase1CohortAlignmentTests(unittest.TestCase):
                 mode="subset",
                 expected_type_limits={"factoid": 1, "list": 0, "summary": 0},
             )
+
+    def test_candidate_manifest_write_is_exclusive_and_deterministic(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "cohort.jsonl"
+            rows = [self.reference[0], self.reference[2], self.reference[4]]
+            MODULE.write_jsonl_exclusive(path, rows)
+            saved = [
+                json.loads(line)
+                for line in path.read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual(saved, rows)
+            with self.assertRaises(FileExistsError):
+                MODULE.write_jsonl_exclusive(path, rows)
 
 
 if __name__ == "__main__":
