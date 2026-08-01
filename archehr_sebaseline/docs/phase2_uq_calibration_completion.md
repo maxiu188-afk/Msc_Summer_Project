@@ -18,7 +18,9 @@ is:
 5. apply the BioASQ calibration mappings unchanged to PubMedQA v2 as a
    zero-refit transfer diagnostic.
 
-Implementation and local tests are in progress. No calibration result has been
+Implementation is frozen at commit `f84836f`; all 128 local tests pass.
+Validation-SE smoke job `5863759` and full job `5863760` were submitted on
+2026-08-01 with dependency `afterok:5863759`. No calibration result has been
 inspected yet, and no formal validation-SE job has been accepted.
 
 ## Common target and methods
