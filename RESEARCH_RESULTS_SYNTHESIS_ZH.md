@@ -14,8 +14,10 @@
 形式、模型能力和语义等价判断条件下，各方法分别可靠；能否用单次生成的
 hidden-state probe，以更低成本保留有用的不确定性信号。
 
-截至 2026-07-28，三个阶段和预先限定的机制诊断均已完成。与导师讨论前不再
-新增实验、调整 prompt、扩展模型规模或训练新的 Probe。
+截至 2026-07-28，三个阶段和预先限定的机制诊断均已完成。2026-08-01
+导师讨论后，新增一项论文收尾范围：补齐三种重点 UQ 方法的 calibration、
+selective prediction、正确性标签人工审核和零重校准 PubMedQA transfer；
+不重新开放 prompt、模型规模、Probe 训练或聚类扩展。
 
 ## 四个连续结论
 
@@ -280,14 +282,15 @@ Claude 的 API 成本、延迟和直接判断的非传递性使其不适合作�
 
 归档入口：`archive_unused/README.md`。
 
-## 最终边界
+## 收尾边界
 
 - 不再训练新的 Probe 或融合模型；
 - 不再扩展 1B factoid/list；
 - 不再增加 270M/27B 模型点；
 - 不再进行 PubMedQA prompt 调整或错误案例调参；
 - 不把 Claude clustering 描述为部署方案；
-- 与导师讨论前不再新增实验。
+- 当前只推进固定的 calibration/selective prediction、correctness audit 和
+  zero-refit PubMedQA calibration transfer。
 
-下一阶段是将三阶段结果写入论文的 Results、Discussion 和 Limitations，
-而不是继续增加实验分支。
+论文写作与收尾分析同步推进；完成这组固定评估后，将结果写入 Results、
+Discussion 和 Limitations，不继续增加无关实验分支。

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Benchmark incremental UQ cost on the labelled BioASQ Phase-2 test set.
+"""Collect matched UQ scores on a labelled BioASQ Phase-2 split.
 
 The main answer is treated as already available.  Timings therefore measure
 only the additional work needed by each UQ method.  One hidden-state replay is
@@ -80,6 +80,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--labels-path", type=Path, required=True)
     parser.add_argument("--frozen-probe-bundle", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument(
+        "--split",
+        choices=("validation", "test"),
+        default="test",
+        help="Labelled Phase-2 split to score (default: test).",
+    )
     parser.add_argument("--model-name", default="google/gemma-3-12b-it")
     parser.add_argument("--nli-model-name", default="pritamdeka/PubMedBERT-MNLI-MedNLI")
     parser.add_argument("--max-new-tokens", type=int, default=192)
@@ -187,12 +193,16 @@ def load_selection(args: argparse.Namespace) -> list[dict[str, Any]]:
         if not _truthy(label_row.get("label_valid")) or label not in {"correct", "incorrect"}:
             continue
         example = examples.get(example_id)
-        if example is None or str(example.get("split")) != "test":
+        if example is None or str(example.get("split")) != args.split:
             continue
         if example_id in seen:
-            raise ValueError(f"Duplicate valid test label for example {example_id}.")
+            raise ValueError(
+                f"Duplicate valid {args.split} label for example {example_id}."
+            )
         if example_id not in prompts or example_id not in generations:
-            raise ValueError(f"Missing prompt or main answer for test example {example_id}.")
+            raise ValueError(
+                f"Missing prompt or main answer for {args.split} example {example_id}."
+            )
         generation = generations[example_id]
         token_ids = generation.get("generated_token_ids")
         if not isinstance(token_ids, list) or not token_ids:
@@ -212,7 +222,8 @@ def load_selection(args: argparse.Namespace) -> list[dict[str, Any]]:
     selected = _balanced_cap(selected, args.max_examples)
     if len(selected) != args.expected_examples:
         raise ValueError(
-            f"Expected {args.expected_examples} selected test examples, got {len(selected)}."
+            f"Expected {args.expected_examples} selected {args.split} examples, "
+            f"got {len(selected)}."
         )
     if len(selected) >= 3:
         observed_types = {str(row["bioasq_type"]) for row in selected}
@@ -483,6 +494,7 @@ def main() -> int:
         json.dumps(
             {
                 "status": "loading_models",
+                "split": args.split,
                 "selected_examples": len(selected),
                 "include_semantic_entropy": args.include_semantic_entropy,
             },
@@ -573,6 +585,7 @@ def main() -> int:
         json.dumps(
             {
                 "status": "running",
+                "split": args.split,
                 "selected_examples": len(selected),
                 "completed_examples": 0,
                 "include_semantic_entropy": args.include_semantic_entropy,
@@ -816,6 +829,7 @@ def main() -> int:
             json.dumps(
                 {
                     "status": "running",
+                    "split": args.split,
                     "selected_examples": len(selected),
                     "completed_examples": completed,
                     "include_semantic_entropy": args.include_semantic_entropy,
@@ -849,12 +863,13 @@ def main() -> int:
     completed_seconds = time.monotonic() - benchmark_started
     summary = {
         "schema_version": "bioasq_phase2_uq_efficiency_v1",
+        "split": args.split,
         "cost_boundary": (
             "incremental UQ cost after the saved T=0.1 main answer exists; "
             "common Gemma model load and main-answer generation excluded"
         ),
         "selection": {
-            "split": "test",
+            "split": args.split,
             "valid_claude_binary_labels_only": True,
             "examples": len(selected),
             "type_counts": {
@@ -908,6 +923,7 @@ def main() -> int:
         json.dumps(
             {
                 "status": "complete",
+                "split": args.split,
                 "selected_examples": len(selected),
                 "completed_examples": len(selected),
                 "include_semantic_entropy": args.include_semantic_entropy,

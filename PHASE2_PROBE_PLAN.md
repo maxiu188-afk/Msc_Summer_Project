@@ -1,15 +1,17 @@
 # Phase 2 Probe Research Plan
 
-Last updated: 2026-07-28
+Last updated: 2026-08-01
 
 ## Final status and research boundary
 
-All three research phases and the bounded follow-up diagnostics are complete.
-The final thesis-oriented result map is
-`RESEARCH_RESULTS_SYNTHESIS_ZH.md`. Before the next supervisor discussion, no
-new experiment, prompt revision, model scale, Probe, or type-level expansion
-is planned. This file is retained as the detailed frozen Phase-2 protocol and
-decision record.
+All three research phases and the bounded mechanism diagnostics are complete.
+After the subsequent supervisor discussion, one thesis-closing UQ evaluation
+was approved: validation-fitted calibration and selective prediction for SE,
+blind P(True), and the frozen Probes, plus a correctness-label audit and
+zero-refit PubMedQA calibration transfer. The fixed protocol is
+`archehr_sebaseline/docs/phase2_uq_calibration_completion.md`. No prompt,
+model-scale, Probe-training, type-specific, or clustering expansion is
+reopened.
 
 ## Execution Status (updated 2026-07-28)
 
