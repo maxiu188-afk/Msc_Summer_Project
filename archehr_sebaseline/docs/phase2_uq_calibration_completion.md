@@ -18,10 +18,18 @@ is:
 5. apply the BioASQ calibration mappings unchanged to PubMedQA v2 as a
    zero-refit transfer diagnostic.
 
-Implementation is frozen at commit `f84836f`; all 128 local tests pass.
+The initial implementation is frozen at commit `f84836f`; all 128 local tests
+passed before submission.
 Validation-SE smoke job `5863759` and full job `5863760` were submitted on
-2026-08-01 with dependency `afterok:5863759`. No calibration result has been
-inspected yet, and no formal validation-SE job has been accepted.
+2026-08-01 with dependency `afterok:5863759`. No SE calibration result has been
+inspected, and no formal validation-SE job has been accepted.
+
+While Isambard is unavailable, the predeclared non-SE subset has been completed
+locally from existing artifacts. The accepted interim analysis includes blind
+P(True), Accuracy-Probe, P(True)-Probe, selective prediction, type
+stratification, paired bootstrap, and zero-refit PubMedQA calibration transfer.
+It is explicitly marked `partial_without_semantic_entropy`; no SE result is
+imputed or inferred.
 
 ## Common target and methods
 
@@ -113,6 +121,88 @@ Brier, Brier skill, log loss, ECE, AUROC, and AP.
 Semantic Entropy is absent from this transfer because PubMedQA used a
 single-answer protocol. This remains a protocol boundary rather than a negative
 SE result.
+
+## Interim non-SE results
+
+### BioASQ test calibration
+
+The three scalar mappings were fitted on all 384 valid-labelled validation
+questions and applied unchanged to the 384 valid-labelled test questions.
+
+| Method | AUROC | Calibrated Brier | Brier skill | Log loss | 10-bin ECE | AURAC 0.5--1.0 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Accuracy-Probe | **0.8058** | **0.1776** | **0.2125** | **0.5386** | **0.0891** | **0.2780** |
+| Blind P(True) | 0.7900 | 0.2156 | 0.0444 | 0.6174 | 0.1922 | 0.2909 |
+| P(True)-Probe | 0.7452 | 0.2001 | 0.1131 | 0.5860 | 0.0984 | 0.2905 |
+
+The test-prevalence constant has Brier `0.2256`. Before validation calibration,
+native Brier was `0.2162` for Accuracy-Probe, `0.5347` for blind P(True), and
+`0.3177` for P(True)-Probe. Their corresponding native ECE values were
+`0.1921`, `0.5392`, and `0.3004`. Blind P(True) therefore has strong ranking but
+is not a usable answer-error probability without a separately fitted mapping.
+
+Accuracy-Probe minus blind P(True), with 20,000 paired test-row resamples:
+
+| Metric | Difference | 95% CI | Better direction |
+| --- | ---: | ---: | --- |
+| AUROC | +0.01584 | [-0.03850, +0.07163] | higher |
+| Brier | -0.03794 | [-0.06050, -0.01541] | lower |
+| Log loss | -0.07884 | [-0.13526, -0.02177] | lower |
+| AURAC 0.5--1.0 | -0.01294 | [-0.02322, -0.00316] | lower |
+
+Thus the earlier AUROC comparison remains unresolved, but Accuracy-Probe has a
+bootstrap-supported advantage in calibrated probability quality and selective
+prediction under this fixed protocol.
+
+At 80% coverage, retained error risk is `0.5877` for Accuracy-Probe, `0.6006`
+for blind P(True), and `0.5942` for P(True)-Probe, versus `0.6563` at full
+coverage.
+
+### Answer-form calibration
+
+One global validation-fitted mapping was used for every type.
+
+| Method | Factoid Brier skill | List Brier skill | Summary Brier skill |
+| --- | ---: | ---: | ---: |
+| Accuracy-Probe | +0.1553 | -0.1344 | +0.1613 |
+| Blind P(True) | -0.0036 | -0.3834 | -0.0428 |
+| P(True)-Probe | +0.0571 | -0.2365 | +0.0326 |
+
+List error prevalence is `0.9029`, compared with `0.5886` for factoid and
+`0.5366` for summary. The pooled calibrator does not beat a type-prevalence
+constant on list for any method. This extends the answer-form conclusion from
+ranking to calibration: global probability mappings can hide large type-level
+base-rate shifts. No type-specific calibrator is fitted post hoc.
+
+### PubMedQA zero-refit transfer
+
+| Method | Native Brier | BioASQ-calibrated Brier | Transferred Brier skill | Transferred ECE |
+| --- | ---: | ---: | ---: | ---: |
+| Blind P(True) | 0.2659 | 0.3437 | -0.7198 | 0.3855 |
+| Accuracy-Probe | 0.3815 | 0.3593 | -0.7979 | 0.3526 |
+| P(True)-Probe | 0.3127 | 0.3511 | -0.7572 | 0.4067 |
+
+All three transferred mappings are worse than the PubMedQA prevalence-only
+Brier baseline `0.1998`. Accuracy-Probe improves slightly relative to its own
+native Brier but remains poorly calibrated; blind P(True) and P(True)-Probe
+worsen. Ranking can retain some cross-dataset signal while source-fitted error
+probabilities fail under the dataset, prompt, answer-space, and error-prevalence
+shift. No PubMedQA label was used to repair this failure.
+
+Local ignored result snapshot:
+
+```text
+analysis_outputs/bioasq_phase2_uq_calibration_nonse_20260801/
+  metrics_overall.csv
+  metrics_by_type.csv
+  reliability_bins.csv
+  reliability_diagram.svg
+  risk_coverage.csv
+  risk_coverage.svg
+  paired_bootstrap.csv
+  pubmedqa_transfer_metrics.csv
+  summary.json
+```
 
 ## Stop boundary
 

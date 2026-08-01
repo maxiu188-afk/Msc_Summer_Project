@@ -49,8 +49,13 @@ def parse_args() -> argparse.Namespace:
         / "bioasq_phase2_probe_completion_20260725"
         / "predictions.csv",
     )
-    parser.add_argument("--validation-uq-scores", type=Path, required=True)
-    parser.add_argument("--test-uq-scores", type=Path, required=True)
+    parser.add_argument("--validation-uq-scores", type=Path, default=None)
+    parser.add_argument("--test-uq-scores", type=Path, default=None)
+    parser.add_argument(
+        "--exclude-semantic-entropy",
+        action="store_true",
+        help="Run the predeclared interim analysis for P(True)/Probes only.",
+    )
     parser.add_argument("--pubmedqa-predictions", type=Path, default=None)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--bins", type=int, default=10)
@@ -115,6 +120,75 @@ def write_json(path: Path, payload: Any, *, overwrite: bool) -> None:
     )
 
 
+def write_plots(
+    output_dir: Path,
+    reliability_rows: list[dict[str, Any]],
+    risk_rows: list[dict[str, Any]],
+    *,
+    overwrite: bool,
+) -> None:
+    import matplotlib.pyplot as plt
+
+    reliability_path = output_dir / "reliability_diagram.svg"
+    risk_path = output_dir / "risk_coverage.svg"
+    for path in (reliability_path, risk_path):
+        if path.exists() and not overwrite:
+            raise FileExistsError(f"Refusing to overwrite {path}.")
+
+    display = {
+        "accuracy_probe": "Accuracy-Probe",
+        "blind_p_true": "Blind P(True)",
+        "p_true_probe": "P(True)-Probe",
+        "discrete_semantic_entropy": "Semantic Entropy",
+    }
+    methods = [method for method in ALL_METHODS if any(row["method"] == method for row in reliability_rows)]
+
+    figure, axis = plt.subplots(figsize=(5.4, 4.8))
+    axis.plot([0.0, 1.0], [0.0, 1.0], linestyle="--", color="black", linewidth=1.0)
+    for method in methods:
+        rows = [row for row in reliability_rows if row["method"] == method]
+        rows.sort(key=lambda row: int(row["bin_index"]))
+        axis.plot(
+            [float(row["mean_predicted_risk"]) for row in rows],
+            [float(row["observed_error_rate"]) for row in rows],
+            marker="o",
+            linewidth=1.6,
+            markersize=4,
+            label=display[method],
+        )
+    axis.set_xlabel("Mean calibrated error probability")
+    axis.set_ylabel("Observed error rate")
+    axis.set_xlim(0.0, 1.0)
+    axis.set_ylim(0.0, 1.0)
+    axis.legend(frameon=False)
+    axis.grid(alpha=0.2)
+    figure.tight_layout()
+    figure.savefig(reliability_path)
+    plt.close(figure)
+
+    figure, axis = plt.subplots(figsize=(5.4, 4.8))
+    for method in methods:
+        rows = [row for row in risk_rows if row["method"] == method]
+        rows.sort(key=lambda row: float(row["coverage"]))
+        axis.plot(
+            [float(row["coverage"]) for row in rows],
+            [float(row["retained_error_risk"]) for row in rows],
+            marker="o",
+            linewidth=1.6,
+            markersize=4,
+            label=display[method],
+        )
+    axis.set_xlabel("Coverage")
+    axis.set_ylabel("Retained error risk")
+    axis.set_xlim(0.5, 1.0)
+    axis.set_ylim(bottom=0.0)
+    axis.legend(frameon=False)
+    axis.grid(alpha=0.2)
+    figure.tight_layout()
+    figure.savefig(risk_path)
+    plt.close(figure)
+
+
 class ScalarLogisticCalibrator:
     """One-dimensional monotonic logistic calibration fitted on validation."""
 
@@ -164,15 +238,17 @@ class ScalarLogisticCalibrator:
 
 def load_split(
     base_rows: list[dict[str, str]],
-    uq_path: Path,
+    uq_path: Path | None,
     split: str,
+    *,
+    methods: tuple[str, ...] = ALL_METHODS,
 ) -> dict[str, Any]:
     base = [row for row in base_rows if str(row.get("split")) == split]
-    uq = by_id(read_csv(uq_path), source=str(uq_path))
+    uq = by_id(read_csv(uq_path), source=str(uq_path)) if uq_path is not None else None
     if len(base) != 384:
         raise ValueError(f"Expected 384 base {split} rows, got {len(base)}.")
     base_ids = {str(row["example_id"]) for row in base}
-    if base_ids != set(uq):
+    if uq is not None and base_ids != set(uq):
         raise ValueError(
             f"{split} base/UQ IDs differ: base_only={len(base_ids - set(uq))}, "
             f"uq_only={len(set(uq) - base_ids)}."
@@ -182,8 +258,12 @@ def load_split(
     if set(labels.tolist()) != {0, 1}:
         raise ValueError(f"{split} labels do not contain both classes.")
     scores: dict[str, np.ndarray] = {}
-    for method in ALL_METHODS:
+    for method in methods:
         if method == "discrete_semantic_entropy":
+            if uq is None:
+                raise ValueError(
+                    f"{split} Semantic Entropy requires the matched UQ-score file."
+                )
             values = [uq[str(row["example_id"])]["discrete_semantic_entropy"] for row in ordered]
         else:
             values = [row[METHOD_FIELDS[method]] for row in ordered]
@@ -195,6 +275,8 @@ def load_split(
         "p_true_probe": "p_true_probe_uncertainty",
     }
     for method, uq_field in consistency_fields.items():
+        if uq is None or method not in methods:
+            continue
         replay = finite_array(
             [uq[str(row["example_id"])][uq_field] for row in ordered],
             name=f"{split} replay {method}",
@@ -286,12 +368,15 @@ def risk_coverage(
 ) -> tuple[list[dict[str, float]], float]:
     order = np.argsort(scores, kind="mergesort")
     rows = []
-    for requested in np.arange(0.50, 1.0001, 0.05):
-        retained = max(1, int(math.ceil(len(labels) * float(requested))))
+    for index in range(11):
+        requested = round(0.50 + 0.05 * index, 2)
+        retained = min(
+            len(labels), max(1, int(math.ceil(len(labels) * requested)))
+        )
         indexes = order[:retained]
         rows.append(
             {
-                "requested_coverage": float(round(requested, 2)),
+                "requested_coverage": requested,
                 "coverage": retained / len(labels),
                 "retained_examples": retained,
                 "retained_error_risk": float(np.mean(labels[indexes])),
@@ -327,16 +412,20 @@ def bootstrap_differences(
     raw_scores: dict[str, np.ndarray],
     calibrated: dict[str, np.ndarray],
     *,
+    methods: tuple[str, ...],
     samples: int,
     random_seed: int,
 ) -> list[dict[str, Any]]:
     if samples <= 0:
         raise ValueError("bootstrap samples must be positive.")
-    pairs = (
-        ("accuracy_probe", "blind_p_true"),
-        ("accuracy_probe", "discrete_semantic_entropy"),
-        ("blind_p_true", "discrete_semantic_entropy"),
-    )
+    pairs = [("accuracy_probe", "blind_p_true")]
+    if "discrete_semantic_entropy" in methods:
+        pairs.extend(
+            [
+                ("accuracy_probe", "discrete_semantic_entropy"),
+                ("blind_p_true", "discrete_semantic_entropy"),
+            ]
+        )
     metric_names = ("auroc", "brier", "log_loss", "aurac_coverage_0p5_to_1p0")
 
     def values(indexes: np.ndarray, method: str) -> dict[str, float]:
@@ -351,7 +440,7 @@ def bootstrap_differences(
             "aurac_coverage_0p5_to_1p0": aurac,
         }
 
-    observed = {method: values(np.arange(len(labels)), method) for method in PRIMARY_METHODS}
+    observed = {method: values(np.arange(len(labels)), method) for method in methods}
     distributions: dict[tuple[str, str, str], list[float]] = {
         (candidate, comparator, metric): []
         for candidate, comparator in pairs
@@ -364,7 +453,7 @@ def bootstrap_differences(
         if len(np.unique(labels[indexes])) != 2:
             skipped += 1
             continue
-        sampled = {method: values(indexes, method) for method in PRIMARY_METHODS}
+        sampled = {method: values(indexes, method) for method in methods}
         for candidate, comparator in pairs:
             for metric in metric_names:
                 distributions[(candidate, comparator, metric)].append(
@@ -437,14 +526,35 @@ def main() -> int:
     args = parse_args()
     if args.bins != 10:
         raise ValueError("The frozen primary protocol requires exactly 10 bins.")
+    active_primary_methods = (
+        ("blind_p_true", "accuracy_probe")
+        if args.exclude_semantic_entropy
+        else PRIMARY_METHODS
+    )
+    active_methods = active_primary_methods + ("p_true_probe",)
+    if not args.exclude_semantic_entropy and (
+        args.validation_uq_scores is None or args.test_uq_scores is None
+    ):
+        raise ValueError(
+            "Semantic Entropy analysis requires --validation-uq-scores and "
+            "--test-uq-scores."
+        )
     base_rows = read_csv(args.phase2_predictions.resolve())
-    validation = load_split(base_rows, args.validation_uq_scores.resolve(), "validation")
-    test = load_split(base_rows, args.test_uq_scores.resolve(), "test")
+    validation_uq_path = (
+        args.validation_uq_scores.resolve()
+        if args.validation_uq_scores is not None
+        else None
+    )
+    test_uq_path = args.test_uq_scores.resolve() if args.test_uq_scores is not None else None
+    validation = load_split(
+        base_rows, validation_uq_path, "validation", methods=active_methods
+    )
+    test = load_split(base_rows, test_uq_path, "test", methods=active_methods)
 
     calibrators = {}
     calibrated = {}
     parameters = {}
-    for method in ALL_METHODS:
+    for method in active_methods:
         calibrator = ScalarLogisticCalibrator(random_seed=args.random_seed).fit(
             validation["scores"][method], validation["labels"]
         )
@@ -457,7 +567,7 @@ def main() -> int:
     risk_rows = []
     type_rows = []
     prediction_rows = []
-    for method in ALL_METHODS:
+    for method in active_methods:
         raw = test["scores"][method]
         probability = calibrated[method]
         metric_rows.append(
@@ -465,7 +575,7 @@ def main() -> int:
                 "dataset": "bioasq_test",
                 "method": method,
                 "calibration": "validation_logistic",
-                "role": "primary" if method in PRIMARY_METHODS else "auxiliary_cross_target",
+                "role": "primary" if method in active_primary_methods else "auxiliary_cross_target",
                 **method_metrics(test["labels"], raw, probability, bins=args.bins),
             }
         )
@@ -516,8 +626,9 @@ def main() -> int:
 
     bootstrap_rows = bootstrap_differences(
         test["labels"],
-        {method: test["scores"][method] for method in PRIMARY_METHODS},
-        {method: calibrated[method] for method in PRIMARY_METHODS},
+        {method: test["scores"][method] for method in active_primary_methods},
+        {method: calibrated[method] for method in active_primary_methods},
+        methods=active_primary_methods,
         samples=args.bootstrap_samples,
         random_seed=args.random_seed,
     )
@@ -529,6 +640,12 @@ def main() -> int:
     write_csv(output_dir / "risk_coverage.csv", risk_rows, overwrite=args.overwrite)
     write_csv(output_dir / "calibrated_predictions.csv", prediction_rows, overwrite=args.overwrite)
     write_csv(output_dir / "paired_bootstrap.csv", bootstrap_rows, overwrite=args.overwrite)
+    write_plots(
+        output_dir,
+        reliability_rows,
+        risk_rows,
+        overwrite=args.overwrite,
+    )
 
     pubmedqa_metrics = []
     if args.pubmedqa_predictions is not None:
@@ -548,22 +665,26 @@ def main() -> int:
 
     inputs = {
         "phase2_predictions": args.phase2_predictions.resolve(),
-        "validation_uq_scores": args.validation_uq_scores.resolve(),
-        "test_uq_scores": args.test_uq_scores.resolve(),
     }
+    if validation_uq_path is not None:
+        inputs["validation_uq_scores"] = validation_uq_path
+    if test_uq_path is not None:
+        inputs["test_uq_scores"] = test_uq_path
     if args.pubmedqa_predictions is not None:
         inputs["pubmedqa_predictions"] = args.pubmedqa_predictions.resolve()
     summary = {
         "schema_version": "phase2_uq_calibration_v1",
-        "status": "complete",
+        "status": "partial_without_semantic_entropy" if args.exclude_semantic_entropy else "complete",
         "target": "incorrect=1",
-        "primary_methods": list(PRIMARY_METHODS),
+        "primary_methods": list(active_primary_methods),
         "auxiliary_method": "p_true_probe",
+        "semantic_entropy_included": not args.exclude_semantic_entropy,
         "calibration_fit_split": "validation",
         "evaluation_split": "test",
         "test_used_for_fitting_or_selection": False,
         "calibrator": "z-scored scalar logistic regression; fixed C=1e6; positive slope required",
         "reliability_bins": "10 equal-frequency bins on the evaluation split",
+        "figures": ["reliability_diagram.svg", "risk_coverage.svg"],
         "bootstrap": {
             "samples": args.bootstrap_samples,
             "random_seed": args.random_seed,
@@ -574,7 +695,8 @@ def main() -> int:
     }
     write_json(output_dir / "summary.json", summary, overwrite=args.overwrite)
     print(
-        f"calibration=PASS validation=384 test=384 pubmedqa={summary['rows']['pubmedqa']} "
+        f"calibration=PASS validation=384 test=384 se={not args.exclude_semantic_entropy} "
+        f"pubmedqa={summary['rows']['pubmedqa']} "
         f"output={output_dir}"
     )
     return 0

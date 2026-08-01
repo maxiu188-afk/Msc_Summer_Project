@@ -50,6 +50,9 @@ class Phase2UQCalibrationTests(unittest.TestCase):
         first = rows[0]
         self.assertEqual(first["requested_coverage"], 0.5)
         self.assertEqual(first["retained_error_risk"], 0.0)
+        self.assertEqual(rows[-1]["requested_coverage"], 1.0)
+        self.assertEqual(rows[-1]["retained_examples"], len(labels))
+        self.assertEqual(rows[-1]["coverage"], 1.0)
         self.assertGreaterEqual(area, 0.0)
 
     def test_probability_metrics_include_prevalence_skill_baseline(self) -> None:
@@ -91,6 +94,25 @@ class Phase2UQCalibrationTests(unittest.TestCase):
             loaded = calibration.load_split(base_rows, uq_path, "validation")
         self.assertEqual(len(loaded["example_ids"]), 384)
         self.assertEqual(set(loaded["scores"]), set(calibration.ALL_METHODS))
+
+    def test_load_split_can_run_non_se_analysis_without_uq_file(self) -> None:
+        base_rows = []
+        for index in range(384):
+            score = (index + 1) / 385.0
+            base_rows.append(
+                {
+                    "split": "test",
+                    "example_id": f"e{index:03d}",
+                    "bioasq_type": ("factoid", "list", "summary")[index % 3],
+                    "incorrect": int(index >= 192),
+                    "p_true_probe": score,
+                    "accuracy_probe": score,
+                    "blind_p_true_uncertainty": score,
+                }
+            )
+        methods = ("blind_p_true", "accuracy_probe", "p_true_probe")
+        loaded = calibration.load_split(base_rows, None, "test", methods=methods)
+        self.assertEqual(set(loaded["scores"]), set(methods))
 
     def test_pubmedqa_transfer_applies_existing_calibrators_without_refit(self) -> None:
         fit_scores = np.linspace(0.01, 0.99, 20)
