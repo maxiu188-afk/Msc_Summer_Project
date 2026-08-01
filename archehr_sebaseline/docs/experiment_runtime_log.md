@@ -16,6 +16,25 @@ Queueing time is excluded: elapsed time is measured from Slurm start to end.
 - Estimates should include a safety margin and should not silently substitute a
   different model, device, precision, sample count, or evaluation stage.
 
+## Phase-2 validation SE for calibration — submitted
+
+```text
+submission: 2026-08-01
+revision: f84836f82982b88357a8b5086f8977ef4b95d44e
+smoke job: 5863759, six validation questions balanced across the three types
+formal job: 5863760, 384 valid-labelled validation questions
+dependency: afterok:5863759
+model / generation / NLI: unchanged from accepted test job 5773786
+split: validation only; the completed test generation is not rerun
+output: new validation-only directories; existing test artifacts remain frozen
+monitoring: no recurring or continuous monitor started
+status: submitted; smoke and formal results not yet accepted
+```
+
+The formal job can start only if the smoke exits successfully. After completion,
+retain the Slurm state, timing, health output, 384-row `uq_scores.csv`, and input
+provenance before running the offline calibration analysis.
+
 ## Gemma 3 1B staged model-scale generation — completed
 
 ```text

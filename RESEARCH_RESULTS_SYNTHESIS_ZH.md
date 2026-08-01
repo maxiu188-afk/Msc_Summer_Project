@@ -1,6 +1,6 @@
 # 临床 QA 不确定性方法适用条件：三阶段结果总览
 
-更新时间：2026-07-28
+更新时间：2026-08-01
 
 ## 研究主题
 
@@ -14,8 +14,12 @@
 形式、模型能力和语义等价判断条件下，各方法分别可靠；能否用单次生成的
 hidden-state probe，以更低成本保留有用的不确定性信号。
 
-截至 2026-07-28，三个阶段和预先限定的机制诊断均已完成。与导师讨论前不再
-新增实验、调整 prompt、扩展模型规模或训练新的 Probe。
+截至 2026-07-28，三个阶段和预先限定的机制诊断均已完成。2026-08-01
+导师讨论后，新增一项论文收尾范围：补齐三种重点 UQ 方法的 calibration、
+selective prediction、正确性标签人工审核和零重校准 PubMedQA transfer；
+不重新开放 prompt、模型规模、Probe 训练或聚类扩展。当前不依赖 Isambard
+的 P(True)/Probe 部分已经完成；SE calibration 和正确性标签人工审核仍待
+完成，因此下述 calibration 结论是明确标注的阶段性结果。
 
 ## 四个连续结论
 
@@ -210,6 +214,35 @@ PubMedQA SE、cluster count 或 sample-disagreement 结果。它是低成本
 - `archehr_sebaseline/docs/phase2_probe_completion_statistics.md`
 - `archehr_sebaseline/docs/pubmedqa_frozen_probe_transfer.md`
 
+### 阶段性 calibration 与 selective prediction 结果（不含 SE）
+
+三个现有单答案分数采用同一协议：在 384 个 BioASQ validation 样本上拟合
+一维 logistic calibration，只在 384 个 test 样本上评估，目标统一为
+`incorrect=1`。Accuracy-Probe 的 test Brier 为 0.1776、log loss 为
+0.5386、10-bin ECE 为 0.0891；blind P(True) 分别为 0.2156、0.6174 和
+0.1922。Accuracy-Probe minus blind P(True) 的配对 bootstrap 结果为：
+
+- AUROC `+0.01584`，95% CI `[-0.03850,+0.07163]`，排序差异仍未确定；
+- Brier `-0.03794`，95% CI `[-0.06050,-0.01541]`；
+- log loss `-0.07884`，95% CI `[-0.13526,-0.02177]`；
+- 0.5--1.0 coverage AURAC `-0.01294`，95% CI
+  `[-0.02322,-0.00316]`。
+
+因此，当前证据支持 Accuracy-Probe 在固定 calibration 协议下提供更好的
+概率质量和 selective prediction，但仍不支持其 AUROC 显著高于 blind
+P(True)。分题型结果还显示，统一 calibrator 在 list 上对三种方法都不能
+超过该题型自身的 prevalence baseline，说明 pooled calibration 会掩盖
+答案形式带来的巨大错误率偏移。
+
+把 BioASQ 拟合的 calibration mapping 原样应用到 PubMedQA v2 后，blind
+P(True)、Accuracy-Probe 和 P(True)-Probe 的 Brier skill 分别为
+`-0.7198`、`-0.7979` 和 `-0.7572`。这说明 ranking signal 的有限迁移不等于
+概率 calibration 能迁移；没有使用 PubMedQA 标签重拟合或修补映射。
+
+完整协议和阶段性结果见
+`archehr_sebaseline/docs/phase2_uq_calibration_completion.md`。SE 在 Isambard
+恢复前保持待定，不由单答案结果外推。
+
 ## Phase 3：解释答案形式、模型规模和聚类质量的影响
 
 ### 3A. 答案长度不是充分解释
@@ -280,14 +313,15 @@ Claude 的 API 成本、延迟和直接判断的非传递性使其不适合作�
 
 归档入口：`archive_unused/README.md`。
 
-## 最终边界
+## 收尾边界
 
 - 不再训练新的 Probe 或融合模型；
 - 不再扩展 1B factoid/list；
 - 不再增加 270M/27B 模型点；
 - 不再进行 PubMedQA prompt 调整或错误案例调参；
 - 不把 Claude clustering 描述为部署方案；
-- 与导师讨论前不再新增实验。
+- 当前只推进固定的 calibration/selective prediction、correctness audit 和
+  zero-refit PubMedQA calibration transfer。
 
-下一阶段是将三阶段结果写入论文的 Results、Discussion 和 Limitations，
-而不是继续增加实验分支。
+论文写作与收尾分析同步推进；完成这组固定评估后，将结果写入 Results、
+Discussion 和 Limitations，不继续增加无关实验分支。

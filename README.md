@@ -139,6 +139,7 @@ Primary documents:
 - [`phase2_bioasq_dataset_split.md`](archehr_sebaseline/docs/phase2_bioasq_dataset_split.md)
 - [`phase2_uq_efficiency_benchmark.md`](archehr_sebaseline/docs/phase2_uq_efficiency_benchmark.md)
 - [`phase2_probe_completion_statistics.md`](archehr_sebaseline/docs/phase2_probe_completion_statistics.md)
+- [`phase2_uq_calibration_completion.md`](archehr_sebaseline/docs/phase2_uq_calibration_completion.md)
 - [`pubmedqa_frozen_probe_transfer.md`](archehr_sebaseline/docs/pubmedqa_frozen_probe_transfer.md)
 
 ### Phase 3 — conditions and mechanisms
@@ -156,7 +157,9 @@ Primary documents:
 
 ## Scope boundary
 
-The following work is explicitly closed before supervisor review:
+After supervisor review, the only reopened experimental scope is the fixed
+calibration/selective-prediction completion, correctness-label audit, and
+zero-refit PubMedQA calibration transfer. The following remain closed:
 
 - no additional PubMedQA prompt or error-case tuning;
 - no full 1B factoid/list expansion after the 8/50 and 3/50 feasibility

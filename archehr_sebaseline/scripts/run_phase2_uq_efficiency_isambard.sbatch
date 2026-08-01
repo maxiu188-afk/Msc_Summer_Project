@@ -8,7 +8,7 @@
 #SBATCH --mem=64G
 #SBATCH --time=12:00:00
 
-# Incremental UQ-cost benchmark on the Claude-labelled Phase-2 test examples.
+# Matched UQ collection on one Claude-labelled Phase-2 split.
 # The saved main answers are inputs and are never regenerated.
 set -euo pipefail
 
@@ -39,6 +39,12 @@ LOCAL_FILES_ONLY="${LOCAL_FILES_ONLY:-1}"
 INCLUDE_SE="${INCLUDE_SE:-1}"
 EXPECTED_EXAMPLES="${EXPECTED_EXAMPLES:-384}"
 MAX_EXAMPLES="${MAX_EXAMPLES:-}"
+SPLIT="${SPLIT:-test}"
+
+if [[ "${SPLIT}" != "validation" && "${SPLIT}" != "test" ]]; then
+  echo "SPLIT must be validation or test." >&2
+  exit 2
+fi
 
 mkdir -p "${JOB_TMP_DIR}"
 chmod 700 "${JOB_TMP_DIR}"
@@ -107,6 +113,7 @@ record_timing() {
     "exit_code: ${exit_code}" \
     "expected_examples: ${EXPECTED_EXAMPLES}" \
     "max_examples: ${MAX_EXAMPLES}" \
+    "split: ${SPLIT}" \
     "include_semantic_entropy: ${INCLUDE_SE}" \
     "gpu_driver_version: ${GPU_DRIVER_VERSION}" \
     "environment_selection: ${VENV_SELECTION}" \
@@ -121,6 +128,7 @@ ARGS=(
   --labels-path "${LABELS_PATH}"
   --frozen-probe-bundle "${FROZEN_PROBE_BUNDLE}"
   --output-dir "${OUTPUT_DIR}"
+  --split "${SPLIT}"
   --model-name "${MODEL_NAME}"
   --nli-model-name "${NLI_MODEL_NAME}"
   --max-new-tokens "${MAX_NEW_TOKENS}"

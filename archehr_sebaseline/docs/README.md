@@ -30,6 +30,9 @@ Start with:
   incremental-cost comparison.
 - `phase2_probe_completion_statistics.md`: primary paired
   Accuracy-Probe-versus-blind-P(True) uncertainty result.
+- `phase2_uq_calibration_completion.md`: supervisor-approved closing protocol
+  for validation-fitted calibration, selective prediction, correctness-label
+  audit, and zero-refit PubMedQA calibration transfer.
 - `pubmedqa_frozen_probe_transfer.md`: bounded frozen-Probe transfer under the
   official PubMedQA evidence context, including comparison with blind P(True),
   verbalized confidence, NLL, and token-entropy baselines.
@@ -72,9 +75,10 @@ In particular:
 Archived material is provenance, not current evidence. Do not move it back
 into the main narrative without a new explicit research decision.
 
-## Final boundary
+## Closing boundary
 
-Before the next supervisor discussion, do not add experiments, retune prompts,
-expand the model grid, train new Probes, or extend 1B factoid/list. Update the
-owning result document when correcting prose or provenance; do not create
-another progress summary.
+The supervisor-approved closing analysis is limited to the fixed calibration,
+selective-prediction, correctness-audit, and zero-refit transfer protocol above.
+Do not retune prompts, expand the model grid, train new Probes, extend 1B
+factoid/list, or reopen clustering. Update the owning result document when
+results arrive; do not create another generic progress summary.
