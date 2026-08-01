@@ -16,7 +16,7 @@ Queueing time is excluded: elapsed time is measured from Slurm start to end.
 - Estimates should include a safety margin and should not silently substitute a
   different model, device, precision, sample count, or evaluation stage.
 
-## Phase-2 validation SE for calibration — submitted
+## Phase-2 validation SE for calibration — completed
 
 ```text
 submission: 2026-08-01
@@ -28,12 +28,24 @@ model / generation / NLI: unchanged from accepted test job 5773786
 split: validation only; the completed test generation is not rerun
 output: new validation-only directories; existing test artifacts remain frozen
 monitoring: no recurring or continuous monitor started
-status: submitted; smoke and formal results not yet accepted
+smoke result: COMPLETED 0:0 in 00:04:18; internal benchmark 00:03:10;
+  six questions, factoid/list/summary = 2/2/2; health check PASS
+formal result: COMPLETED 0:0 in 04:01:10; internal benchmark 04:00:03;
+  384/384 rows, factoid/list/summary = 157/104/123; health check PASS
+formal UQ-score SHA-256:
+  cc86e63cd1197d3b896fc8e14808c2fa3be308ce96961b40a2b3d5e0962d6245
+cohort validation: exact match to the 384-row frozen valid-labelled validation
+  cohort; zero ID overlap with the 384-row test cohort; no missing SE values
+matched protocol: Gemma 3 12B, ten T=1.0 samples, seed 31, PubMedBERT NLI,
+  and frozen probe-bundle SHA-256
+  05c4dee461cdf789af5fc1ca45ef223dbf8fc4eab54d4724e57c59993d129f5a
+status: accepted; complete offline calibration analysis generated locally
 ```
 
-The formal job can start only if the smoke exits successfully. After completion,
-retain the Slurm state, timing, health output, 384-row `uq_scores.csv`, and input
-provenance before running the offline calibration analysis.
+The accepted output is retained locally under
+`analysis_outputs/bioasq_phase2_uq_calibration_validation384_20260801/`; the
+complete offline result is under
+`analysis_outputs/bioasq_phase2_uq_calibration_full_20260801/`.
 
 ## Gemma 3 1B staged model-scale generation — completed
 
