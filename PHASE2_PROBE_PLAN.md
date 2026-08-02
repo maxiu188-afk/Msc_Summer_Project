@@ -1,6 +1,6 @@
 # Phase 2 Probe Research Plan
 
-Last updated: 2026-08-01
+Last updated: 2026-08-02
 
 ## Final status and research boundary
 
@@ -8,10 +8,13 @@ All three research phases and the bounded mechanism diagnostics are complete.
 After the subsequent supervisor discussion, one thesis-closing UQ evaluation
 was approved: validation-fitted calibration and selective prediction for SE,
 blind P(True), and the frozen Probes, plus a correctness-label audit and
-zero-refit PubMedQA calibration transfer. The fixed protocol is
+zero-refit PubMedQA calibration transfer. This evaluation is now complete. The
+90-answer audit has 95.56% raw agreement, 95.12% design-weighted agreement, and
+Cohen's kappa 0.902; its four corrections do not reverse the primary UQ
+conclusions. The fixed protocol and complete results are in
 `archehr_sebaseline/docs/phase2_uq_calibration_completion.md`. No prompt,
 model-scale, Probe-training, type-specific, or clustering expansion is
-reopened.
+reopened; the next activity is thesis writing.
 
 ## Execution Status (updated 2026-07-28)
 

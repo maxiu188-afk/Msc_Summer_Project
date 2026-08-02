@@ -1,6 +1,6 @@
 # 临床 QA 不确定性方法适用条件：三阶段结果总览
 
-更新时间：2026-08-01
+更新时间：2026-08-02
 
 ## 研究主题
 
@@ -17,9 +17,9 @@ hidden-state probe，以更低成本保留有用的不确定性信号。
 截至 2026-07-28，三个阶段和预先限定的机制诊断均已完成。2026-08-01
 导师讨论后，新增一项论文收尾范围：补齐三种重点 UQ 方法的 calibration、
 selective prediction、正确性标签人工审核和零重校准 PubMedQA transfer；
-不重新开放 prompt、模型规模、Probe 训练或聚类扩展。当前不依赖 Isambard
-的 P(True)/Probe 部分已经完成；SE calibration 和正确性标签人工审核仍待
-完成，因此下述 calibration 结论是明确标注的阶段性结果。
+不重新开放 prompt、模型规模、Probe 训练或聚类扩展。完整 calibration、
+selective prediction、PubMedQA transfer 和正确性标签人工审核现已全部完成。
+论文收尾实验到此冻结。
 
 ## 四个连续结论
 
@@ -214,13 +214,20 @@ PubMedQA SE、cluster count 或 sample-disagreement 结果。它是低成本
 - `archehr_sebaseline/docs/phase2_probe_completion_statistics.md`
 - `archehr_sebaseline/docs/pubmedqa_frozen_probe_transfer.md`
 
-### 阶段性 calibration 与 selective prediction 结果（不含 SE）
+### Calibration 与 selective prediction 结果
 
-三个现有单答案分数采用同一协议：在 384 个 BioASQ validation 样本上拟合
-一维 logistic calibration，只在 384 个 test 样本上评估，目标统一为
-`incorrect=1`。Accuracy-Probe 的 test Brier 为 0.1776、log loss 为
-0.5386、10-bin ECE 为 0.0891；blind P(True) 分别为 0.2156、0.6174 和
-0.1922。Accuracy-Probe minus blind P(True) 的配对 bootstrap 结果为：
+四个分数采用同一协议：在 384 个 BioASQ validation 样本上拟合一维
+logistic calibration，只在 384 个 test 样本上评估，目标统一为
+`incorrect=1`。
+
+| 方法 | AUROC | Brier | Brier skill | Log loss | ECE | AURAC |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Accuracy-Probe | **0.8058** | **0.1776** | **0.2125** | 0.5386 | 0.0891 | **0.2780** |
+| Blind P(True) | 0.7900 | 0.2156 | 0.0444 | 0.6174 | 0.1922 | 0.2909 |
+| Semantic Entropy | 0.7484 | 0.1839 | 0.1847 | **0.5341** | **0.0298** | 0.2799 |
+| P(True)-Probe | 0.7452 | 0.2001 | 0.1131 | 0.5860 | 0.0984 | 0.2905 |
+
+20,000 次配对 bootstrap 得到：
 
 - AUROC `+0.01584`，95% CI `[-0.03850,+0.07163]`，排序差异仍未确定；
 - Brier `-0.03794`，95% CI `[-0.06050,-0.01541]`；
@@ -228,20 +235,50 @@ PubMedQA SE、cluster count 或 sample-disagreement 结果。它是低成本
 - 0.5--1.0 coverage AURAC `-0.01294`，95% CI
   `[-0.02322,-0.00316]`。
 
-因此，当前证据支持 Accuracy-Probe 在固定 calibration 协议下提供更好的
-概率质量和 selective prediction，但仍不支持其 AUROC 显著高于 blind
-P(True)。分题型结果还显示，统一 calibrator 在 list 上对三种方法都不能
-超过该题型自身的 prevalence baseline，说明 pooled calibration 会掩盖
-答案形式带来的巨大错误率偏移。
+以上四项是 Accuracy-Probe minus blind P(True)。Accuracy-Probe 相对 SE 的
+AUROC 优势为 `+0.05745 [+0.00528,+0.10949]`，但 Brier、log loss 和 AURAC
+差异均跨零。SE 相对 blind P(True) 则在 Brier、log loss 和 AURAC 上均有
+区间支持的优势。因此，ranking、calibration 和 selective prediction 不会
+产生完全相同的方法排序。
+
+分题型 Brier skill 进一步显示：SE 在 list 上为 `+0.1666`，是唯一超过该
+题型 prevalence baseline 的方法；Accuracy-Probe 在 factoid 和 summary 上
+分别为 `+0.1553` 和 `+0.1613`，表现最好。这把“方法表现依赖答案形式”的
+主结论从 ranking 扩展到了 calibration。
 
 把 BioASQ 拟合的 calibration mapping 原样应用到 PubMedQA v2 后，blind
 P(True)、Accuracy-Probe 和 P(True)-Probe 的 Brier skill 分别为
 `-0.7198`、`-0.7979` 和 `-0.7572`。这说明 ranking signal 的有限迁移不等于
 概率 calibration 能迁移；没有使用 PubMedQA 标签重拟合或修补映射。
 
-完整协议和阶段性结果见
-`archehr_sebaseline/docs/phase2_uq_calibration_completion.md`。SE 在 Isambard
-恢复前保持待定，不由单答案结果外推。
+完整协议和结果见
+`archehr_sebaseline/docs/phase2_uq_calibration_completion.md`。
+
+### Correctness label 人工审核
+
+固定审核样本为 BioASQ test 中按题型均衡抽取的 90 题，每类 30 题。审核者
+只看到问题、相应参考答案和模型回答，不看到 Claude label、example ID 或
+UQ score。90 题全部给出 `correct`/`incorrect` 判断，没有 `unsure`。
+
+| 题型 | 一致率 | Cohen's kappa | Claude 判错、人工判对 | Claude 判对、人工判错 |
+| --- | ---: | ---: | ---: | ---: |
+| Overall | **95.56%** | **0.902** | 4 | 0 |
+| Factoid | 93.33% | 0.857 | 2 | 0 |
+| List | **100.00%** | **1.000** | 0 | 0 |
+| Summary | 93.33% | 0.867 | 2 | 0 |
+
+按完整 test 题型比例加权后的总体一致率为 `95.12%`。四个分歧全部是 Claude
+判错而人工判对，涉及参考答案本身可能不理想、概括但核心正确的 summary，
+以及额外但合法的信息。这说明 Claude correctness judge 整体可靠，但存在
+轻微的保守倾向，可能略高估错误率；四个分歧不足以精确估计总体偏差。
+
+在相同 90 题上，用原有 validation-fitted probability 做设计加权敏感性
+诊断，不重拟合、不选模型。人工标签下 Accuracy-Probe、blind P(True)、SE
+的 AUROC 分别为 `0.8939`、`0.8701`、`0.7919`，主方法排序未改变；对应
+Brier 为 `0.1657`、`0.2240`、`0.1754`。因此四处标签修正没有推翻完整 test
+上的 ranking 和 calibration 主结论。由于该样本按题型均衡抽取且只有 90
+题，这些数值只承担标签敏感性诊断，不替代正式 test 结果，也不增加显著性
+声明。
 
 ## Phase 3：解释答案形式、模型规模和聚类质量的影响
 
@@ -320,8 +357,8 @@ Claude 的 API 成本、延迟和直接判断的非传递性使其不适合作�
 - 不再增加 270M/27B 模型点；
 - 不再进行 PubMedQA prompt 调整或错误案例调参；
 - 不把 Claude clustering 描述为部署方案；
-- 当前只推进固定的 calibration/selective prediction、correctness audit 和
-  zero-refit PubMedQA calibration transfer。
+- 固定的 calibration/selective prediction、correctness audit 和 zero-refit
+  PubMedQA calibration transfer 均已完成。
 
-论文写作与收尾分析同步推进；完成这组固定评估后，将结果写入 Results、
-Discussion 和 Limitations，不继续增加无关实验分支。
+下一阶段是把现有证据写入 Results、Discussion 和 Limitations，不继续增加
+无关实验分支。除非导师明确开启一个独立的新想法，否则实验保持冻结。

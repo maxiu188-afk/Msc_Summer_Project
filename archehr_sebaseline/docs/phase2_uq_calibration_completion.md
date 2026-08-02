@@ -1,6 +1,6 @@
 # Phase-2 UQ Calibration and Selective-Prediction Completion
 
-Last updated: 2026-08-01
+Last updated: 2026-08-02
 
 ## Decision and status
 
@@ -18,18 +18,13 @@ is:
 5. apply the BioASQ calibration mappings unchanged to PubMedQA v2 as a
    zero-refit transfer diagnostic.
 
-The initial implementation is frozen at commit `f84836f`; all 128 local tests
-passed before submission.
-Validation-SE smoke job `5863759` and full job `5863760` were submitted on
-2026-08-01 with dependency `afterok:5863759`. No SE calibration result has been
-inspected, and no formal validation-SE job has been accepted.
-
-While Isambard is unavailable, the predeclared non-SE subset has been completed
-locally from existing artifacts. The accepted interim analysis includes blind
-P(True), Accuracy-Probe, P(True)-Probe, selective prediction, type
-stratification, paired bootstrap, and zero-refit PubMedQA calibration transfer.
-It is explicitly marked `partial_without_semantic_entropy`; no SE result is
-imputed or inferred.
+The initial implementation was frozen at commit `f84836f`; all 128 local tests
+passed before submission. Validation-SE smoke job `5863759` completed `0:0` in
+`00:04:18`, and dependent full job `5863760` completed `0:0` in `04:01:10` on
+2026-08-01. Both passed the batch health check. The formal output contains all
+384 expected rows and no missing SE values. The complete offline analysis and
+the fixed correctness-label audit have now both finished. The thesis-closing UQ
+evaluation is complete; no additional experiment is implied by this document.
 
 ## Common target and methods
 
@@ -54,12 +49,19 @@ analysis.
 | Validation | 384 | 157 | 104 | 123 | 265 |
 | Test | 384 | 158 | 103 | 123 | 252 |
 
-The test split and completed job `5773786` remain evaluation-only. The missing
-validation SE scores will be collected with the same Gemma 3 12B revision,
+The test split and completed job `5773786` remain evaluation-only. The
+validation SE scores were collected with the same Gemma 3 12B revision,
 prompt, ten `T=1.0` samples, seed 31, token settings, and PubMedBERT-NLI
 clustering contract used by `5773786`. Existing validation main answers,
 correctness labels, P(True), hidden states, and frozen Probe scores are reused.
 No answer judging is repeated.
+
+The validation and test UQ files have SHA-256
+`cc86e63cd1197d3b896fc8e14808c2fa3be308ce96961b40a2b3d5e0962d6245` and
+`181e5a77e3a7ba13a61577b6edb1d19c25539cdaf9a788b7ebe5b59785fad760`,
+respectively. Their IDs exactly match the frozen valid-labelled split cohorts
+and have zero overlap. Both runs use probe-bundle SHA-256
+`05c4dee461cdf789af5fc1ca45ef223dbf8fc4eab54d4724e57c59993d129f5a`.
 
 ## Calibration protocol
 
@@ -101,14 +103,59 @@ test composition, the analysis reports both within-type agreement and a
 design-weighted overall agreement. This is a correctness-target audit, not a
 new UQ model-selection set.
 
+All 90 reviews contain a binary human decision and none is `unsure`.
+
+| Type | Decided | Agreement | Design-weighted agreement | Cohen's kappa | Claude incorrect / human correct | Claude correct / human incorrect |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Overall | 90 | 95.56% | 95.12% | 0.902 | 4 | 0 |
+| Factoid | 30 | 93.33% | 93.33% | 0.857 | 2 | 0 |
+| List | 30 | 100.00% | 100.00% | 1.000 | 0 | 0 |
+| Summary | 30 | 93.33% | 93.33% | 0.867 | 2 | 0 |
+
+The four disagreements are one-directional: Claude marks an answer incorrect
+while the human reviewer accepts it. They cover a reference mismatch for the
+standard RUNX1T1 expansion, two sufficiently correct but less reference-matched
+summary answers, and a Velcade answer that adds a legitimate secondary
+indication. The audit therefore supports the Claude correctness labels as a
+high-agreement target while identifying a small conservative tendency to
+overstate error. It does not establish the exact population bias from four
+discordant cases.
+
+As a frozen diagnostic only, the existing validation-calibrated probabilities
+were evaluated on the same audit sample after inverse-probability weighting by
+question type. Nothing was fitted or selected on the human labels.
+
+| Method | Claude-label AUROC | Human-label AUROC | Human-label Brier | Human-label log loss |
+| --- | ---: | ---: | ---: | ---: |
+| Accuracy-Probe | 0.8782 | **0.8939** | **0.1657** | **0.5096** |
+| Blind P(True) | 0.8564 | 0.8701 | 0.2240 | 0.6284 |
+| Semantic Entropy | 0.7536 | 0.7919 | 0.1754 | 0.5121 |
+| P(True)-Probe | 0.8247 | 0.8345 | 0.1943 | 0.5699 |
+
+The fixed sample is not a replacement test set and receives no new
+significance claim. Its primary-method AUROC order remains Accuracy-Probe,
+blind P(True), then SE; Accuracy-Probe retains the best Brier score, while SE
+remains close on Brier/log loss and better than blind P(True). The four label
+corrections therefore do not reverse the complete-test conclusions.
+
 Local ignored artifacts:
 
 ```text
 analysis_outputs/bioasq_phase2_correctness_audit_20260801/
   correctness_audit_blinded.csv
+  correctness_audit_completed.csv
   correctness_audit_key.csv
   correctness_audit_manifest.json
+  correctness_audit_agreement.csv
+  correctness_audit_merged.csv
+  correctness_audit_uq_sensitivity.csv
+  correctness_audit_analysis_summary.json
 ```
+
+The completed-review SHA-256 is
+`ab1efc4a60d97424ee161cdeb42e942c39caedb960741db116a616ed89e37b94`.
+The analysis summary records the key and calibrated-prediction input hashes and
+marks the audit `complete`.
 
 ## PubMedQA calibration transfer
 
@@ -122,17 +169,18 @@ Semantic Entropy is absent from this transfer because PubMedQA used a
 single-answer protocol. This remains a protocol boundary rather than a negative
 SE result.
 
-## Interim non-SE results
+## Complete UQ results
 
 ### BioASQ test calibration
 
-The three scalar mappings were fitted on all 384 valid-labelled validation
+The four scalar mappings were fitted on all 384 valid-labelled validation
 questions and applied unchanged to the 384 valid-labelled test questions.
 
 | Method | AUROC | Calibrated Brier | Brier skill | Log loss | 10-bin ECE | AURAC 0.5--1.0 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Accuracy-Probe | **0.8058** | **0.1776** | **0.2125** | **0.5386** | **0.0891** | **0.2780** |
+| Accuracy-Probe | **0.8058** | **0.1776** | **0.2125** | 0.5386 | 0.0891 | **0.2780** |
 | Blind P(True) | 0.7900 | 0.2156 | 0.0444 | 0.6174 | 0.1922 | 0.2909 |
+| Semantic Entropy | 0.7484 | 0.1839 | 0.1847 | **0.5341** | **0.0298** | 0.2799 |
 | P(True)-Probe | 0.7452 | 0.2001 | 0.1131 | 0.5860 | 0.0984 | 0.2905 |
 
 The test-prevalence constant has Brier `0.2256`. Before validation calibration,
@@ -141,22 +189,34 @@ native Brier was `0.2162` for Accuracy-Probe, `0.5347` for blind P(True), and
 `0.1921`, `0.5392`, and `0.3004`. Blind P(True) therefore has strong ranking but
 is not a usable answer-error probability without a separately fitted mapping.
 
-Accuracy-Probe minus blind P(True), with 20,000 paired test-row resamples:
+Primary-method differences use 20,000 paired test-row resamples. Differences
+are candidate minus comparator:
 
-| Metric | Difference | 95% CI | Better direction |
-| --- | ---: | ---: | --- |
-| AUROC | +0.01584 | [-0.03850, +0.07163] | higher |
-| Brier | -0.03794 | [-0.06050, -0.01541] | lower |
-| Log loss | -0.07884 | [-0.13526, -0.02177] | lower |
-| AURAC 0.5--1.0 | -0.01294 | [-0.02322, -0.00316] | lower |
+| Candidate vs comparator | Metric | Difference | 95% CI |
+| --- | --- | ---: | ---: |
+| Accuracy-Probe vs blind P(True) | AUROC | +0.01584 | [-0.03850, +0.07163] |
+|  | Brier | -0.03794 | [-0.06050, -0.01541] |
+|  | Log loss | -0.07884 | [-0.13526, -0.02177] |
+|  | AURAC | -0.01294 | [-0.02322, -0.00316] |
+| Accuracy-Probe vs SE | AUROC | +0.05745 | [+0.00528, +0.10949] |
+|  | Brier | -0.00629 | [-0.02877, +0.01653] |
+|  | Log loss | +0.00452 | [-0.05230, +0.06215] |
+|  | AURAC | -0.00191 | [-0.01015, +0.00598] |
+| Blind P(True) vs SE | AUROC | +0.04161 | [-0.01386, +0.09529] |
+|  | Brier | +0.03165 | [+0.01620, +0.04707] |
+|  | Log loss | +0.08336 | [+0.03998, +0.12633] |
+|  | AURAC | +0.01103 | [+0.00087, +0.02158] |
 
-Thus the earlier AUROC comparison remains unresolved, but Accuracy-Probe has a
-bootstrap-supported advantage in calibrated probability quality and selective
-prediction under this fixed protocol.
+Accuracy-Probe ranks errors significantly better than SE, but their Brier, log
+loss, and AURAC differences remain unresolved. SE has the lowest ECE point
+estimate. Relative to blind P(True), SE is significantly better on Brier, log
+loss, and AURAC even though their AUROC difference remains unresolved.
+Accuracy-Probe retains its bootstrap-supported Brier, log-loss, and AURAC
+advantage over blind P(True), while their AUROC difference remains unresolved.
 
-At 80% coverage, retained error risk is `0.5877` for Accuracy-Probe, `0.6006`
-for blind P(True), and `0.5942` for P(True)-Probe, versus `0.6563` at full
-coverage.
+At 80% coverage, retained error risk is `0.5779` for SE, `0.5877` for
+Accuracy-Probe, `0.6006` for blind P(True), and `0.5942` for P(True)-Probe,
+versus `0.6563` at full coverage.
 
 ### Answer-form calibration
 
@@ -164,15 +224,17 @@ One global validation-fitted mapping was used for every type.
 
 | Method | Factoid Brier skill | List Brier skill | Summary Brier skill |
 | --- | ---: | ---: | ---: |
+| Semantic Entropy | +0.1221 | **+0.1666** | +0.0350 |
 | Accuracy-Probe | +0.1553 | -0.1344 | +0.1613 |
 | Blind P(True) | -0.0036 | -0.3834 | -0.0428 |
 | P(True)-Probe | +0.0571 | -0.2365 | +0.0326 |
 
 List error prevalence is `0.9029`, compared with `0.5886` for factoid and
-`0.5366` for summary. The pooled calibrator does not beat a type-prevalence
-constant on list for any method. This extends the answer-form conclusion from
-ranking to calibration: global probability mappings can hide large type-level
-base-rate shifts. No type-specific calibrator is fitted post hoc.
+`0.5366` for summary. SE is the only method whose global calibrator beats the
+type-prevalence constant on list, while Accuracy-Probe is strongest on factoid
+and summary. This extends the answer-form conclusion from ranking to
+calibration: method suitability remains answer-form dependent. No type-specific
+calibrator is fitted post hoc.
 
 ### PubMedQA zero-refit transfer
 
@@ -192,7 +254,7 @@ shift. No PubMedQA label was used to repair this failure.
 Local ignored result snapshot:
 
 ```text
-analysis_outputs/bioasq_phase2_uq_calibration_nonse_20260801/
+analysis_outputs/bioasq_phase2_uq_calibration_full_20260801/
   metrics_overall.csv
   metrics_by_type.csv
   reliability_bins.csv
@@ -214,6 +276,5 @@ This completion does not authorize:
 - new model sizes, prompt tuning, or expanded Claude clustering; or
 - regeneration of the completed Phase-2 test benchmark.
 
-After the fixed analyses and audit are complete, update the thesis-oriented
-result synthesis and freeze experiments unless a separate supervisor-approved
-idea is pursued in parallel.
+The fixed analyses and audit are complete. Experiments are frozen for thesis
+writing unless a separate supervisor-approved idea is explicitly opened.

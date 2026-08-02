@@ -6,9 +6,10 @@ This repository studies:
 > how answer form, model scale, and semantic-clustering quality affect
 > Semantic Entropy, P(True), and hidden-state probes.**
 
-The three research phases and their bounded diagnostics are complete. Before
-the next supervisor discussion, no new experiment, prompt tuning, model-scale
-extension, or Probe training is planned.
+The three research phases, bounded diagnostics, and supervisor-approved UQ
+closing evaluation are complete. The project is frozen for thesis writing: no
+new experiment, prompt tuning, model-scale extension, or Probe training is
+planned unless a separate idea is explicitly approved.
 
 The thesis-oriented Chinese synthesis is
 [`RESEARCH_RESULTS_SYNTHESIS_ZH.md`](RESEARCH_RESULTS_SYNTHESIS_ZH.md).
@@ -111,6 +112,34 @@ protocol boundary, not a negative result. The BioASQ normalized-NLL result is
 also omitted from the cross-dataset column because it averages ten sampled
 answers, unlike the single-answer PubMedQA score.
 
+## Completed thesis-closing evaluation
+
+The final closing scope added validation-fitted calibration, selective
+prediction, answer-form calibration, a correctness-label audit, and a
+zero-refit PubMedQA calibration-transfer stress test without reopening model or
+prompt selection.
+
+| Method | BioASQ AUROC | Calibrated Brier | ECE | AURAC 0.5--1.0 |
+| --- | ---: | ---: | ---: | ---: |
+| Accuracy-Probe | **0.8058** | **0.1776** | 0.0891 | **0.2780** |
+| Blind P(True) | 0.7900 | 0.2156 | 0.1922 | 0.2909 |
+| Semantic Entropy | 0.7484 | 0.1839 | **0.0298** | 0.2799 |
+| P(True)-Probe | 0.7452 | 0.2001 | 0.0984 | 0.2905 |
+
+Accuracy-Probe ranks error significantly better than SE, while their Brier,
+log-loss, and AURAC differences remain unresolved. SE has the lowest ECE and
+is the only method whose global calibrator beats the type-prevalence baseline
+on list questions. All three single-answer BioASQ mappings have negative Brier
+skill when transferred unchanged to PubMedQA, so ranking transfer is not
+calibration transfer.
+
+The blinded correctness audit reviewed 90 answers, balanced 30 per type. Human
+and Claude labels agree on 86/90 answers: 95.56% raw agreement, 95.12%
+design-weighted agreement, and Cohen's kappa 0.902. All four disagreements are
+Claude-incorrect/human-correct. A frozen label-sensitivity diagnostic preserves
+the primary Accuracy-Probe > blind P(True) > SE ranking and does not reverse the
+calibration conclusions.
+
 ## Three completed phases
 
 ### Phase 1 — answer-form operating regimes
@@ -157,9 +186,9 @@ Primary documents:
 
 ## Scope boundary
 
-After supervisor review, the only reopened experimental scope is the fixed
-calibration/selective-prediction completion, correctness-label audit, and
-zero-refit PubMedQA calibration transfer. The following remain closed:
+The supervisor-approved calibration/selective-prediction completion,
+correctness-label audit, and zero-refit PubMedQA calibration transfer are now
+complete. No experimental scope remains open. The following remain closed:
 
 - no additional PubMedQA prompt or error-case tuning;
 - no full 1B factoid/list expansion after the 8/50 and 3/50 feasibility
