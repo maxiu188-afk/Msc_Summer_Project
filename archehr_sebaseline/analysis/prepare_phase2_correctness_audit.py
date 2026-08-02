@@ -12,9 +12,21 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from sklearn.metrics import (
+    average_precision_score,
+    brier_score_loss,
+    log_loss,
+    roc_auc_score,
+)
 
 
 QUESTION_TYPES = ("factoid", "list", "summary")
+SENSITIVITY_METHODS = (
+    "accuracy_probe",
+    "blind_p_true",
+    "discrete_semantic_entropy",
+    "p_true_probe",
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -39,6 +51,12 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Completed blinded CSV to analyze instead of preparing a new audit.",
     )
+    parser.add_argument(
+        "--calibrated-predictions",
+        type=Path,
+        default=None,
+        help="Optional complete test predictions for label-sensitivity diagnostics.",
+    )
     parser.add_argument("--overwrite", action="store_true")
     return parser.parse_args()
 
@@ -52,7 +70,9 @@ def sha256_file(path: Path) -> str:
 
 
 def read_csv(path: Path) -> list[dict[str, str]]:
-    with path.open("r", encoding="utf-8", newline="") as infile:
+    # ``utf-8-sig`` also reads ordinary UTF-8 while removing the BOM commonly
+    # added when a completed audit is exported from spreadsheet software.
+    with path.open("r", encoding="utf-8-sig", newline="") as infile:
         return list(csv.DictReader(infile))
 
 
@@ -214,12 +234,112 @@ def cohens_kappa(first: list[str], second: list[str]) -> float:
     return (observed - expected) / (1.0 - expected) if expected < 1.0 else 1.0
 
 
+def uq_sensitivity_metrics(
+    merged: list[dict[str, str]],
+    calibrated_rows: list[dict[str, str]],
+) -> list[dict[str, Any]]:
+    predictions: dict[tuple[str, str], dict[str, str]] = {}
+    for row in calibrated_rows:
+        key = (str(row.get("example_id") or ""), str(row.get("method") or ""))
+        if not all(key) or key in predictions:
+            raise ValueError("Calibrated predictions contain an empty or duplicate key.")
+        predictions[key] = row
+
+    results = []
+    for question_type in ("overall",) + QUESTION_TYPES:
+        cohort = [
+            row
+            for row in merged
+            if row["human_label"] != "unsure"
+            and (question_type == "overall" or row["bioasq_type"] == question_type)
+        ]
+        if not cohort:
+            continue
+        weights = np.asarray(
+            [float(row["audit_sampling_weight"]) for row in cohort], dtype=np.float64
+        )
+        for label_source in ("claude", "human"):
+            labels = np.asarray(
+                [
+                    int(row[f"{label_source}_label"] == "incorrect")
+                    for row in cohort
+                ],
+                dtype=np.int64,
+            )
+            if len(np.unique(labels)) != 2:
+                continue
+            for method in SENSITIVITY_METHODS:
+                selected = []
+                for row in cohort:
+                    prediction = predictions.get((row["example_id"], method))
+                    if prediction is None:
+                        raise ValueError(
+                            f"Missing calibrated prediction for {row['example_id']} / {method}."
+                        )
+                    selected.append(prediction)
+                raw_scores = np.asarray(
+                    [float(row["raw_score"]) for row in selected], dtype=np.float64
+                )
+                probabilities = np.asarray(
+                    [float(row["calibrated_error_probability"]) for row in selected],
+                    dtype=np.float64,
+                )
+                if not np.all(np.isfinite(raw_scores)) or not np.all(
+                    np.isfinite(probabilities)
+                ):
+                    raise ValueError("Sensitivity inputs must be finite.")
+                results.append(
+                    {
+                        "bioasq_type": question_type,
+                        "label_source": label_source,
+                        "method": method,
+                        "role": (
+                            "auxiliary_cross_target"
+                            if method == "p_true_probe"
+                            else "primary"
+                        ),
+                        "examples": len(cohort),
+                        "positive_class": "incorrect",
+                        "weighting": "inverse_sampling_probability_by_type",
+                        "estimated_error_prevalence": float(
+                            np.average(labels, weights=weights)
+                        ),
+                        "auroc": float(
+                            roc_auc_score(labels, raw_scores, sample_weight=weights)
+                        ),
+                        "average_precision": float(
+                            average_precision_score(
+                                labels, raw_scores, sample_weight=weights
+                            )
+                        ),
+                        "brier": float(
+                            brier_score_loss(
+                                labels, probabilities, sample_weight=weights
+                            )
+                        ),
+                        "log_loss": float(
+                            log_loss(
+                                labels,
+                                probabilities,
+                                sample_weight=weights,
+                                labels=[0, 1],
+                            )
+                        ),
+                    }
+                )
+    return results
+
+
 def analyze(args: argparse.Namespace) -> int:
     output_dir = args.output_dir.resolve()
-    review_rows = read_csv(args.completed_review.resolve())
-    key_rows = read_csv(output_dir / "correctness_audit_key.csv")
+    completed_path = args.completed_review.resolve()
+    key_path = output_dir / "correctness_audit_key.csv"
+    review_rows = read_csv(completed_path)
+    key_rows = read_csv(key_path)
     review = {row["review_id"]: row for row in review_rows}
     key = {row["review_id"]: row for row in key_rows}
+    if len(review) != len(review_rows) or len(key) != len(key_rows):
+        raise ValueError("Completed review or key contains duplicate review IDs.")
     if set(review) != set(key):
         raise ValueError("Completed review and key review IDs differ.")
     merged = []
@@ -227,7 +347,15 @@ def analyze(args: argparse.Namespace) -> int:
         human = str(review[review_id].get("human_label") or "").strip().lower()
         if human not in {"correct", "incorrect", "unsure"}:
             raise ValueError(f"Invalid human label for {review_id}: {human!r}.")
-        merged.append({**key[review_id], "human_label": human})
+        if review[review_id].get("bioasq_type") != key[review_id].get("bioasq_type"):
+            raise ValueError(f"Question type differs for {review_id}.")
+        merged.append(
+            {
+                **key[review_id],
+                "human_label": human,
+                "human_notes": str(review[review_id].get("notes") or ""),
+            }
+        )
 
     metric_rows = []
     for question_type in ("overall",) + QUESTION_TYPES:
@@ -262,8 +390,53 @@ def analyze(args: argparse.Namespace) -> int:
                 ),
             }
         )
-    write_csv(output_dir / "correctness_audit_agreement.csv", metric_rows, overwrite=args.overwrite)
-    write_csv(output_dir / "correctness_audit_merged.csv", merged, overwrite=args.overwrite)
+    write_csv(
+        output_dir / "correctness_audit_agreement.csv",
+        metric_rows,
+        overwrite=args.overwrite,
+    )
+    write_csv(
+        output_dir / "correctness_audit_merged.csv",
+        merged,
+        overwrite=args.overwrite,
+    )
+    output_files = ["correctness_audit_agreement.csv", "correctness_audit_merged.csv"]
+    input_sha256 = {
+        "completed_review": sha256_file(completed_path),
+        "audit_key": sha256_file(key_path),
+    }
+    if args.calibrated_predictions is not None:
+        calibrated_path = args.calibrated_predictions.resolve()
+        sensitivity_rows = uq_sensitivity_metrics(merged, read_csv(calibrated_path))
+        write_csv(
+            output_dir / "correctness_audit_uq_sensitivity.csv",
+            sensitivity_rows,
+            overwrite=args.overwrite,
+        )
+        output_files.append("correctness_audit_uq_sensitivity.csv")
+        input_sha256["calibrated_predictions"] = sha256_file(calibrated_path)
+    overall = next(row for row in metric_rows if row["bioasq_type"] == "overall")
+    write_json(
+        output_dir / "correctness_audit_analysis_summary.json",
+        {
+            "schema_version": "phase2_correctness_audit_analysis_v1",
+            "status": "complete",
+            "rows": len(merged),
+            "human_label_counts": {
+                label: sum(row["human_label"] == label for row in merged)
+                for label in ("correct", "incorrect", "unsure")
+            },
+            "overall_agreement": overall,
+            "uq_sensitivity_scope": (
+                "design-weighted diagnostic on the fixed audit sample; no fitting or selection"
+                if args.calibrated_predictions is not None
+                else "not_requested"
+            ),
+            "input_sha256": input_sha256,
+            "outputs": output_files,
+        },
+        overwrite=args.overwrite,
+    )
     print(f"audit=ANALYZED rows={len(merged)} output={output_dir}")
     return 0
 

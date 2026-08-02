@@ -1,6 +1,6 @@
 # Phase-2 UQ Calibration and Selective-Prediction Completion
 
-Last updated: 2026-08-01
+Last updated: 2026-08-02
 
 ## Decision and status
 
@@ -22,9 +22,9 @@ The initial implementation was frozen at commit `f84836f`; all 128 local tests
 passed before submission. Validation-SE smoke job `5863759` completed `0:0` in
 `00:04:18`, and dependent full job `5863760` completed `0:0` in `04:01:10` on
 2026-08-01. Both passed the batch health check. The formal output contains all
-384 expected rows and no missing SE values. The complete offline analysis now
-includes all three primary methods; only the correctness-label audit remains
-open.
+384 expected rows and no missing SE values. The complete offline analysis and
+the fixed correctness-label audit have now both finished. The thesis-closing UQ
+evaluation is complete; no additional experiment is implied by this document.
 
 ## Common target and methods
 
@@ -103,14 +103,59 @@ test composition, the analysis reports both within-type agreement and a
 design-weighted overall agreement. This is a correctness-target audit, not a
 new UQ model-selection set.
 
+All 90 reviews contain a binary human decision and none is `unsure`.
+
+| Type | Decided | Agreement | Design-weighted agreement | Cohen's kappa | Claude incorrect / human correct | Claude correct / human incorrect |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Overall | 90 | 95.56% | 95.12% | 0.902 | 4 | 0 |
+| Factoid | 30 | 93.33% | 93.33% | 0.857 | 2 | 0 |
+| List | 30 | 100.00% | 100.00% | 1.000 | 0 | 0 |
+| Summary | 30 | 93.33% | 93.33% | 0.867 | 2 | 0 |
+
+The four disagreements are one-directional: Claude marks an answer incorrect
+while the human reviewer accepts it. They cover a reference mismatch for the
+standard RUNX1T1 expansion, two sufficiently correct but less reference-matched
+summary answers, and a Velcade answer that adds a legitimate secondary
+indication. The audit therefore supports the Claude correctness labels as a
+high-agreement target while identifying a small conservative tendency to
+overstate error. It does not establish the exact population bias from four
+discordant cases.
+
+As a frozen diagnostic only, the existing validation-calibrated probabilities
+were evaluated on the same audit sample after inverse-probability weighting by
+question type. Nothing was fitted or selected on the human labels.
+
+| Method | Claude-label AUROC | Human-label AUROC | Human-label Brier | Human-label log loss |
+| --- | ---: | ---: | ---: | ---: |
+| Accuracy-Probe | 0.8782 | **0.8939** | **0.1657** | **0.5096** |
+| Blind P(True) | 0.8564 | 0.8701 | 0.2240 | 0.6284 |
+| Semantic Entropy | 0.7536 | 0.7919 | 0.1754 | 0.5121 |
+| P(True)-Probe | 0.8247 | 0.8345 | 0.1943 | 0.5699 |
+
+The fixed sample is not a replacement test set and receives no new
+significance claim. Its primary-method AUROC order remains Accuracy-Probe,
+blind P(True), then SE; Accuracy-Probe retains the best Brier score, while SE
+remains close on Brier/log loss and better than blind P(True). The four label
+corrections therefore do not reverse the complete-test conclusions.
+
 Local ignored artifacts:
 
 ```text
 analysis_outputs/bioasq_phase2_correctness_audit_20260801/
   correctness_audit_blinded.csv
+  correctness_audit_completed.csv
   correctness_audit_key.csv
   correctness_audit_manifest.json
+  correctness_audit_agreement.csv
+  correctness_audit_merged.csv
+  correctness_audit_uq_sensitivity.csv
+  correctness_audit_analysis_summary.json
 ```
+
+The completed-review SHA-256 is
+`ab1efc4a60d97424ee161cdeb42e942c39caedb960741db116a616ed89e37b94`.
+The analysis summary records the key and calibrated-prediction input hashes and
+marks the audit `complete`.
 
 ## PubMedQA calibration transfer
 
@@ -231,6 +276,5 @@ This completion does not authorize:
 - new model sizes, prompt tuning, or expanded Claude clustering; or
 - regeneration of the completed Phase-2 test benchmark.
 
-After the fixed analyses and audit are complete, update the thesis-oriented
-result synthesis and freeze experiments unless a separate supervisor-approved
-idea is pursued in parallel.
+The fixed analyses and audit are complete. Experiments are frozen for thesis
+writing unless a separate supervisor-approved idea is explicitly opened.
