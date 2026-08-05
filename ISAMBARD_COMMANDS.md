@@ -202,12 +202,49 @@ labels, self-report rows, hidden-state layout, and transfer tables. The full
 protocol and acceptance checks are in
 `archehr_sebaseline/docs/pubmedqa_frozen_probe_transfer.md`.
 
+## Queued PubMedQA context-v2 Semantic Entropy completion
+
+This is the only currently authorized PubMedQA addition. It reuses the exact
+500 accepted Appendix-C v2 prompts and their saved official-decision
+`incorrect` labels, and adds only ten high-temperature answers plus the
+unchanged PubMedBERT bidirectional NLI clustering needed for discrete Semantic
+Entropy. It does not regenerate the low-temperature answer or rerun Probes,
+P(True), calibration, prompt selection, or correctness judging.
+
+```text
+5921808  three-question runnability smoke, queued 2026-08-05
+5921809  formal 500-question job, queued with afterok:5921808
+source revision: d778553
+```
+
+The formal job is already submitted and must not be resubmitted while it is
+pending. The CUDA 12.6 environment is selected explicitly because the current
+CUDA 13 environment lacks the accepted analysis dependencies (`scipy` and
+`scikit-learn`); the runner import preflight passed in
+`.venv_isambard_cuda127`. Accepted source and destination paths are:
+
+```bash
+SOURCE_RUN="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/pubmedqa_context_appendix_c_v2_full500_seed31_20260722"
+SOURCE_ANALYSIS="$SCRATCHDIR/final_project/archehr_sebaseline/analysis_outputs/pubmedqa_context_appendix_c_v2_full500_seed31_20260722"
+SMOKE_RUN="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/pubmedqa_context_v2_se_smoke3_seed31_20260805"
+FULL_RUN="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/pubmedqa_context_v2_se_full500_seed31_20260805"
+FULL_ANALYSIS="$SCRATCHDIR/final_project/archehr_sebaseline/analysis_outputs/pubmedqa_context_v2_se_full500_seed31_20260805"
+```
+
+Use `sacct` plus the saved timing and summary files for acceptance. Do not cite
+a PubMedQA-v2 SE metric until job `5921809` completes `0:0`, the postflight
+reports 500 examples and 5,000 generations, and the frozen-source hashes match.
+
 ## Monitor jobs
 
 ```bash
 squeue -u "$USER" -o "%.18i %.9P %.30j %.2t %.12M %.12l %R"
 sacct -j 5750742,5750745 \
   --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS,AllocTRES%80
+
+squeue -j 5921808,5921809 -o "%.18i %.30j %.2t %.12M %.20R %.24E"
+sacct -j 5921808,5921809 \
+  --format=JobID,JobName,State,ExitCode,Elapsed,Start,End,MaxRSS,AllocTRES%80
 
 tail -f pubmedqa-probe-xfer-5750742.out
 cat pubmedqa-probe-xfer-5750742.err

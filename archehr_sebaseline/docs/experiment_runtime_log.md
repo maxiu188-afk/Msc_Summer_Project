@@ -16,6 +16,34 @@ Queueing time is excluded: elapsed time is measured from Slurm start to end.
 - Estimates should include a safety margin and should not silently substitute a
   different model, device, precision, sample count, or evaluation stage.
 
+## PubMedQA context-v2 Semantic Entropy — queued
+
+```text
+submission: 2026-08-05
+source revision: d778553
+smoke job: 5921808, three accepted v2 questions; runnability-only gate
+formal job: 5921809, exact 500-question accepted Appendix-C v2 cohort
+dependency: afterok:5921808
+status at recording: both jobs pending; no result is claimed
+source: accepted v2 examples/prompts and existing official-decision incorrect
+  labels from the 2026-07-22 full500 run
+model / generation: google/gemma-3-12b-it, ten T=1.0 samples, top_p=0.9,
+  top_k=50, seed 31, max_new_tokens=192
+clustering: pritamdeka/PubMedBERT-MNLI-MedNLI, bidirectional entailment,
+  question-conditioned, unchanged from the accepted Phase-2 SE protocol
+primary metric: discrete Semantic Entropy AUROC/AP against the frozen v2
+  incorrect target
+environment: explicit .venv_isambard_cuda127 override; runner import preflight
+  passed there, while .venv_isambard lacks scipy and was not used
+scope exclusion: no low-temperature regeneration, Probe or P(True) rerun,
+  calibration, correctness judging, prompt tuning, model, or dataset expansion
+monitoring: no recurring or continuous monitor started
+```
+
+After the formal job finishes, replace the pending status with Slurm state,
+exit code, elapsed time, row counts, health result, and artifact hashes before
+promoting any metric to a verified research result.
+
 ## Phase-2 validation SE for calibration — completed
 
 ```text
