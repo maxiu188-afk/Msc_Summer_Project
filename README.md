@@ -7,12 +7,14 @@ This repository studies:
 > Semantic Entropy, P(True), and hidden-state probes.**
 
 The three research phases, bounded diagnostics, supervisor-approved UQ closing
-evaluation, and one separately approved PubMedQA completion are complete. The
-completion adds ten-sample Semantic Entropy to the already accepted
-500-question PubMedQA Appendix-C context-v2 condition. It reuses the frozen
-prompt, low-temperature decision errors, model, and NLI configuration; it does
-not reopen prompt tuning, model-scale extension, Probe training, calibration,
-or correctness judging.
+evaluation, and one separately approved PubMedQA completion are complete. A
+later bounded temperature-sensitivity diagnostic is now queued on a fixed
+200-question subset; it reuses the accepted `T=1.0` arm and adds only
+`T=0.7/1.3`. The completed PubMedQA row adds ten-sample Semantic Entropy to the
+already accepted 500-question PubMedQA Appendix-C context-v2 condition. It
+reuses the frozen prompt, low-temperature decision errors, model, and NLI
+configuration; it does not reopen prompt tuning, model-scale extension, Probe
+training, calibration, or correctness judging.
 
 The thesis-oriented Chinese synthesis is
 [`RESEARCH_RESULTS_SYNTHESIS_ZH.md`](RESEARCH_RESULTS_SYNTHESIS_ZH.md).
@@ -194,8 +196,9 @@ Primary documents:
 
 The supervisor-approved calibration/selective-prediction completion,
 correctness-label audit, zero-refit PubMedQA calibration transfer, and bounded
-PubMedQA-v2 Semantic Entropy addition are complete. No experimental scope
-remains open. The following remain closed:
+PubMedQA-v2 Semantic Entropy addition are complete. The only open scope is the
+queued 200-question paired temperature diagnostic described above. The
+following remain closed:
 
 - no additional PubMedQA prompt or error-case tuning;
 - no full 1B factoid/list expansion after the 8/50 and 3/50 feasibility
@@ -205,7 +208,8 @@ remains open. The following remain closed:
 - no larger Claude clustering experiment;
 - no claim that Claude clustering is deployable.
 
-The project now returns to thesis and supervisor-discussion preparation.
+After that bounded diagnostic is recorded, the project returns to thesis and
+supervisor-discussion preparation.
 
 ## Repository layout
 

@@ -238,6 +238,34 @@ and artifact hashes are recorded in
 `archehr_sebaseline/docs/pubmedqa_frozen_probe_transfer.md` and
 `archehr_sebaseline/docs/experiment_runtime_log.md`.
 
+## Queued PubMedQA-v2 SE temperature sensitivity
+
+This diagnostic reuses accepted `T=1.0` and adds only `T=0.7/1.3` on a fixed
+200-question subset stratified by frozen `incorrect × yes/no/maybe`. Do not
+submit another temperature or regenerate the baseline arm.
+
+```text
+5931810  six-question runnability smoke, pending
+5931811  formal 200-question job, pending with afterok:5931810
+source revision: 5a302c1
+```
+
+Accepted input and new output roots are:
+
+```bash
+SOURCE_RUN="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/pubmedqa_context_appendix_c_v2_full500_seed31_20260722"
+SOURCE_ANALYSIS="$SCRATCHDIR/final_project/archehr_sebaseline/analysis_outputs/pubmedqa_context_appendix_c_v2_full500_seed31_20260722"
+BASELINE_SE_ANALYSIS="$SCRATCHDIR/final_project/archehr_sebaseline/analysis_outputs/pubmedqa_context_v2_se_full500_seed31_20260805"
+TEMP_RUN="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/pubmedqa_v2_se_temperature_sensitivity_200_seed31_20260806"
+TEMP_ANALYSIS="$SCRATCHDIR/final_project/archehr_sebaseline/analysis_outputs/pubmedqa_v2_se_temperature_sensitivity_200_seed31_20260806"
+```
+
+The batch creates the manifest once, runs both new temperature arms in separate
+Python processes, reuses the matching baseline rows, applies 20,000 paired
+bootstrap resamples, and fails unless both 200-question/2,000-generation arms
+and the comparison summary pass postflight. Until then, retain the study as
+queued rather than citing a temperature effect.
+
 ## Monitor jobs
 
 ```bash
@@ -247,6 +275,10 @@ sacct -j 5750742,5750745 \
 
 squeue -j 5921808,5921809 -o "%.18i %.30j %.2t %.12M %.20R %.24E"
 sacct -j 5921808,5921809 \
+  --format=JobID,JobName,State,ExitCode,Elapsed,Start,End,MaxRSS,AllocTRES%80
+
+squeue -j 5931810,5931811 -o "%.18i %.30j %.2t %.12M %.20R %.24E"
+sacct -j 5931810,5931811 \
   --format=JobID,JobName,State,ExitCode,Elapsed,Start,End,MaxRSS,AllocTRES%80
 
 tail -f pubmedqa-probe-xfer-5750742.out

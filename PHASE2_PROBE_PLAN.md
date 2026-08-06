@@ -18,8 +18,11 @@ Semantic Entropy method was run on the accepted 500-question PubMedQA
 Appendix-C context-v2 prompt. It obtained 0.5884 AUROC / 0.3674 AP without
 changing any low-temperature answer, correctness label, Probe, P(True),
 calibration mapping, model, prompt, or NLI rule. No other prompt, model-scale,
-Probe-training, type-specific, or clustering expansion is reopened; the
-experimental programme is closed.
+Probe-training, type-specific, or clustering expansion is reopened. One later
+temperature-sensitivity diagnostic is now queued: reuse the accepted `T=1.0`
+arm on a fixed 200-question `incorrect × gold-label` stratified subset and add
+only `T=0.7/1.3`. No prompt, label, model, seed, sample count, NLI, Probe,
+P(True), or calibration setting changes.
 
 ## Execution Status (updated 2026-08-06)
 
@@ -782,6 +785,12 @@ Official sources:
     provenance/health checks. Discrete SE obtained 0.5884 AUROC / 0.3674 AP;
     444/500 questions formed one semantic cluster. No v2 main answer, Probe,
     P(True), calibration, judging, or prompt selection was rerun.
+16. **Queued — PubMedQA-v2 SE temperature sensitivity:** job 5931810 is a
+    six-question runnability smoke; formal job 5931811 is already staged with
+    `afterok:5931810`. The formal comparison uses one deterministic 200-row
+    subset stratified by frozen `incorrect × yes/no/maybe`, reuses the exact
+    `T=1.0` rows, and generates only the `T=0.7/1.3` arms. Until both jobs and
+    the paired analysis pass health/provenance checks, this is not a result.
 
 ## Non-negotiable Boundaries
 

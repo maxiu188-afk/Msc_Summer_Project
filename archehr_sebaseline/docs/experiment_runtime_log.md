@@ -16,6 +16,36 @@ Queueing time is excluded: elapsed time is measured from Slurm start to end.
 - Estimates should include a safety margin and should not silently substitute a
   different model, device, precision, sample count, or evaluation stage.
 
+## PubMedQA-v2 SE temperature sensitivity — queued
+
+```text
+submission: 2026-08-06
+source revision: 5a302c1
+smoke job: 5931810, six-question runnability-only gate
+formal job: 5931811, 200-question paired temperature study
+dependency: afterok:5931810
+status at recording: both jobs pending; no temperature result is claimed
+cohort: deterministic seed-20260806 stratification by frozen incorrect x
+  official yes/no/maybe; 200 questions, 56 incorrect and 144 correct; selection
+  does not inspect the accepted T=1.0 SE values
+temperature arms: reuse accepted T=1.0; generate only T=0.7 and T=1.3
+new generation volume: 2 x 200 x 10 = 4,000 answers in the formal task
+frozen settings: google/gemma-3-12b-it, context-v2 prompts, ten samples,
+  generation seed 31, top_p=0.9, top_k=50, max_new_tokens=192, unchanged
+  PubMedBERT bidirectional question-conditioned NLI, unchanged error labels
+analysis: paired AUROC difference is primary; AP, mean SE, mean cluster count,
+  and single-cluster fraction are secondary; 20,000 paired bootstrap resamples
+environment: explicit .venv_isambard_cuda127
+local validation: 136 tests, compileall, CLI, shell/Slurm syntax, and
+  git diff --check passed
+remote preflight: exact source/code hashes and 200-row six-stratum manifest PASS
+monitoring: no recurring or continuous monitor started
+```
+
+Replace the pending status only after Slurm, row-count, manifest, frozen-source,
+per-arm generation, paired-analysis, timing, and hash checks pass. The smoke is
+not evidence that temperature affects SE.
+
 ## PubMedQA context-v2 Semantic Entropy — completed
 
 ```text

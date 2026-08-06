@@ -82,7 +82,10 @@ into the main narrative without a new explicit research decision.
 
 The supervisor-approved calibration, selective-prediction, correctness-audit,
 zero-refit transfer analysis, and bounded PubMedQA context-v2 Semantic Entropy
-row are complete. No experiment remains open. Do not retune prompts, expand
+row are complete. Do not retune prompts, expand
 the model grid, train new Probes, extend 1B factoid/list, or open any other
-clustering work. Future work returns to thesis writing unless another research
-decision is explicit.
+clustering work. One later exception is currently queued: a fixed 200-question
+paired PubMedQA-v2 SE temperature diagnostic that reuses `T=1.0` and adds only
+`T=0.7/1.3`. It changes no other protocol field and is not a result until its
+formal health/provenance checks pass. After that diagnostic, future work
+returns to thesis writing unless another research decision is explicit.

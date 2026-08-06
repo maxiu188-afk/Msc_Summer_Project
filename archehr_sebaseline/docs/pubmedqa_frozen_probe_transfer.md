@@ -69,6 +69,35 @@ outputs/pubmedqa_context_v2_se_full500_seed31_20260805
 analysis_outputs/pubmedqa_context_v2_se_full500_seed31_20260805
 ```
 
+### Temperature-sensitivity diagnostic — queued
+
+A later bounded diagnostic tests whether sampling temperature changes the
+accepted discrete-SE behaviour without rerunning all 500 questions. It reuses
+the existing `T=1.0` artifacts and adds only `T=0.7` and `T=1.3` on the same
+deterministic 200-question subset. Selection seed `20260806` stratifies on the
+frozen `incorrect × official yes/no/maybe` cells and never reads the existing
+SE value. The selected cohort contains 56 errors and 144 correct answers with
+all six strata represented.
+
+All arms keep Gemma 3 12B, the accepted context-v2 prompts, ten samples,
+generation seed 31, `top_p=0.9`, `top_k=50`, 192 output tokens, frozen error
+labels, and the question-conditioned PubMedBERT bidirectional NLI rule. Primary
+analysis is the paired AUROC change versus `T=1.0` with 20,000 bootstrap
+resamples; AP, mean SE, mean cluster count, and single-cluster fraction are
+secondary paired diagnostics.
+
+```text
+5931810  six-question runnability smoke, pending
+5931811  formal 200-question paired study, afterok:5931810, pending
+source revision: 5a302c1
+```
+
+The smoke is an interface gate, not an experimental result. No temperature
+number is accepted until the formal task completes `0:0`, both new arms contain
+exactly 200 questions / 2,000 generations, the saved manifest and frozen-source
+hashes match, and the paired comparison passes its postflight checks. This does
+not authorize another temperature, seed, prompt, NLI model, or full-500 rerun.
+
 ## Evidence and execution health
 
 | Check | Context v1 | Context v2 |
