@@ -1,6 +1,6 @@
 # PubMedQA Frozen-Probe Transfer Protocol
 
-Last updated: 2026-08-05
+Last updated: 2026-08-06
 
 ## Decision and status
 
@@ -28,22 +28,46 @@ block-24/LT feature, and BioASQ-derived threshold. No PubMedQA answer, label,
 hidden state, or metric fits or selects a Probe, calibrates a score, or changes
 the threshold.
 
-### Authorized Semantic Entropy completion — in progress
+### Bounded Semantic Entropy completion — accepted
 
-One later addition is authorized for the accepted context-v2 condition only.
-It reuses the exact 500 saved v2 prompts and the existing official-decision
-`incorrect` labels, then collects ten `T=1.0`, `top_p=0.9`, `top_k=50`, seed-31
-answers per question with the same Gemma 3 12B model. The answers are clustered
-with the unchanged `pritamdeka/PubMedBERT-MNLI-MedNLI` bidirectional-entailment
-rule, conditioned on the question, and discrete Semantic Entropy is evaluated
-with AUROC/AP against the frozen v2 error target.
+One later addition was authorized for the accepted context-v2 condition only.
+It reused the exact 500 saved v2 prompts and existing official-decision
+`incorrect` labels, then collected ten `T=1.0`, `top_p=0.9`, `top_k=50`,
+seed-31 answers per question with the same Gemma 3 12B model. The answers were
+clustered with the unchanged `pritamdeka/PubMedBERT-MNLI-MedNLI`
+bidirectional-entailment rule, conditioned on the question, and discrete
+Semantic Entropy was evaluated against the frozen v2 error target.
 
-This is one missing method row, not a reopened PubMedQA study. It does not
+This is one missing method row, not a reopened PubMedQA study. It did not
 regenerate the low-temperature v2 answers, refit or rescore either Probe,
 rescore P(True), recalibrate a method, obtain new correctness labels, tune the
-prompt, or add another dataset/model condition. Until the formal Isambard job
-completes and its artifacts pass health checks, no PubMedQA-v2 SE number is a
-verified result.
+prompt, or add another dataset/model condition.
+
+| Acceptance check | Result |
+| --- | --- |
+| Runnability smoke | job `5921808`, `COMPLETED 0:0`, 3 questions / 30 generations |
+| Formal run | job `5921809`, `COMPLETED 0:0`, 4:59:51 |
+| Complete artifacts | 500 examples, 5,000 generations, 500 clusters, 500 predictions |
+| Generation health | 0 empty answers; 0 answers reached the 192-token limit |
+| Frozen source | all 500 examples/prompts/labels and four recorded source SHA-256 values match |
+| Formal metric | AUROC `0.5884`; AP `0.3674`; error prevalence `0.276` |
+| Cluster counts | 444/46/7/3 questions with 1/2/3/4 clusters |
+
+The result is accepted as the protocol-matched PubMedQA-v2 discrete-SE row.
+Its ranking is weak and 88.8% of questions have zero discrete SE because all
+ten answers form one cluster. That collapse can reflect genuinely consistent
+answers, NLI over-merging, or both; this experiment alone does not identify the
+mechanism and no new significance claim is made.
+
+The retained formal `summary.json` and `metrics.csv` SHA-256 values are
+`dd5da74bc4821eda9f68753b5166efa7c43c08efeeeadb2a2f107df00ea1a62b`
+and `4c9b4568178bb19ca0208bd5c9be638a42067056a27e547c1ec3afec307b3759`.
+The raw accepted artifacts remain on Isambard under:
+
+```text
+outputs/pubmedqa_context_v2_se_full500_seed31_20260805
+analysis_outputs/pubmedqa_context_v2_se_full500_seed31_20260805
+```
 
 ## Evidence and execution health
 
@@ -119,8 +143,9 @@ cross-version ranking comparison.
 | Blind P(True) uncertainty | 0.6800 | 0.5625 | 0.6490 | 0.4210 |
 | Verbalized-confidence uncertainty | **0.7933** | **0.6939** | 0.6402 | 0.4164 |
 | Frozen Accuracy-Probe | 0.5960 | 0.5080 | 0.5901 | 0.3916 |
-| Sequence NLL | 0.5716 | 0.4617 | 0.5400 | 0.3025 |
-| Normalized NLL | 0.5668 | 0.4658 | 0.5424 | 0.3075 |
+| Discrete Semantic Entropy (later ten-sample completion) | — | — | 0.5884 | 0.3674 |
+| Single-answer sequence NLL | 0.5716 | 0.4617 | 0.5400 | 0.3025 |
+| Single-answer normalized NLL | 0.5668 | 0.4658 | 0.5424 | 0.3075 |
 | Mean token entropy | 0.5668 | 0.4646 | 0.5423 | 0.3080 |
 | Max token entropy | 0.5603 | 0.4431 | 0.5372 | 0.2914 |
 
@@ -154,8 +179,8 @@ uncertainties as high.
 | Frozen P(True)-Probe | **0.6121 / 0.5354** | 0.5899 / 0.5140 |
 | Frozen Accuracy-Probe | 0.5832 / 0.5155 | **0.6290 / 0.5499** |
 | Verbalized-confidence uncertainty | 0.6663 / 0.5357 | 0.6609 / 0.5458 |
-| Sequence NLL | 0.5293 / 0.4298 | 0.5340 / 0.4215 |
-| Normalized NLL | 0.5291 / 0.4458 | 0.5324 / 0.4127 |
+| Single-answer sequence NLL | 0.5293 / 0.4298 | 0.5340 / 0.4215 |
+| Single-answer normalized NLL | 0.5291 / 0.4458 | 0.5324 / 0.4127 |
 | Mean token entropy | 0.5307 / 0.4452 | 0.5416 / 0.4253 |
 | Max token entropy | 0.5066 / 0.4054 | 0.5436 / 0.4293 |
 
@@ -263,16 +288,18 @@ The same single answer supplies:
 
 - blind P(True) uncertainty;
 - verbalized-confidence uncertainty;
-- sequence NLL and normalized NLL;
+- single-answer sequence NLL and normalized NLL;
 - mean token entropy and max token entropy; and
 - the two frozen Probe scores.
 
 Every score is evaluated against both fixed targets using the same eligible
 questions. Report AUROC and average precision for every score; report Brier
 only for scores natively in `[0,1]`. The evaluator also reports each Probe's
-association with continuous direct P(True) uncertainty. There is no ten-sample
-generation, NLI clustering, Semantic Entropy, P(True)-10, or sample
-disagreement in this run.
+association with continuous direct P(True) uncertainty. The original
+frozen-Probe transfer run contains no ten-sample generation, NLI clustering,
+Semantic Entropy, P(True)-10, or sample disagreement. The accepted later
+completion adds only the discrete-SE row documented above and does not alter
+the original transfer artifacts.
 
 ## Isambard execution
 

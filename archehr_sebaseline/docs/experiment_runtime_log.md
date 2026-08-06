@@ -16,7 +16,7 @@ Queueing time is excluded: elapsed time is measured from Slurm start to end.
 - Estimates should include a safety margin and should not silently substitute a
   different model, device, precision, sample count, or evaluation stage.
 
-## PubMedQA context-v2 Semantic Entropy — queued
+## PubMedQA context-v2 Semantic Entropy — completed
 
 ```text
 submission: 2026-08-05
@@ -24,7 +24,6 @@ source revision: d778553
 smoke job: 5921808, three accepted v2 questions; runnability-only gate
 formal job: 5921809, exact 500-question accepted Appendix-C v2 cohort
 dependency: afterok:5921808
-status at recording: both jobs pending; no result is claimed
 source: accepted v2 examples/prompts and existing official-decision incorrect
   labels from the 2026-07-22 full500 run
 model / generation: google/gemma-3-12b-it, ten T=1.0 samples, top_p=0.9,
@@ -38,11 +37,33 @@ environment: explicit .venv_isambard_cuda127 override; runner import preflight
 scope exclusion: no low-temperature regeneration, Probe or P(True) rerun,
   calibration, correctness judging, prompt tuning, model, or dataset expansion
 monitoring: no recurring or continuous monitor started
+smoke result: COMPLETED 0:0 in 00:02:28; internal timer 120 seconds;
+  3 questions, 30 generations, health check PASS
+formal result: COMPLETED 0:0 in 04:59:51; internal timer 17,978 seconds;
+  500 questions, 5,000 generations, 500 clusters/predictions; health check PASS
+formal Slurm interval: 2026-08-06T12:09:17 to 2026-08-06T17:09:08
+formal batch MaxRSS: 1,684,672 K
+generation health: zero empty answers and zero 192-token-limit answers
+result: discrete Semantic Entropy AUROC 0.5884378253; AP 0.3674408080;
+  138/500 incorrect, prevalence 0.276
+cluster counts: 444/46/7/3 questions with 1/2/3/4 clusters
+provenance: exact equality to the 500 accepted examples/prompts and frozen
+  labels; recorded source hashes, source revision d778553, runner hash, and
+  batch hash all match the accepted files
+formal summary SHA-256:
+  dd5da74bc4821eda9f68753b5166efa7c43c08efeeeadb2a2f107df00ea1a62b
+formal metrics SHA-256:
+  4c9b4568178bb19ca0208bd5c9be638a42067056a27e547c1ec3afec307b3759
+formal SE-score SHA-256:
+  ba9274de686f487ab165b20925fc4adcc6e16a9ddedbd238813c97175cfe2b3a
+log review: no traceback or execution error; Transformers emitted one
+  non-blocking processor deprecation warning
+status: accepted; the bounded missing PubMedQA-v2 SE row is complete
 ```
 
-After the formal job finishes, replace the pending status with Slurm state,
-exit code, elapsed time, row counts, health result, and artifact hashes before
-promoting any metric to a verified research result.
+The result is eligible for the owning PubMedQA result document. The high
+single-cluster rate is retained as a limitation rather than converted into a
+new clustering or prompt experiment.
 
 ## Phase-2 validation SE for calibration — completed
 
