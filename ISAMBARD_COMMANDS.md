@@ -202,7 +202,7 @@ labels, self-report rows, hidden-state layout, and transfer tables. The full
 protocol and acceptance checks are in
 `archehr_sebaseline/docs/pubmedqa_frozen_probe_transfer.md`.
 
-## Queued PubMedQA context-v2 Semantic Entropy completion
+## Completed PubMedQA context-v2 Semantic Entropy completion
 
 This is the only currently authorized PubMedQA addition. It reuses the exact
 500 accepted Appendix-C v2 prompts and their saved official-decision
@@ -212,16 +212,16 @@ Entropy. It does not regenerate the low-temperature answer or rerun Probes,
 P(True), calibration, prompt selection, or correctness judging.
 
 ```text
-5921808  three-question runnability smoke, queued 2026-08-05
-5921809  formal 500-question job, queued with afterok:5921808
+5921808  three-question runnability smoke, COMPLETED 0:0, 00:02:28
+5921809  formal 500-question job, COMPLETED 0:0, 04:59:51,
+         afterok:5921808
 source revision: d778553
 ```
 
-The formal job is already submitted and must not be resubmitted while it is
-pending. The CUDA 12.6 environment is selected explicitly because the current
-CUDA 13 environment lacks the accepted analysis dependencies (`scipy` and
-`scikit-learn`); the runner import preflight passed in
-`.venv_isambard_cuda127`. Accepted source and destination paths are:
+Both jobs passed their postflight checks; do not resubmit them. The CUDA 12.6
+environment was selected explicitly because the CUDA 13 environment lacked
+the accepted analysis dependencies (`scipy` and `scikit-learn`). Accepted
+source and destination paths are:
 
 ```bash
 SOURCE_RUN="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/pubmedqa_context_appendix_c_v2_full500_seed31_20260722"
@@ -231,9 +231,12 @@ FULL_RUN="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/pubmedqa_context_
 FULL_ANALYSIS="$SCRATCHDIR/final_project/archehr_sebaseline/analysis_outputs/pubmedqa_context_v2_se_full500_seed31_20260805"
 ```
 
-Use `sacct` plus the saved timing and summary files for acceptance. Do not cite
-a PubMedQA-v2 SE metric until job `5921809` completes `0:0`, the postflight
-reports 500 examples and 5,000 generations, and the frozen-source hashes match.
+The formal result is discrete-SE AUROC `0.5884` / AP `0.3674` on 500 frozen
+labels. Acceptance confirmed 500 examples, 5,000 generations, matching source
+hashes, zero empty answers, and zero generations at the token limit. The result
+and artifact hashes are recorded in
+`archehr_sebaseline/docs/pubmedqa_frozen_probe_transfer.md` and
+`archehr_sebaseline/docs/experiment_runtime_log.md`.
 
 ## Monitor jobs
 
@@ -263,6 +266,15 @@ cat "$RUN/run_timing.txt"
 wc -l "$RUN/examples.jsonl" "$RUN/best_generations.jsonl"
 head -n 2 "$RUN/uq_baselines/self_report_examples.csv"
 cat "$ANALYSIS/transfer_summary.json"
+
+SE_RUN="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/pubmedqa_context_v2_se_full500_seed31_20260805"
+SE_ANALYSIS="$SCRATCHDIR/final_project/archehr_sebaseline/analysis_outputs/pubmedqa_context_v2_se_full500_seed31_20260805"
+
+cat "$SE_RUN/run_timing.txt"
+wc -l "$SE_RUN"/{examples,clusters}.jsonl \
+  "$SE_RUN"/{generations,cleaned_generations}.jsonl
+cat "$SE_ANALYSIS/metrics.csv"
+sha256sum "$SE_RUN/se_scores.csv" "$SE_ANALYSIS"/{metrics.csv,summary.json}
 ```
 
 Record completed job state and runtime in

@@ -6,13 +6,13 @@ This repository studies:
 > how answer form, model scale, and semantic-clustering quality affect
 > Semantic Entropy, P(True), and hidden-state probes.**
 
-The three research phases, bounded diagnostics, and supervisor-approved UQ
-closing evaluation are complete. One separately approved, tightly bounded
-addition is now in progress: ten-sample Semantic Entropy for the already
-accepted 500-question PubMedQA Appendix-C context-v2 condition. It reuses the
-frozen prompt, low-temperature decision errors, model, and NLI configuration;
-it does not reopen prompt tuning, model-scale extension, Probe training,
-calibration, or correctness judging.
+The three research phases, bounded diagnostics, supervisor-approved UQ closing
+evaluation, and one separately approved PubMedQA completion are complete. The
+completion adds ten-sample Semantic Entropy to the already accepted
+500-question PubMedQA Appendix-C context-v2 condition. It reuses the frozen
+prompt, low-temperature decision errors, model, and NLI configuration; it does
+not reopen prompt tuning, model-scale extension, Probe training, calibration,
+or correctness judging.
 
 The thesis-oriented Chinese synthesis is
 [`RESEARCH_RESULTS_SYNTHESIS_ZH.md`](RESEARCH_RESULTS_SYNTHESIS_ZH.md).
@@ -40,7 +40,7 @@ not recover SE, so answer length alone is not a sufficient explanation.
 
 On 196 common-valid summary questions:
 
-| Model | Accuracy | Blind P(True) AUROC | SE AUROC | Normalized-NLL AUROC | P(True) minus SE |
+| Model | Accuracy | Blind P(True) AUROC | SE AUROC | 10-sample normalized-NLL AUROC | P(True) minus SE |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Gemma 3 1B | 0.122 | 0.501 | 0.597 | 0.789 | -0.096 |
 | Gemma 3 4B | 0.281 | 0.652 | 0.644 | 0.796 | +0.008 |
@@ -96,9 +96,10 @@ single-answer error-ranking comparison is:
 | Blind P(True) | 0.7900 | 0.6490 | 0.4210 |
 | Verbalized confidence | — | 0.6402 | 0.4164 |
 | Accuracy-Probe | **0.8058** | 0.5901 | 0.3916 |
-| Normalized NLL | — | 0.5424 | 0.3075 |
+| Discrete Semantic Entropy | 0.7484 | 0.5884 | 0.3674 |
+| Single-answer normalized NLL | — | 0.5424 | 0.3075 |
 | Mean token entropy | — | 0.5423 | 0.3080 |
-| Sequence NLL | — | 0.5400 | 0.3025 |
+| Single-answer sequence NLL | — | 0.5400 | 0.3025 |
 | Max token entropy | — | 0.5372 | 0.2914 |
 
 The source-domain correctness-supervised Accuracy-Probe degrades more than the
@@ -109,11 +110,13 @@ limited cross-target error-ranking usefulness, not preservation of the source
 mapping or dataset-independent generalization. AP is not compared across
 datasets because error prevalence differs.
 
-PubMedQA used a one-answer transfer protocol, so SE, cluster count, and other
-ten-sample disagreement methods were not run there. Their absence is a
-protocol boundary, not a negative result. The BioASQ normalized-NLL result is
-also omitted from the cross-dataset column because it averages ten sampled
-answers, unlike the single-answer PubMedQA score.
+The original frozen-Probe transfer used one answer only. The later bounded SE
+completion reused its prompts and error labels, added exactly ten sampled
+answers per question, and obtained 0.5884 AUROC / 0.3674 AP. PubMedBERT placed
+444/500 questions in one semantic cluster, so the accepted SE ranking is weak;
+this collapse alone cannot distinguish genuinely consistent answers from NLI
+over-merging. The BioASQ ten-sample normalized-NLL result remains omitted from
+the cross-dataset column because the PubMedQA NLL rows use one answer.
 
 ## Completed thesis-closing evaluation
 
@@ -190,10 +193,9 @@ Primary documents:
 ## Scope boundary
 
 The supervisor-approved calibration/selective-prediction completion,
-correctness-label audit, and zero-refit PubMedQA calibration transfer are now
-complete. The only open experimental scope is the separately approved
-PubMedQA-v2 Semantic Entropy addition described above. The following remain
-closed:
+correctness-label audit, zero-refit PubMedQA calibration transfer, and bounded
+PubMedQA-v2 Semantic Entropy addition are complete. No experimental scope
+remains open. The following remain closed:
 
 - no additional PubMedQA prompt or error-case tuning;
 - no full 1B factoid/list expansion after the 8/50 and 3/50 feasibility
@@ -203,8 +205,7 @@ closed:
 - no larger Claude clustering experiment;
 - no claim that Claude clustering is deployable.
 
-After that one SE result is recorded, the project returns to thesis and
-supervisor-discussion preparation.
+The project now returns to thesis and supervisor-discussion preparation.
 
 ## Repository layout
 

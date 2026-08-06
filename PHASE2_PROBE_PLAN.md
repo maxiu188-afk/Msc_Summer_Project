@@ -1,6 +1,6 @@
 # Phase 2 Probe Research Plan
 
-Last updated: 2026-08-05
+Last updated: 2026-08-06
 
 ## Final status and research boundary
 
@@ -13,14 +13,15 @@ zero-refit PubMedQA calibration transfer. This evaluation is now complete. The
 Cohen's kappa 0.902; its four corrections do not reverse the primary UQ
 conclusions. The fixed protocol and complete results are in
 `archehr_sebaseline/docs/phase2_uq_calibration_completion.md`. One later,
-separately authorized addition is currently open: run the existing ten-sample
-Semantic Entropy method on the accepted 500-question PubMedQA Appendix-C
-context-v2 prompt. It changes no low-temperature answer, correctness label,
-Probe, P(True), calibration mapping, model, prompt, or NLI rule. No other
-prompt, model-scale, Probe-training, type-specific, or clustering expansion is
-reopened.
+separately authorized addition is also complete: the existing ten-sample
+Semantic Entropy method was run on the accepted 500-question PubMedQA
+Appendix-C context-v2 prompt. It obtained 0.5884 AUROC / 0.3674 AP without
+changing any low-temperature answer, correctness label, Probe, P(True),
+calibration mapping, model, prompt, or NLI rule. No other prompt, model-scale,
+Probe-training, type-specific, or clustering expansion is reopened; the
+experimental programme is closed.
 
-## Execution Status (updated 2026-07-28)
+## Execution Status (updated 2026-08-06)
 
 The single-answer artifact collector passed local unit/CLI/shell validation and
 a server-side interface preflight. The Isambard Gemma 3 environment reports 48
@@ -775,12 +776,12 @@ Official sources:
     196-question common-valid summary analysis is complete. Factoid/list
     accuracy is 8/50 and 3/50, so do not expand either full type cohort. No
     1B PubMedQA follow-up is planned.
-15. **In progress — PubMedQA-v2 Semantic Entropy:** reuse the accepted v2
-    prompts and official-decision error labels; collect only ten `T=1.0`
-    answers per question, apply the unchanged PubMedBERT-MNLI-MedNLI
-    bidirectional clustering rule, and report discrete-SE AUROC/AP. Do not
-    regenerate the v2 main answer or rerun Probes, P(True), calibration,
-    judging, or prompt selection.
+15. **Complete — PubMedQA-v2 Semantic Entropy:** jobs 5921808/5921809
+    completed `0:0`; the formal run retained all 500 accepted v2 prompts and
+    official-decision error labels, produced 5,000 `T=1.0` answers, and passed
+    provenance/health checks. Discrete SE obtained 0.5884 AUROC / 0.3674 AP;
+    444/500 questions formed one semantic cluster. No v2 main answer, Probe,
+    P(True), calibration, judging, or prompt selection was rerun.
 
 ## Non-negotiable Boundaries
 
@@ -788,8 +789,9 @@ Official sources:
 - Do not train an unsupported multi-target SE/NLL/P(True) probe.
 - Do not let answers, hidden states, P(True), UQ rows, or Claude labels cross
   their manifest split.
-- Do not present the approved high-temperature efficiency package as part of
-  the core run, or as a result before its queued jobs and health checks finish.
+- Keep the completed PubMedQA-v2 high-temperature SE addition separate from
+  the original single-answer transfer; do not retroactively describe it as
+  part of the frozen-Probe collection run.
 - Do not alter the initial `24/32/40/48 × TBG/SLT/LT` feature grid or replace
   the linear baseline after test outcomes are visible; any expansion is a new
   experiment.

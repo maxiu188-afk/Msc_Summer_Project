@@ -1,6 +1,6 @@
 # 临床 QA 不确定性方法适用条件：三阶段结果总览
 
-更新时间：2026-08-02
+更新时间：2026-08-06
 
 ## 研究主题
 
@@ -51,7 +51,8 @@ regime。后续配对缩短实验没有恢复 summary SE，说明观察到的差
 
 同一 summary 对齐队列上，SE AUROC 在 12B、4B、1B 分别约为
 0.564、0.644、0.597，波动明显小于 P(True)。这不是 SE 在小模型上变强的
-证据：1B/4B 上 normalized NLL 仍优于 SE，且答案正确率已经显著下降。
+证据：1B/4B 上 `10-sample normalized NLL` 仍优于 SE，且答案正确率已经显著
+下降。
 
 更直接的机制证据来自固定生成答案的聚类替换：
 
@@ -82,6 +83,24 @@ Accuracy-Probe 已显著超过 blind P(True)。
 这种目标差异比构造一个统一 Probe 更重要。预测模型自身不确定性和直接预测
 答案错误不是同一个任务，在数据或 prompt 变化时也不一定以同样方式迁移。
 
+## NLL 命名约定
+
+本报告中的 NLL 只有两种基础公式，但由于单答案与十次采样不是同一个 UQ
+估计量，统一使用以下四个名称：
+
+| 统一名称 | 生成协议 | 题目级计算 | 历史别名或字段 |
+| --- | --- | --- | --- |
+| `10-sample normalized NLL` | 十个 `T=1.0` 样本 | 每个样本先计算 per-token NLL，再对十个样本取平均 | `predictive_entropy`、`mean_normalized_nll`、negative mean token log-probability、`avg_token_logprob_uncertainty` |
+| `10-sample sequence NLL` | 十个 `T=1.0` 样本 | 每个样本先对全部生成 token 的 NLL 求和，再对十个样本取平均 | mean sequence NLL、G-NLL |
+| `single-answer normalized NLL` | 一个 `T=0.1` 主答案 | 主答案的 per-token NLL | 单答案产物中的 `mean_normalized_nll` |
+| `single-answer sequence NLL` | 一个 `T=0.1` 主答案 | 主答案全部生成 token 的 NLL 总和 | 单答案产物中的 `mean_sequence_nll` |
+
+因此，历史字段名 `predictive_entropy` 在当前实现中不作为独立方法报告；它与
+`10-sample normalized NLL` 数值和排序相同。Normalized 与 sequence NLL 仍是
+不同方法，后者没有长度归一化，必须保留答案长度混杂这一解释边界。字段名前的
+`mean_` 也不能单独判断采样协议：十样本产物表示跨十个答案平均，单答案产物中
+则只是一个答案。
+
 ## Phase 1：建立不同答案形式下的 UQ 基准
 
 ### 目标
@@ -94,7 +113,8 @@ baselines 和简单分歧指标，并确定不同题型是否对应不同适用�
 - 模型：Gemma 3 12B；
 - 1,000 个固定问题：480 factoid、320 list、200 summary；
 - 两个生成 seed：31、47；
-- 每题十个 `T=1.0` 样本用于 SE，一个 `T=0.1` 主答案用于正确性判断；
+- 每题十个 `T=1.0` 样本用于 SE、`10-sample NLL` 和 token baselines，一个
+  `T=0.1` 主答案用于正确性判断；
 - 两个 seed 各有 991 个有效 Claude binary correctness labels；
 - `incorrect=1`，跨题型比较以 AUROC 为主。
 
@@ -141,7 +161,7 @@ summary；P(True) 在 factoid 和 12B summary 上更强。
 | Discrete SE 对答案错误 | 0.7484 | 0.8446 | 十次采样加聚类 |
 | Cluster count 对答案错误 | 0.7475 | 0.8368 | 十次采样加聚类 |
 | P(True)-Probe 对答案错误 | 0.7452 | 0.8357 | 跨目标的次要比较 |
-| 10-sample normalized NLL 对答案错误 | 0.7382 | 0.8466 | 十次采样 token baseline |
+| `10-sample normalized NLL` 对答案错误 | 0.7382 | 0.8466 | 十次采样 token baseline |
 
 Accuracy-Probe minus blind P(True) 为 `+0.01584` AUROC，配对 bootstrap
 95% CI `[-0.03890,0.07173]`。Probe 的主要优势因此是竞争力与成本，而不是
@@ -155,7 +175,7 @@ Accuracy-Probe minus blind P(True) 为 `+0.01584` AUROC，配对 bootstrap
 | P(True)-Probe | 60.50 ms | 单次 hidden-state replay |
 | 两个 Probe 共享 replay | 60.54 ms | 两个线性 head 的额外成本可忽略 |
 | Blind P(True) | 154.37 ms | 两个固定 continuation score |
-| 10-sample normalized NLL | 30.55 s | 十次自由生成 |
+| `10-sample normalized NLL` | 30.55 s | 十次自由生成 |
 | SE | 32.75 s | 十次生成加 NLI 聚类 |
 
 Probe 约比 blind P(True) 快 2.55 倍，比采样方法快 500 倍以上。
@@ -167,7 +187,7 @@ Probe 约比 blind P(True) 快 2.55 倍，比采样方法快 500 倍以上。
 使用与 BioASQ 相同的 Gemma 3 12B checkpoint，并把官方 abstract 作为证据；
 模型决策准确率为 362/500（72.4%），错误率为 27.6%。
 
-先用 AUROC 比较三个在两个数据集上都按相同定义计算的
+先用 AUROC 比较四个在两个数据集上都按相同定义计算的
 correctness-ranking score：
 
 | 方法 | BioASQ test AUROC | PubMedQA v2 AUROC | 变化 |
@@ -175,14 +195,16 @@ correctness-ranking score：
 | Accuracy-Probe | 0.8058 | 0.5901 | -0.2157 |
 | Blind P(True) | 0.7900 | 0.6490 | -0.1410 |
 | P(True)-Probe | 0.7452 | **0.6839** | -0.0613 |
+| Discrete Semantic Entropy | 0.7484 | 0.5884 | -0.1600 |
 
 这里的 P(True)-Probe BioASQ 数字是它对答案错误的跨目标排名，不是其
-0.9026 的原始 teacher-target fidelity。三种方法在 PubMedQA 上均下降，
+0.9026 的原始 teacher-target fidelity。四种方法在 PubMedQA 上均下降，
 但 P(True)-Probe 下降最小，并成为 v2 上最强的错误排序方法；相反，
 直接以 BioASQ correctness 训练的 Accuracy-Probe 下降到 0.5901。这个结果
 说明“源域目标更直接”不保证跨数据集迁移更强。
 
-PubMedQA v2 同批 500 题的完整单答案方法对比如下：
+PubMedQA v2 同批 500 题的完整方法对比如下；除明确标注的 SE 外，其余均为
+原冻结 transfer 的单答案方法：
 
 | 方法 | Error AUROC | AP |
 | --- | ---: | ---: |
@@ -190,9 +212,10 @@ PubMedQA v2 同批 500 题的完整单答案方法对比如下：
 | Blind P(True) | 0.6490 | 0.4210 |
 | Verbalized confidence | 0.6402 | 0.4164 |
 | Frozen Accuracy-Probe | 0.5901 | 0.3916 |
-| Normalized NLL | 0.5424 | 0.3075 |
+| Discrete Semantic Entropy（十样本补充） | 0.5884 | 0.3674 |
+| `single-answer normalized NLL` | 0.5424 | 0.3075 |
 | Mean token entropy | 0.5423 | 0.3080 |
-| Sequence NLL | 0.5400 | 0.3025 |
+| `single-answer sequence NLL` | 0.5400 | 0.3025 |
 | Max token entropy | 0.5372 | 0.2914 |
 
 AP 必须结合 PubMedQA v2 的 27.6% 错误率理解，不能与 BioASQ AP 直接比较。
@@ -200,12 +223,18 @@ AP 必须结合 PubMedQA v2 的 27.6% 错误率理解，不能与 BioASQ AP 直�
 只有 0.5899，远低于 BioASQ 的 0.9026；因此 0.6839 应解释为迁移后的
 cross-target error-ranking usefulness，而不是原始内部映射得到保留。
 
-这次 transfer 没有生成十个高温答案，也没有运行 NLI 聚类，所以没有
-PubMedQA SE、cluster count 或 sample-disagreement 结果。它是低成本
-单答案方法的外部压力测试，不替代 BioASQ 主结果，也不支持某个 Probe
-已经获得数据集无关的泛化能力。BioASQ 表中的 normalized NLL 是十次采样
-平均，而 PubMedQA 表中是单个主答案的 normalized NLL，因此也不把两者的
-数值差解释为严格的跨数据集退化。
+原冻结 Probe transfer 本身没有生成十个高温答案，也没有运行 NLI 聚类；后续
+单独批准的补充实验保持 v2 prompt、500 题、Gemma 3 12B、seed 31、错误标签和
+PubMedBERT 双向 NLI 不变，只增加每题十个 `T=1.0` 样本。正式任务 5921809
+完成 500 题和 5,000 次生成，得到 discrete SE AUROC 0.5884、AP 0.3674；AP
+需与 0.276 的错误率基线一起理解，且未做新增显著性检验。
+
+444/500 题的十个答案被合并为单一语义簇，另有 46/7/3 题形成 2/3/4 个簇。
+这解释了 SE 分数变化较少以及整体排序偏弱，但不能只凭本次结果区分模型回答
+确实一致和 PubMedBERT 过度合并。该补充不改变冻结 Probe transfer 的单答案
+协议，也不支持数据集无关泛化。BioASQ 表中使用 `10-sample normalized NLL`，
+而 PubMedQA 表中使用 `single-answer normalized NLL`，因此也不把两者的数值差
+解释为严格的跨数据集退化。
 
 完整证据见：
 
@@ -294,7 +323,7 @@ Brier 为 `0.1657`、`0.2240`、`0.1754`。因此四处标签修正没有推翻�
 
 正式三模型比较使用 196 个共同有效的 summary 问题：
 
-| 模型 | Accuracy | Blind P(True) AUROC | SE AUROC | Normalized NLL AUROC | P(True) minus SE |
+| 模型 | Accuracy | Blind P(True) AUROC | SE AUROC | `10-sample normalized NLL` AUROC | P(True) minus SE |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Gemma 3 1B | 0.122 | 0.501 | 0.597 | 0.789 | -0.096 |
 | Gemma 3 4B | 0.281 | 0.652 | 0.644 | 0.796 | +0.008 |
