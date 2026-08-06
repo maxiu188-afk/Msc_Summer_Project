@@ -36,12 +36,14 @@ Start with:
   calibration transfer.
 - `pubmedqa_frozen_probe_transfer.md`: bounded frozen-Probe transfer under the
   official PubMedQA evidence context, including comparison with blind P(True),
-  verbalized confidence, NLL, and token-entropy baselines.
+  verbalized confidence, NLL, and token-entropy baselines, plus the separately
+  authorized in-progress context-v2 Semantic Entropy completion.
 
 The P(True)-Probe and Accuracy-Probe remain distinct: one targets direct
 P(True)-derived uncertainty, while the other targets answer error. Their
-different PubMedQA transfer behavior is part of the main Phase-2 comparison;
-the transfer protocol has no ten-sample SE result.
+different PubMedQA transfer behavior is part of the main Phase-2 comparison.
+The newly authorized ten-sample SE row remains pending until its formal
+Isambard result passes health and provenance checks.
 
 ## Phase 3 — conditions and mechanisms
 
@@ -79,7 +81,8 @@ into the main narrative without a new explicit research decision.
 ## Closing boundary
 
 The supervisor-approved calibration, selective-prediction, correctness-audit,
-and zero-refit transfer analysis is complete. Do not retune prompts, expand the
-model grid, train new Probes, extend 1B factoid/list, or reopen clustering.
-Future work is thesis writing unless a separate research decision explicitly
-opens a new experiment.
+and zero-refit transfer analysis is complete. The only open experiment is the
+explicitly authorized PubMedQA context-v2 Semantic Entropy row. Do not retune
+prompts, expand the model grid, train new Probes, extend 1B factoid/list, or
+open any other clustering work. After that bounded result, future work returns
+to thesis writing unless another research decision is explicit.

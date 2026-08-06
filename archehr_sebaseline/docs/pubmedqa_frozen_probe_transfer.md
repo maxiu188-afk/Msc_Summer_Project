@@ -1,6 +1,6 @@
 # PubMedQA Frozen-Probe Transfer Protocol
 
-Last updated: 2026-07-27
+Last updated: 2026-08-05
 
 ## Decision and status
 
@@ -27,6 +27,23 @@ snapshot, answer contract, generation settings, frozen Probe bundle,
 block-24/LT feature, and BioASQ-derived threshold. No PubMedQA answer, label,
 hidden state, or metric fits or selects a Probe, calibrates a score, or changes
 the threshold.
+
+### Authorized Semantic Entropy completion — in progress
+
+One later addition is authorized for the accepted context-v2 condition only.
+It reuses the exact 500 saved v2 prompts and the existing official-decision
+`incorrect` labels, then collects ten `T=1.0`, `top_p=0.9`, `top_k=50`, seed-31
+answers per question with the same Gemma 3 12B model. The answers are clustered
+with the unchanged `pritamdeka/PubMedBERT-MNLI-MedNLI` bidirectional-entailment
+rule, conditioned on the question, and discrete Semantic Entropy is evaluated
+with AUROC/AP against the frozen v2 error target.
+
+This is one missing method row, not a reopened PubMedQA study. It does not
+regenerate the low-temperature v2 answers, refit or rescore either Probe,
+rescore P(True), recalibrate a method, obtain new correctness labels, tune the
+prompt, or add another dataset/model condition. Until the formal Isambard job
+completes and its artifacts pass health checks, no PubMedQA-v2 SE number is a
+verified result.
 
 ## Evidence and execution health
 

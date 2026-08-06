@@ -1,6 +1,6 @@
 # Phase 2 Probe Research Plan
 
-Last updated: 2026-08-02
+Last updated: 2026-08-05
 
 ## Final status and research boundary
 
@@ -12,9 +12,13 @@ zero-refit PubMedQA calibration transfer. This evaluation is now complete. The
 90-answer audit has 95.56% raw agreement, 95.12% design-weighted agreement, and
 Cohen's kappa 0.902; its four corrections do not reverse the primary UQ
 conclusions. The fixed protocol and complete results are in
-`archehr_sebaseline/docs/phase2_uq_calibration_completion.md`. No prompt,
-model-scale, Probe-training, type-specific, or clustering expansion is
-reopened; the next activity is thesis writing.
+`archehr_sebaseline/docs/phase2_uq_calibration_completion.md`. One later,
+separately authorized addition is currently open: run the existing ten-sample
+Semantic Entropy method on the accepted 500-question PubMedQA Appendix-C
+context-v2 prompt. It changes no low-temperature answer, correctness label,
+Probe, P(True), calibration mapping, model, prompt, or NLI rule. No other
+prompt, model-scale, Probe-training, type-specific, or clustering expansion is
+reopened.
 
 ## Execution Status (updated 2026-07-28)
 
@@ -770,7 +774,13 @@ Official sources:
     completed, 299/300 correctness labels are valid, and the formal
     196-question common-valid summary analysis is complete. Factoid/list
     accuracy is 8/50 and 3/50, so do not expand either full type cohort. No
-    PubMedQA follow-up is planned.
+    1B PubMedQA follow-up is planned.
+15. **In progress — PubMedQA-v2 Semantic Entropy:** reuse the accepted v2
+    prompts and official-decision error labels; collect only ten `T=1.0`
+    answers per question, apply the unchanged PubMedBERT-MNLI-MedNLI
+    bidirectional clustering rule, and report discrete-SE AUROC/AP. Do not
+    regenerate the v2 main answer or rerun Probes, P(True), calibration,
+    judging, or prompt selection.
 
 ## Non-negotiable Boundaries
 

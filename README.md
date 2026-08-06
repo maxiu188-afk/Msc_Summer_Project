@@ -7,9 +7,12 @@ This repository studies:
 > Semantic Entropy, P(True), and hidden-state probes.**
 
 The three research phases, bounded diagnostics, and supervisor-approved UQ
-closing evaluation are complete. The project is frozen for thesis writing: no
-new experiment, prompt tuning, model-scale extension, or Probe training is
-planned unless a separate idea is explicitly approved.
+closing evaluation are complete. One separately approved, tightly bounded
+addition is now in progress: ten-sample Semantic Entropy for the already
+accepted 500-question PubMedQA Appendix-C context-v2 condition. It reuses the
+frozen prompt, low-temperature decision errors, model, and NLI configuration;
+it does not reopen prompt tuning, model-scale extension, Probe training,
+calibration, or correctness judging.
 
 The thesis-oriented Chinese synthesis is
 [`RESEARCH_RESULTS_SYNTHESIS_ZH.md`](RESEARCH_RESULTS_SYNTHESIS_ZH.md).
@@ -188,7 +191,9 @@ Primary documents:
 
 The supervisor-approved calibration/selective-prediction completion,
 correctness-label audit, and zero-refit PubMedQA calibration transfer are now
-complete. No experimental scope remains open. The following remain closed:
+complete. The only open experimental scope is the separately approved
+PubMedQA-v2 Semantic Entropy addition described above. The following remain
+closed:
 
 - no additional PubMedQA prompt or error-case tuning;
 - no full 1B factoid/list expansion after the 8/50 and 3/50 feasibility
@@ -198,8 +203,8 @@ complete. No experimental scope remains open. The following remain closed:
 - no larger Claude clustering experiment;
 - no claim that Claude clustering is deployable.
 
-The next activity is thesis and supervisor-discussion preparation, not another
-experiment.
+After that one SE result is recorded, the project returns to thesis and
+supervisor-discussion preparation.
 
 ## Repository layout
 
