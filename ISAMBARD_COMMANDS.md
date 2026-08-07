@@ -238,15 +238,15 @@ and artifact hashes are recorded in
 `archehr_sebaseline/docs/pubmedqa_frozen_probe_transfer.md` and
 `archehr_sebaseline/docs/experiment_runtime_log.md`.
 
-## Queued PubMedQA-v2 SE temperature sensitivity
+## Completed PubMedQA-v2 SE temperature sensitivity
 
 This diagnostic reuses accepted `T=1.0` and adds only `T=0.7/1.3` on a fixed
 200-question subset stratified by frozen `incorrect × yes/no/maybe`. Do not
 submit another temperature or regenerate the baseline arm.
 
 ```text
-5931810  six-question runnability smoke, pending
-5931811  formal 200-question job, pending with afterok:5931810
+5931810  six-question runnability smoke, COMPLETED 0:0, 00:09:51
+5931811  formal 200-question job, COMPLETED 0:0, 04:10:11
 source revision: 5a302c1
 ```
 
@@ -260,11 +260,16 @@ TEMP_RUN="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/pubmedqa_v2_se_te
 TEMP_ANALYSIS="$SCRATCHDIR/final_project/archehr_sebaseline/analysis_outputs/pubmedqa_v2_se_temperature_sensitivity_200_seed31_20260806"
 ```
 
-The batch creates the manifest once, runs both new temperature arms in separate
-Python processes, reuses the matching baseline rows, applies 20,000 paired
-bootstrap resamples, and fails unless both 200-question/2,000-generation arms
-and the comparison summary pass postflight. Until then, retain the study as
-queued rather than citing a temperature effect.
+The batch created the manifest once, ran both new temperature arms in separate
+Python processes, reused the matching baseline rows, applied 20,000 paired
+bootstrap resamples, and passed postflight for both 200-question/2,000-generation
+arms and the comparison summary. AUROC at `T=0.7/1.0/1.3` was
+`0.5837/0.6213/0.5945`; both paired differences versus `T=1.0` had intervals
+crossing zero. AP and mean-SE differences were also unresolved. `T=0.7`
+increased the single-cluster fraction by 5 percentage points, 95% CI
+`[+1.0,+9.5]`, without a resolved ranking change. Record this as no clear SE
+performance effect within the tested range and cohort, not general temperature
+invariance.
 
 ## Monitor jobs
 

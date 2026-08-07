@@ -1,6 +1,6 @@
 # PubMedQA Frozen-Probe Transfer Protocol
 
-Last updated: 2026-08-06
+Last updated: 2026-08-07
 
 ## Decision and status
 
@@ -69,7 +69,7 @@ outputs/pubmedqa_context_v2_se_full500_seed31_20260805
 analysis_outputs/pubmedqa_context_v2_se_full500_seed31_20260805
 ```
 
-### Temperature-sensitivity diagnostic — queued
+### Temperature-sensitivity diagnostic — accepted
 
 A later bounded diagnostic tests whether sampling temperature changes the
 accepted discrete-SE behaviour without rerunning all 500 questions. It reuses
@@ -86,17 +86,51 @@ analysis is the paired AUROC change versus `T=1.0` with 20,000 bootstrap
 resamples; AP, mean SE, mean cluster count, and single-cluster fraction are
 secondary paired diagnostics.
 
+Jobs `5931810` and `5931811` completed `0:0`. The smoke passed its six-question
+interface gate in 9:51; the formal task completed in 4:10:11. Each new arm has
+exactly 200 questions and 2,000 generations, all 200 IDs have ten samples, and
+the manifest, frozen labels, source artifacts, generation settings, prediction
+hashes, and 20,000-resample paired analysis passed independent postflight
+checks.
+
+| Temperature | AUROC | AP | Mean discrete SE | Single-cluster fraction | Mean clusters |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.7 | 0.5837 | 0.3657 | 0.0514 | 90.5% | 1.130 |
+| 1.0 | **0.6213** | 0.3810 | 0.0640 | 85.5% | 1.165 |
+| 1.3 | 0.5945 | **0.3850** | 0.0550 | 88.5% | 1.135 |
+
+The primary paired AUROC changes versus `T=1.0` were
+`-0.0376 [-0.0913,+0.0123]` for `T=0.7` and
+`-0.0268 [-0.0774,+0.0213]` for `T=1.3`. The AP and mean-SE intervals also
+crossed zero. Thus the study did not detect a clear temperature effect on SE
+error-ranking performance within `T=0.7–1.3` on this cohort; `T=1.0` is only
+the best AUROC point estimate, not a resolved optimum.
+
+The one supported structural change is that `T=0.7` increased the
+single-cluster fraction by 5 percentage points, 95% CI `[+1.0,+9.5]`. This is
+consistent with greater low-temperature semantic collapse, but it did not
+translate into a resolved AUROC or AP change. `T=1.3` did not reliably increase
+semantic diversity. These results do not establish temperature invariance
+outside the tested range, model, NLI rule, 200-question cohort, or single seed,
+and do not authorize another temperature, seed, prompt, NLI model, or full-500
+rerun.
+
+The retained manifest, comparison summary, temperature-metrics table, and
+paired-differences table SHA-256 values are:
+
 ```text
-5931810  six-question runnability smoke, pending
-5931811  formal 200-question paired study, afterok:5931810, pending
-source revision: 5a302c1
+99506184c8682552d641046fac948631322f575360de2c25d369fcc422006195
+34660b3d1d187e83ce24bf388f8afdf4ad66adcbdfaaf6ea1172ed42173263a3
+0595f94bfc30aa98cd7807342129c108abcddfd8fceb6ea673d39df9016f49dd
+013ae270901469caa4f038478c37257d5fe035df2f26503a518eadef9e109221
 ```
 
-The smoke is an interface gate, not an experimental result. No temperature
-number is accepted until the formal task completes `0:0`, both new arms contain
-exactly 200 questions / 2,000 generations, the saved manifest and frozen-source
-hashes match, and the paired comparison passes its postflight checks. This does
-not authorize another temperature, seed, prompt, NLI model, or full-500 rerun.
+Raw accepted artifacts remain on Isambard under:
+
+```text
+outputs/pubmedqa_v2_se_temperature_sensitivity_200_seed31_20260806
+analysis_outputs/pubmedqa_v2_se_temperature_sensitivity_200_seed31_20260806
+```
 
 ## Evidence and execution health
 

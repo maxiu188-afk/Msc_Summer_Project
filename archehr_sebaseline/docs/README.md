@@ -37,13 +37,17 @@ Start with:
 - `pubmedqa_frozen_probe_transfer.md`: bounded frozen-Probe transfer under the
   official PubMedQA evidence context, including comparison with blind P(True),
   verbalized confidence, NLL, and token-entropy baselines, plus the completed
-  separately authorized context-v2 Semantic Entropy result.
+  separately authorized context-v2 Semantic Entropy result and its completed
+  paired temperature-sensitivity diagnostic.
 
 The P(True)-Probe and Accuracy-Probe remain distinct: one targets direct
 P(True)-derived uncertainty, while the other targets answer error. Their
 different PubMedQA transfer behavior is part of the main Phase-2 comparison.
 The ten-sample SE completion passed formal Isambard health and provenance
 checks: 500 questions, 5,000 generations, 0.5884 AUROC, and 0.3674 AP.
+The final 200-question paired diagnostic found no resolved change in SE AUROC,
+AP, or mean SE across `T=0.7/1.0/1.3`; lower `T=0.7` produced more single-cluster
+questions, but no clear ranking-performance effect.
 
 ## Phase 3 — conditions and mechanisms
 
@@ -81,11 +85,9 @@ into the main narrative without a new explicit research decision.
 ## Closing boundary
 
 The supervisor-approved calibration, selective-prediction, correctness-audit,
-zero-refit transfer analysis, and bounded PubMedQA context-v2 Semantic Entropy
-row are complete. Do not retune prompts, expand
-the model grid, train new Probes, extend 1B factoid/list, or open any other
-clustering work. One later exception is currently queued: a fixed 200-question
-paired PubMedQA-v2 SE temperature diagnostic that reuses `T=1.0` and adds only
-`T=0.7/1.3`. It changes no other protocol field and is not a result until its
-formal health/provenance checks pass. After that diagnostic, future work
-returns to thesis writing unless another research decision is explicit.
+zero-refit transfer analysis, bounded PubMedQA context-v2 Semantic Entropy row,
+and fixed 200-question paired temperature diagnostic are complete. Do not
+retune prompts, expand the model grid, train new Probes, extend 1B factoid/list,
+or open any other clustering work. The temperature diagnostic changed no other
+protocol field and found no clear SE-ranking effect over `T=0.7–1.3`; future
+work returns to thesis writing unless another research decision is explicit.
