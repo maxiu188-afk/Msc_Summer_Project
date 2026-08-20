@@ -28,6 +28,8 @@ They remain useful for reproducing prior runs and checking artifact formats.
 - `feature_fusion_diagnostics_20260728.md`: Phase-1 P(True)/SE/NLL fusion and
   Phase-2 two-Probe fusion, archived because neither justified a new main
   method.
+- `bioasq_phase1_100q_pilot.md`: superseded protocol-establishing pilot; the
+  active result is the fixed 1,000-question Phase-1 benchmark.
 - `../../results/server_results/`: local raw summary outputs, related analyses,
   manual-review material, and the PubMedQA Level-4 pilot.
 - `../../results/local_outputs/`: local downloaded BioASQ summary run
@@ -38,5 +40,5 @@ They remain useful for reproducing prior runs and checking artifact formats.
 This archived report deliberately does not describe the active direction. Use
 `../../../archehr_sebaseline/docs/README.md` and
 `../../../RESEARCH_RESULTS_SYNTHESIS_ZH.md` for the completed three-phase
-result narrative and `../../../PHASE2_PROBE_PLAN.md` for the frozen detailed
-Phase-2 protocol.
+result narrative and `../../../PROJECT_CLOSEOUT.md` for the frozen scope and
+reproducibility map.

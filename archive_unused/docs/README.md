@@ -1,8 +1,9 @@
 # Archived Documentation Index
 
 The files below are retained for provenance and are not active instructions.
-The archive was consolidated on 2026-07-22 and updated on 2026-07-28 when the
-three-phase research narrative was frozen.
+The archive was consolidated on 2026-07-22, updated on 2026-07-28 when the
+three-phase research narrative was frozen, and closed out on 2026-08-17 by
+moving completed operational documents out of the active tree.
 
 ## `project_history/`
 
@@ -19,6 +20,17 @@ three-phase research narrative was frozen.
 - `naming_policy.md`: forward-naming rule now summarized in the active READMEs.
 - `SIMPSON_MEETING_PHASE2_RESULTS_2026-07-23_FINAL.md`: superseded supervisor
   brief, replaced by the complete three-phase synthesis.
+- `PHASE2_PROBE_PLAN_FINAL.md`: complete frozen Phase-2 plan and milestone
+  history, replaced as an active entry point by `../../../PROJECT_CLOSEOUT.md`.
+- `ISAMBARD_COMMANDS_FINAL.md`, `experiment_runtime_log_final.md`: completed
+  command notebook and chronological job provenance.
+- `semantic_entropy_generation_protocol_legacy.md`: transitional two-track
+  generation/correction note; the final contract is merged into the active
+  BioASQ protocol.
+- `archehr_sebaseline_README_legacy.md`: former mixed status/implementation
+  README, including early ArchEHR and Level-3/4 instructions.
+- `Meeting_Notes_Project_Progress_2026-07-10.pdf`: early project-progress
+  meeting snapshot, superseded by the final synthesis and closeout map.
 
 ## `historical_results/`
 
@@ -26,12 +38,12 @@ Historical grounded/summary BioASQ reports that use protocols or targets not
 comparable to the current Phase-1/Phase-2 experiments, plus the archived
 question-only PubMedQA transfer result whose official article evidence was
 omitted. This directory also retains post-hoc feature-fusion diagnostics that
-did not become main methods.
+did not become main methods and the superseded Phase-1 100-question pilot.
 
 ## `literature_extracts/`
 
 Searchable text extracted from papers plus early implementation notes. These
 are convenience snapshots, not authoritative sources or current documentation.
 
-For the active document set, start at
+For the active document set, start at `../../PROJECT_CLOSEOUT.md` and
 `../../archehr_sebaseline/docs/README.md`.

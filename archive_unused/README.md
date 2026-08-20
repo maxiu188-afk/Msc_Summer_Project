@@ -11,6 +11,7 @@ or as an active run instruction**.
 - `docs/historical_results/`: result reports that are not comparable with the
   current BioASQ/PubMedQA protocol.
 - `docs/literature_extracts/`: generated paper-text snapshots and old notes.
+- `scripts/`: superseded command-line, Slurm, and provider-specific wrappers.
 - `data/`: obsolete or superseded local data. Generated data remain ignored by
   Git; record their origin in `data/README.md` before placing them here.
 - `results/`: obsolete generated outputs and server-result snapshots. Large or
@@ -23,6 +24,7 @@ or as an active run instruction**.
 2. Add a short reason, source path, and archive date to the nearest README.
 3. Never place credentials, model weights, virtual environments, caches, or
    restricted datasets here.
-4. Current documentation belongs in `archehr_sebaseline/docs/`; only one active
-   document should own each protocol or result.
+4. Current documentation belongs in `archehr_sebaseline/docs/`, with the
+   repository-level map in `PROJECT_CLOSEOUT.md`; only one active document
+   should own each protocol or result.
 5. Archived commands may contain stale paths and must be revalidated before use.

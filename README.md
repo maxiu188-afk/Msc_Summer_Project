@@ -16,6 +16,9 @@ already accepted 500-question PubMedQA Appendix-C context-v2 condition. Both
 additions reused the frozen prompt, low-temperature decision errors, model, and
 NLI configuration; neither reopened prompt tuning, model-scale extension,
 Probe training, calibration, or correctness judging.
+A final saved-artifact selective-prediction supplement then froze operating
+thresholds on BioASQ validation and applied them unchanged to test; it required
+no model generation or refitting.
 
 The thesis-oriented Chinese synthesis is
 [`RESEARCH_RESULTS_SYNTHESIS_ZH.md`](RESEARCH_RESULTS_SYNTHESIS_ZH.md).
@@ -151,6 +154,17 @@ on list questions. All three single-answer BioASQ mappings have negative Brier
 skill when transferred unchanged to PubMedQA, so ranking transfer is not
 calibration transfer.
 
+The validation-fixed operating-point supplement shows the deployment boundary
+behind those curves. At the nominal 0.80 coverage target, achieved test
+coverage is `0.807/0.789/0.763/0.794` for SE, blind P(True), Accuracy-Probe,
+and P(True)-Probe, with retained risks `0.581/0.601/0.567/0.590` versus
+`0.656` at full coverage. Accuracy-Probe has the lowest risk but also the
+lowest achieved coverage, so this is not a pairwise superiority claim. SE's
+0.95 validation threshold retains all test examples because of boundary ties,
+and the same global 0.80 thresholds produce much lower coverage on list than
+summary questions. Full protocol and conditional bootstrap intervals are in
+[`phase2_uq_calibration_completion.md`](archehr_sebaseline/docs/phase2_uq_calibration_completion.md).
+
 The blinded correctness audit reviewed 90 answers, balanced 30 per type. Human
 and Claude labels agree on 86/90 answers: 95.56% raw agreement, 95.12%
 design-weighted agreement, and Cohen's kappa 0.902. All four disagreements are
@@ -182,7 +196,7 @@ Primary documents:
 
 Primary documents:
 
-- [`PHASE2_PROBE_PLAN.md`](PHASE2_PROBE_PLAN.md)
+- [`PROJECT_CLOSEOUT.md`](PROJECT_CLOSEOUT.md)
 - [`phase2_bioasq_dataset_split.md`](archehr_sebaseline/docs/phase2_bioasq_dataset_split.md)
 - [`phase2_uq_efficiency_benchmark.md`](archehr_sebaseline/docs/phase2_uq_efficiency_benchmark.md)
 - [`phase2_probe_completion_statistics.md`](archehr_sebaseline/docs/phase2_probe_completion_statistics.md)
@@ -208,7 +222,9 @@ The supervisor-approved calibration/selective-prediction completion,
 correctness-label audit, zero-refit PubMedQA calibration transfer, and bounded
 PubMedQA-v2 Semantic Entropy addition are complete. The final 200-question
 paired temperature diagnostic described above is also complete, so no
-experimental scope remains open. The following remain closed:
+experimental scope remains open. The separately approved validation-fixed
+selective-prediction operating-point analysis is likewise complete. The
+following remain closed:
 
 - no additional PubMedQA prompt or error-case tuning;
 - no full 1B factoid/list expansion after the 8/50 and 3/50 feasibility
@@ -223,6 +239,7 @@ The project now returns to thesis and supervisor-discussion preparation.
 ## Repository layout
 
 ```text
+PROJECT_CLOSEOUT.md         Frozen scope and concise reproducibility map
 archehr_sebaseline/        Active code, protocols, and primary result documents
 semantic_uncertainty/      Reference implementation from the SE literature
 server_results/            Active local server-result snapshots
@@ -230,10 +247,10 @@ archive_unused/            Superseded, exploratory, and low-usability material
 literature/                Local source material; intentionally not Git-tracked
 ```
 
-Operational commands and chronological job provenance remain in:
-
-- [`ISAMBARD_COMMANDS.md`](ISAMBARD_COMMANDS.md)
-- [`experiment_runtime_log.md`](archehr_sebaseline/docs/experiment_runtime_log.md)
+The active evidence and script map is
+[`PROJECT_CLOSEOUT.md`](PROJECT_CLOSEOUT.md). Completed operational commands,
+the full Phase-2 plan, and chronological job provenance are preserved under
+[`archive_unused/docs/project_history/`](archive_unused/docs/project_history/).
 
 Archived material must not be presented as current evidence. See
 [`archive_unused/README.md`](archive_unused/README.md).

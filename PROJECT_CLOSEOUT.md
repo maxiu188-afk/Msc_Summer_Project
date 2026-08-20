@@ -1,0 +1,87 @@
+# Project Closeout and Reproducibility Map
+
+Last updated: 2026-08-20
+
+## Status
+
+The experimental programme is complete and frozen for dissertation writing.
+No prompt tuning, model extension, Probe training, calibration refit, clustering
+expansion, or additional PubMedQA temperature run is currently planned.
+The separately approved validation-fixed selective-prediction operating-point
+analysis is complete and required no model generation, training, or refitting.
+
+This file is the concise operational replacement for the completed Phase-2
+plan, the Isambard command notebook, and the chronological runtime log. Their
+full contents remain available under `archive_unused/docs/project_history/` for
+provenance, but they are no longer active instructions.
+
+## Active evidence map
+
+| Area | Owning document |
+| --- | --- |
+| Thesis-level conclusions | `RESEARCH_RESULTS_SYNTHESIS_ZH.md` |
+| Repository overview and scope | `README.md` |
+| Active documentation index | `archehr_sebaseline/docs/README.md` |
+| Phase-1 protocol and final results | `archehr_sebaseline/docs/bioasq_medical_uq_protocol.md`; `archehr_sebaseline/docs/bioasq_medical_uq_results_20260718.md` |
+| Phase-2 split and frozen Probes | `archehr_sebaseline/docs/phase2_bioasq_dataset_split.md`; `archehr_sebaseline/docs/phase2_probe_completion_statistics.md` |
+| Efficiency, calibration, selective prediction, and audit | `archehr_sebaseline/docs/phase2_uq_efficiency_benchmark.md`; `archehr_sebaseline/docs/phase2_uq_calibration_completion.md` |
+| PubMedQA transfer, SE, and temperature result | `archehr_sebaseline/docs/pubmedqa_frozen_probe_transfer.md` |
+| Length, clustering, and model-scale diagnostics | `archehr_sebaseline/docs/summary_length_intervention.md`; `archehr_sebaseline/docs/summary_clustering_diagnostic.md`; `archehr_sebaseline/docs/gemma3_model_scale_experiment.md` |
+
+Only the owning document should be edited when a result or protocol statement
+needs correction. The synthesis and repository README should remain concise
+maps rather than duplicate runtime history.
+
+## Reproducibility entry points
+
+The maintained implementation remains under `archehr_sebaseline/`:
+
+- `src/archehr_sebaseline/`: shared data, generation, clustering, UQ, Probe,
+  and evaluation code;
+- `scripts/`: final experiment and Slurm entry points;
+- `analysis/`: saved-artifact analyses and paired comparisons;
+- `tests/`: regression tests for the retained implementation.
+
+Final-workflow entry points are grouped below. They are retained for
+reproducibility, not as an instruction to rerun experiments.
+
+| Result family | Main entry points |
+| --- | --- |
+| Phase-1 BioASQ | `scripts/run_bioasq_isambard.sbatch`, `scripts/run_bioasq_claude_judge.py`, `scripts/evaluate_bioasq_claude_judge.py` |
+| Phase-2 artifacts and Probes | `scripts/make_bioasq_phase2_splits.py`, `scripts/run_phase2_bioasq_artifacts.py`, `scripts/train_phase2_linear_probes.py`, `scripts/materialize_frozen_phase2_probes.py` |
+| Efficiency and statistical completion | `scripts/benchmark_phase2_uq_efficiency.py`, `analysis/run_phase2_probe_completion.py` |
+| Calibration, selective operating points, and audit | `analysis/run_phase2_uq_calibration.py`, `analysis/run_phase2_selective_operating_points.py`, `analysis/prepare_phase2_correctness_audit.py` |
+| Summary diagnostics | `scripts/run_summary_length_intervention.py`, `scripts/run_summary_claude_clustering.py`, `analysis/run_summary_clustering_diagnostic.py` |
+| Model scale | `analysis/run_gemma3_model_scale_comparison.py`, `analysis/run_gemma3_1b_staged_scale_comparison.py` |
+| PubMedQA | `scripts/run_pubmedqa_frozen_probe_transfer.py`, `scripts/run_pubmedqa_v2_semantic_entropy.py`, `scripts/pubmedqa_v2_se_temperature_sensitivity.py` |
+
+The generic `scripts/run_level4.py` and `scripts/check_level4_outputs.py`
+remain active because the accepted BioASQ batch wrapper calls them. Early
+ArchEHR/Level-3 command-line wrappers and completed RunPod transport scripts
+have moved to `archive_unused/scripts/` without deleting their source history.
+
+## Data and result boundary
+
+Raw datasets, model outputs, hidden states, local analysis outputs, virtual
+environments, caches, and local literature are intentionally outside Git. They
+were not moved or deleted during the closeout cleanup. Accepted result
+documents retain job IDs, artifact locations, and hashes needed to bind claims
+to those local or Isambard artifacts.
+
+## Historical provenance
+
+Use the archive only when tracing an old decision or reproducing a superseded
+workflow:
+
+- `archive_unused/docs/project_history/PHASE2_PROBE_PLAN_FINAL.md`: complete
+  frozen plan and milestone history;
+- `archive_unused/docs/project_history/experiment_runtime_log_final.md`:
+  chronological Slurm/job provenance;
+- `archive_unused/docs/project_history/ISAMBARD_COMMANDS_FINAL.md`: completed
+  server command notebook;
+- `archive_unused/docs/historical_results/`: pilots and non-current results;
+- `archive_unused/scripts/`: superseded command-line and provider-specific
+  scripts.
+
+Archived commands may contain historical paths and must not be treated as
+current run instructions.

@@ -1,6 +1,6 @@
 # Phase-2 UQ Calibration and Selective-Prediction Completion
 
-Last updated: 2026-08-02
+Last updated: 2026-08-20
 
 ## Decision and status
 
@@ -25,6 +25,10 @@ passed before submission. Validation-SE smoke job `5863759` completed `0:0` in
 384 expected rows and no missing SE values. The complete offline analysis and
 the fixed correctness-label audit have now both finished. The thesis-closing UQ
 evaluation is complete; no additional experiment is implied by this document.
+A separately authorized saved-artifact supplement later tested whether
+validation-selected selective-prediction thresholds preserve their operating
+points on test. That offline supplement is complete and does not reopen model
+generation, Probe training, calibration, or any other experimental scope.
 
 ## Common target and methods
 
@@ -217,6 +221,80 @@ advantage over blind P(True), while their AUROC difference remains unresolved.
 At 80% coverage, retained error risk is `0.5779` for SE, `0.5877` for
 Accuracy-Probe, `0.6006` for blind P(True), and `0.5942` for P(True)-Probe,
 versus `0.6563` at full coverage.
+
+### Validation-fixed selective-prediction operating points
+
+The original risk--coverage analysis ranks the test scores and retains an
+exact requested fraction within that cohort. The supplementary deployment
+analysis instead selects raw-score thresholds using only the 384-question
+validation split, then applies each threshold unchanged to the 384-question
+test split. It uses the already declared target coverages `0.80`, `0.90`, and
+`0.95`; no test label, test score distribution, calibration refit, or
+type-specific threshold affects selection.
+
+The threshold is the validation `ceil(N * target coverage)` order statistic.
+Every score equal to the threshold is retained, and the resulting achieved
+coverage is reported rather than splitting boundary ties on test. The full-test
+error risk is `0.65625`. Confidence intervals use 20,000 paired test-row
+bootstrap resamples with seed `20260820`, conditional on the one frozen
+full-validation threshold; they do not include uncertainty from replacing the
+validation cohort.
+
+| Target | Method | Test coverage | Retained risk (95% CI) | Absolute risk reduction (95% CI) | Rejected risk |
+| ---: | --- | ---: | ---: | ---: | ---: |
+| 0.80 | SE | 0.8073 | 0.5806 [0.5253, 0.6349] | 0.0756 [0.0566, 0.0963] | 0.9730 |
+| 0.80 | Blind P(True) | 0.7891 | 0.6007 [0.5452, 0.6553] | 0.0556 [0.0336, 0.0784] | 0.8642 |
+| 0.80 | Accuracy-Probe | 0.7630 | 0.5666 [0.5087, 0.6228] | 0.0897 [0.0665, 0.1146] | 0.9451 |
+| 0.80 | P(True)-Probe | 0.7943 | 0.5902 [0.5350, 0.6447] | 0.0661 [0.0452, 0.0884] | 0.9114 |
+| 0.90 | SE | 0.9375 | 0.6333 [0.5833, 0.6825] | 0.0229 [0.0141, 0.0329] | 1.0000 |
+| 0.90 | Blind P(True) | 0.9062 | 0.6351 [0.5836, 0.6851] | 0.0212 [0.0079, 0.0346] | 0.8611 |
+| 0.90 | Accuracy-Probe | 0.9089 | 0.6246 [0.5735, 0.6744] | 0.0316 [0.0202, 0.0442] | 0.9714 |
+| 0.90 | P(True)-Probe | 0.8880 | 0.6246 [0.5727, 0.6755] | 0.0316 [0.0175, 0.0464] | 0.9070 |
+| 0.95 | SE | 1.0000 | 0.6562 [0.6094, 0.7031] | 0.0000 [0.0000, 0.0000] | not estimable |
+| 0.95 | Blind P(True) | 0.9453 | 0.6446 [0.5945, 0.6929] | 0.0116 [0.0018, 0.0215] | 0.8571 |
+| 0.95 | Accuracy-Probe | 0.9453 | 0.6364 [0.5865, 0.6851] | 0.0199 [0.0119, 0.0291] | 1.0000 |
+| 0.95 | P(True)-Probe | 0.9609 | 0.6450 [0.5957, 0.6932] | 0.0113 [0.0038, 0.0192] | 0.9333 |
+
+Every non-degenerate operating point reduces retained risk relative to using
+all test answers in the conditional bootstrap. This is not a pairwise method
+superiority test: for example, Accuracy-Probe has the lowest risk at the 0.80
+target but also undershoots to `0.7630` coverage, so its risk is not directly
+comparable with SE at `0.8073` coverage.
+
+SE exposes the clearest threshold-granularity limitation. Its validation 0.90
+boundary contains 11 tied scores and produces `0.9375` test coverage. Its 0.95
+boundary contains 28 validation ties and 24 test ties at the maximum score, so
+the inclusive rule retains all 384 test examples and provides no selective
+benefit. The continuous P(True)/Probe scores remain much closer to their target
+coverages, apart from Accuracy-Probe reaching only `0.7630` at the 0.80 target.
+
+Applying the same global threshold within each answer form also reveals a
+large coverage imbalance at the 0.80 target. Across methods, factoid coverage
+ranges from `0.7342` to `0.9114`, list coverage from `0.4175` to `0.6505`, and
+summary coverage from `0.9512` to `1.0000`. The global policy therefore rejects
+list answers much more often, consistent with their much higher error
+prevalence, but it does not provide uniform service coverage across answer
+forms. These are descriptive subgroup audits; no type-specific threshold was
+fitted.
+
+The accepted ignored result snapshot is:
+
+```text
+analysis_outputs/bioasq_phase2_selective_operating_points_20260820/
+  operating_points_overall.csv
+  operating_points_by_type.csv
+  bootstrap_intervals.csv
+  operating_point_predictions.csv
+  operating_points.svg
+  operating_points.png
+  summary.json
+```
+
+The analysis reuses validation/test UQ files with SHA-256
+`cc86e63cd1197d3b896fc8e14808c2fa3be308ce96961b40a2b3d5e0962d6245`
+and `181e5a77e3a7ba13a61577b6edb1d19c25539cdaf9a788b7ebe5b59785fad760`,
+respectively. The implementation entry point is
+`analysis/run_phase2_selective_operating_points.py`.
 
 ### Answer-form calibration
 

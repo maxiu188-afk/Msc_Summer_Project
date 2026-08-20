@@ -11,8 +11,8 @@ Start with:
 - `../../RESEARCH_RESULTS_SYNTHESIS_ZH.md`: thesis-oriented three-phase result
   synthesis and final scope boundary;
 - `../../README.md`: concise repository-level result map;
-- `../../PHASE2_PROBE_PLAN.md`: detailed frozen Phase-2 protocol and decision
-  record.
+- `../../PROJECT_CLOSEOUT.md`: frozen scope, active evidence ownership, and
+  reproducibility entry points.
 
 ## Phase 1 — answer-form UQ regimes
 
@@ -20,8 +20,6 @@ Start with:
   clustering, UQ, and correctness-label protocol.
 - `bioasq_medical_uq_results_20260718.md`: canonical two-seed, 1,000-question
   factoid/list/summary result.
-- `semantic_entropy_generation_protocol.md`: shared generation and SE sampling
-  contract.
 
 ## Phase 2 — hidden-state probes
 
@@ -32,8 +30,8 @@ Start with:
   Accuracy-Probe-versus-blind-P(True) uncertainty result.
 - `phase2_uq_calibration_completion.md`: completed supervisor-approved closing
   evaluation for validation-fitted calibration, selective prediction,
-  correctness-label audit, label sensitivity, and zero-refit PubMedQA
-  calibration transfer.
+  validation-fixed deployment operating points, correctness-label audit, label
+  sensitivity, and zero-refit PubMedQA calibration transfer.
 - `pubmedqa_frozen_probe_transfer.md`: bounded frozen-Probe transfer under the
   official PubMedQA evidence context, including comparison with blind P(True),
   verbalized confidence, NLL, and token-entropy baselines, plus the completed
@@ -61,9 +59,11 @@ questions, but no clear ranking-performance effect.
 
 ## Provenance and operations
 
-- `experiment_runtime_log.md`: chronological jobs, failures, repairs, timing,
-  health checks, and artifact provenance.
-- `../../ISAMBARD_COMMANDS.md`: operational local/Isambard commands.
+- `../../PROJECT_CLOSEOUT.md`: active result-to-script map and frozen scope.
+- `../../archive_unused/docs/project_history/experiment_runtime_log_final.md`:
+  completed chronological jobs, failures, timing, and artifact provenance.
+- `../../archive_unused/docs/project_history/ISAMBARD_COMMANDS_FINAL.md`:
+  completed local/Isambard command notebook.
 
 These records preserve failed attempts and implementation detail but do not
 define additional research claims.
@@ -71,7 +71,9 @@ define additional research claims.
 ## Archived exploration
 
 Superseded meeting briefs, early pilots, question-only PubMedQA transfer, and
-post-hoc feature-fusion diagnostics are under `../../archive_unused/`.
+post-hoc feature-fusion diagnostics are under `../../archive_unused/`. The
+complete Phase-2 plan and the older mixed-status package README are also
+archived there now that experiments are frozen.
 In particular:
 
 - `../../archive_unused/docs/historical_results/feature_fusion_diagnostics_20260728.md`
@@ -86,7 +88,8 @@ into the main narrative without a new explicit research decision.
 
 The supervisor-approved calibration, selective-prediction, correctness-audit,
 zero-refit transfer analysis, bounded PubMedQA context-v2 Semantic Entropy row,
-and fixed 200-question paired temperature diagnostic are complete. Do not
+fixed 200-question paired temperature diagnostic, and validation-fixed
+selective-prediction operating-point supplement are complete. Do not
 retune prompts, expand the model grid, train new Probes, extend 1B factoid/list,
 or open any other clustering work. The temperature diagnostic changed no other
 protocol field and found no clear SE-ranking effect over `T=0.7–1.3`; future
