@@ -1,5 +1,10 @@
 # BioASQ Semantic Entropy generation protocol
 
+> Archived on 2026-08-17. This note records the transitional protocol repair
+> and historical P(True) construction. The final generation tracks and naming
+> contract are now in
+> `../../../archehr_sebaseline/docs/bioasq_medical_uq_protocol.md`.
+
 This protocol follows the original Semantic Entropy implementation rather than
 treating the first high-temperature sample as the model answer. Each question
 has two distinct generation tracks.

@@ -4,10 +4,12 @@ Last updated: 2026-07-28
 
 ## Question and boundary
 
-This is the conditional Stage-3 mechanism diagnostic defined in
-`../../PHASE2_PROBE_PLAN.md`. It asks only whether the accepted PubMedBERT NLI
-semantic-equivalence decisions are a major contributor to weak Semantic
-Entropy on the original, longer BioASQ summary answers.
+This is the completed conditional Stage-3 mechanism diagnostic summarized in
+`../../PROJECT_CLOSEOUT.md`. The original frozen plan is retained at
+`../../archive_unused/docs/project_history/PHASE2_PROBE_PLAN_FINAL.md`. It asks
+only whether the accepted PubMedBERT NLI semantic-equivalence decisions are a
+major contributor to weak Semantic Entropy on the original, longer BioASQ
+summary answers.
 
 No answer is regenerated, no correctness label is changed, and the shorter
 prompt condition is not included. Claude clustering is not proposed as a

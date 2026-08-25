@@ -1,5 +1,9 @@
 # Experiment Runtime Log
 
+> Archived on 2026-08-17 after experimental closeout. This complete log remains
+> the job-level provenance record; it is not an active scheduling plan. Use
+> `../../../PROJECT_CLOSEOUT.md` for the concise current map.
+
 This file records completed formal server runs for planning future allocations.
 Queueing time is excluded: elapsed time is measured from Slurm start to end.
 

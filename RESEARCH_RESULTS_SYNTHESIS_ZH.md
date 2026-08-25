@@ -259,7 +259,7 @@ SE”，而应限定为本次测试范围内没有检测到明显的 SE 表现�
 
 完整证据见：
 
-- `PHASE2_PROBE_PLAN.md`
+- `PROJECT_CLOSEOUT.md`
 - `archehr_sebaseline/docs/phase2_uq_efficiency_benchmark.md`
 - `archehr_sebaseline/docs/phase2_probe_completion_statistics.md`
 - `archehr_sebaseline/docs/pubmedqa_frozen_probe_transfer.md`
@@ -290,6 +290,17 @@ AUROC 优势为 `+0.05745 [+0.00528,+0.10949]`，但 Brier、log loss 和 AURAC
 差异均跨零。SE 相对 blind P(True) 则在 Brier、log loss 和 AURAC 上均有
 区间支持的优势。因此，ranking、calibration 和 selective prediction 不会
 产生完全相同的方法排序。
+
+随后批准的离线 operating-point 补充没有在 test 内重新取固定比例，而是在
+384 个 validation 样本上冻结 `0.80/0.90/0.95` coverage 阈值，再原样应用到
+384 个 test 样本。`0.80` 目标下，SE、blind P(True)、Accuracy-Probe 和
+P(True)-Probe 的实际 coverage 分别为 `0.807/0.789/0.763/0.794`，retained
+risk 为 `0.581/0.601/0.567/0.590`，均低于全覆盖风险 `0.656`。由于实际
+coverage 不同，这些风险不能直接解释为方法间显著优胜。SE 的 `0.95` 阈值
+因离散分数边界同分而保留全部 test 样本，说明它在高 coverage 运行点存在
+阈值粒度限制；同一个全局 `0.80` 阈值还让 list coverage 仅为
+`0.417–0.650`，而 summary 为 `0.951–1.000`。这是一项部署覆盖差异诊断，
+没有拟合题型专属阈值。
 
 分题型 Brier skill 进一步显示：SE 在 list 上为 `+0.1666`，是唯一超过该
 题型 prevalence baseline 的方法；Accuracy-Probe 在 factoid 和 summary 上
@@ -409,6 +420,8 @@ Claude 的 API 成本、延迟和直接判断的非传递性使其不适合作�
 - 不把 Claude clustering 描述为部署方案；
 - 固定的 calibration/selective prediction、correctness audit 和 zero-refit
   PubMedQA calibration transfer 均已完成。
+- validation-fixed selective-prediction operating-point 补充已完成；不再追加
+  阈值调参或题型专属策略。
 
 下一阶段是把现有证据写入 Results、Discussion 和 Limitations，不继续增加
 无关实验分支。除非导师明确开启一个独立的新想法，否则实验保持冻结。

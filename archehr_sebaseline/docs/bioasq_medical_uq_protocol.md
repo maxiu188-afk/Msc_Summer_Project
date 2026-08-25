@@ -3,8 +3,8 @@
 This is the Phase-1 closing protocol and the direct reference for Phase 2. It
 tests whether Semantic Entropy remains useful at a larger scale while preserving
 a direct blind P(True) target and a binary Claude correctness target for the
-P(True)-Probe and Accuracy-Probe respectively. The active Phase-2 work plan is
-the root `../../PHASE2_PROBE_PLAN.md`.
+P(True)-Probe and Accuracy-Probe respectively. The completed project boundary
+and reproducibility map are in `../../PROJECT_CLOSEOUT.md`.
 
 - Use `bioasq_medical_uq`: factoid, list, and summary questions only. Yes/no
   questions are excluded.
@@ -30,6 +30,24 @@ the root `../../PHASE2_PROBE_PLAN.md`.
   list, and 200 summary. A fixed selection seed makes both generation seeds
   use the same stratified question set.
 
+## Final generation tracks and UQ naming
+
+Each question has two deliberately separate generation tracks:
+
+1. one `T=0.1` main answer used for binary correctness judging, blind P(True),
+   verbalized confidence, and single-answer token/NLL diagnostics;
+2. ten `T=1.0`, `top_p=0.9`, `top_k=50` samples used for semantic clustering,
+   discrete/likelihood-weighted SE, cluster count, ten-sample NLL, token
+   entropy, and sample disagreement.
+
+`10-sample normalized NLL` is the mean per-token NLL across the ten sampled
+answers. Historical fields `predictive_entropy`, `mean_normalized_nll`, and
+negative mean token log-probability are rank-equivalent aliases in these
+artifacts, not separate estimators. `10-sample sequence NLL` is unnormalized
+and remains a distinct, length-confounded method. P(True)-10 is retired: the
+active blind P(True) sees only the question and the low-temperature proposed
+answer.
+
 Run the GPU smoke before any full experiment:
 
 ```bash
@@ -53,26 +71,5 @@ blank labels per seed are excluded. P(True)-blind is best overall
 The full table, runtime provenance, and bootstrap comparison are in
 `bioasq_medical_uq_results_20260718.md`.
 
-## Superseded two-seed pilot (2026-07-18)
-
-The full no-evidence run completed with 100 questions, ten `T=1.0` samples,
-one `T=0.1` target answer, and seeds 31/47. Both Isambard jobs passed health
-checks (49:14 and 53:25). The sample is 44 factoid, 35 list, and 21 summary
-questions. Claude batches returned 98 valid labels per seed (56 incorrect, 42
-correct); two blank outputs per seed are excluded and were not retried further.
-
-AUROC, reported as seed 31 / seed 47, is:
-
-| Type | Discrete SE | P(True)-blind | P(True)-10 |
-|---|---:|---:|---:|
-| Overall | 0.729 / 0.759 | 0.781 / 0.824 | 0.717 / 0.758 |
-| Factoid | 0.682 / 0.758 | 0.763 / 0.794 | 0.734 / 0.775 |
-| List | 0.704 / 0.712 | 0.770 / 0.908 | 0.640 / 0.768 |
-| Summary | 0.500 / 0.462 | 0.823 / 0.709 | 0.484 / 0.484 |
-
-Weighted SE and number of clusters track discrete SE. On summary, sequence NLL
-(0.781 / 0.824) and token entropy (0.792 / 0.681) are more informative than
-SE. The high-temperature-answer condition does not improve P(True); it likely
-adds answer-sampling disagreement rather than reliable correctness evidence.
-This pilot established the protocol only. Its local raw downloads are archived;
-the Phase-1 result above is the current decision record.
+The superseded 100-question two-seed pilot is retained only in
+`../../archive_unused/docs/historical_results/bioasq_phase1_100q_pilot.md`.

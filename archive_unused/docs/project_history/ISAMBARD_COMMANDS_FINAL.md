@@ -1,8 +1,12 @@
 # Isambard Command Reference
 
-This is the single active operational guide for the current BioASQ/PubMedQA
-work. Completed Phase-1, Runpod, ArchEHR, and superseded setup commands are in
-`archive_unused/docs/project_history/` and must not be submitted unchanged.
+> Archived on 2026-08-17 after all authorized experiments completed. These are
+> provenance commands, not current run instructions. Use
+> `../../../PROJECT_CLOSEOUT.md` for the active reproducibility map.
+
+This was the final operational guide for the completed BioASQ/PubMedQA work.
+Earlier RunPod, ArchEHR, and superseded setup commands are also archived and
+must not be submitted unchanged.
 
 ## Connect from the local machine
 

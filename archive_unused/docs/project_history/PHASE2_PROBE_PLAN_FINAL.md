@@ -1,5 +1,9 @@
 # Phase 2 Probe Research Plan
 
+> Archived on 2026-08-17 after experimental closeout. This preserves the full
+> frozen plan and milestone history; use `../../../PROJECT_CLOSEOUT.md` for the
+> active scope and evidence map.
+
 Last updated: 2026-08-07
 
 ## Final status and research boundary
