@@ -60,6 +60,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--analysis-dir", type=Path, required=True)
     parser.add_argument("--expected-examples", type=int, default=500)
     parser.add_argument("--max-examples", type=int, default=None)
+    parser.add_argument(
+        "--selected-ids-path",
+        type=Path,
+        default=None,
+        help="Optional CSV manifest with one unique example_id per selected question.",
+    )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=TEMPERATURE,
+        help="Sampling temperature; all other accepted sampling settings remain frozen.",
+    )
     parser.add_argument("--model-name", default="google/gemma-3-12b-it")
     parser.add_argument("--nli-model-name", default=PUBMEDBERT_MNLI_MODEL)
     parser.add_argument("--max-new-tokens", type=int, default=192)
@@ -146,7 +158,21 @@ def load_frozen_v2_source(
             raise ValueError(f"Prediction {example_id} has invalid incorrect label {incorrect!r}.")
 
     ordered_ids = [str(row["id"]) for row in examples]
-    if args.max_examples is not None:
+    selected_ids_path = getattr(args, "selected_ids_path", None)
+    if selected_ids_path is not None and args.max_examples is not None:
+        raise ValueError("Use either selected_ids_path or max_examples, not both.")
+    if selected_ids_path is not None:
+        if not selected_ids_path.is_file():
+            raise FileNotFoundError(f"Selected-ID manifest is missing: {selected_ids_path}")
+        selection_rows = _read_csv(selected_ids_path)
+        selected_ids = [str(row.get("example_id") or "") for row in selection_rows]
+        if not selected_ids or "" in selected_ids or len(set(selected_ids)) != len(selected_ids):
+            raise ValueError("Selected-ID manifest contains an empty or duplicate example_id.")
+        unknown = sorted(set(selected_ids) - set(examples_by_id))
+        if unknown:
+            raise ValueError(f"Selected-ID manifest contains unknown IDs: {unknown[:3]}")
+        ordered_ids = selected_ids
+    elif args.max_examples is not None:
         if args.max_examples <= 0:
             raise ValueError("max_examples must be positive.")
         ordered_ids = ordered_ids[: args.max_examples]
@@ -159,6 +185,8 @@ def load_frozen_v2_source(
         "prompts": sha256_file(prompts_path),
         "transfer_predictions": sha256_file(predictions_path),
     }
+    if selected_ids_path is not None:
+        source_hashes["selected_ids_manifest"] = sha256_file(selected_ids_path)
     return selected_examples, selected_prompts, selected_predictions, source_hashes
 
 
@@ -188,13 +216,16 @@ def run_experiment(
         raise FileExistsError(f"Analysis directory is non-empty: {args.analysis_dir}")
 
     examples, prompts, source_predictions, source_hashes = load_frozen_v2_source(args)
+    temperature = float(getattr(args, "temperature", TEMPERATURE))
+    if not math.isfinite(temperature) or temperature <= 0:
+        raise ValueError("temperature must be a finite positive number.")
     if generator is None:
         generator = HuggingFaceCausalLMGenerator(
             GenerationConfig(
                 model_name=args.model_name,
                 num_samples=NUM_SAMPLES,
                 max_new_tokens=args.max_new_tokens,
-                temperature=TEMPERATURE,
+                temperature=temperature,
                 top_p=TOP_P,
                 top_k=TOP_K,
                 seed=SEED,
@@ -224,7 +255,7 @@ def run_experiment(
         model_name=args.model_name,
         generation_level="pubmedqa_context_v2_semantic_entropy_high_temperature",
         include_token_scores=True,
-        temperature=TEMPERATURE,
+        temperature=temperature,
         top_p=TOP_P,
         top_k=TOP_K,
         progress_callback=generation_progress,
@@ -357,7 +388,7 @@ def run_experiment(
         "model_name": args.model_name,
         "generation": {
             "num_samples": NUM_SAMPLES,
-            "temperature": TEMPERATURE,
+            "temperature": temperature,
             "top_p": TOP_P,
             "top_k": TOP_K,
             "seed": SEED,
@@ -375,6 +406,16 @@ def run_experiment(
             "generations": len(generations),
             "clusters": len(clusters),
             "analysis_predictions": len(analysis_predictions),
+        },
+        "selection": {
+            "selected_ids_path": (
+                str(args.selected_ids_path)
+                if getattr(args, "selected_ids_path", None) is not None
+                else None
+            ),
+            "selection_is_external_manifest": (
+                getattr(args, "selected_ids_path", None) is not None
+            ),
         },
         "result": metric_rows[0],
         "excluded_work": [
@@ -397,6 +438,7 @@ def main() -> int:
         result = run_experiment(args)
     except (
         FileNotFoundError,
+        FileExistsError,
         MissingGenerationDependency,
         RuntimeError,
         ValueError,

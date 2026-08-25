@@ -1,6 +1,6 @@
 # Phase 2 Probe Research Plan
 
-Last updated: 2026-08-06
+Last updated: 2026-08-07
 
 ## Final status and research boundary
 
@@ -17,11 +17,16 @@ separately authorized addition is also complete: the existing ten-sample
 Semantic Entropy method was run on the accepted 500-question PubMedQA
 Appendix-C context-v2 prompt. It obtained 0.5884 AUROC / 0.3674 AP without
 changing any low-temperature answer, correctness label, Probe, P(True),
-calibration mapping, model, prompt, or NLI rule. No other prompt, model-scale,
-Probe-training, type-specific, or clustering expansion is reopened; the
-experimental programme is closed.
+calibration mapping, model, prompt, or NLI rule. The final bounded
+temperature-sensitivity diagnostic is also complete: it reused the accepted
+`T=1.0` arm on a fixed 200-question `incorrect × gold-label` stratified subset
+and added only `T=0.7/1.3`. It found no clear SE-ranking effect within that
+range, while lower `T=0.7` increased single-cluster collapse. No prompt, label,
+model, seed, sample count, NLI, Probe, P(True), or calibration setting changed,
+and no other prompt, model-scale, Probe-training, type-specific, or clustering
+expansion is reopened.
 
-## Execution Status (updated 2026-08-06)
+## Execution Status (updated 2026-08-07)
 
 The single-answer artifact collector passed local unit/CLI/shell validation and
 a server-side interface preflight. The Isambard Gemma 3 environment reports 48
@@ -782,6 +787,18 @@ Official sources:
     provenance/health checks. Discrete SE obtained 0.5884 AUROC / 0.3674 AP;
     444/500 questions formed one semantic cluster. No v2 main answer, Probe,
     P(True), calibration, judging, or prompt selection was rerun.
+16. **Complete — PubMedQA-v2 SE temperature sensitivity:** jobs
+    5931810/5931811 completed `0:0`; the formal comparison used one
+    deterministic 200-row subset stratified by frozen
+    `incorrect × yes/no/maybe`, reused the exact `T=1.0` rows, and generated
+    only the `T=0.7/1.3` arms. AUROC was `0.5837/0.6213/0.5945` at
+    `T=0.7/1.0/1.3`. Relative to `T=1.0`, the `T=0.7` and `T=1.3` AUROC changes
+    were `-0.0376 [-0.0913,+0.0123]` and
+    `-0.0268 [-0.0774,+0.0213]`; AP and mean-SE intervals also crossed zero.
+    `T=0.7` increased the single-cluster fraction by 5 percentage points
+    `[+1.0,+9.5]`, but without a resolved ranking change. This supports no clear
+    temperature effect on SE performance within the tested range and cohort,
+    not a general claim of temperature invariance.
 
 ## Non-negotiable Boundaries
 

@@ -238,6 +238,39 @@ and artifact hashes are recorded in
 `archehr_sebaseline/docs/pubmedqa_frozen_probe_transfer.md` and
 `archehr_sebaseline/docs/experiment_runtime_log.md`.
 
+## Completed PubMedQA-v2 SE temperature sensitivity
+
+This diagnostic reuses accepted `T=1.0` and adds only `T=0.7/1.3` on a fixed
+200-question subset stratified by frozen `incorrect × yes/no/maybe`. Do not
+submit another temperature or regenerate the baseline arm.
+
+```text
+5931810  six-question runnability smoke, COMPLETED 0:0, 00:09:51
+5931811  formal 200-question job, COMPLETED 0:0, 04:10:11
+source revision: 5a302c1
+```
+
+Accepted input and new output roots are:
+
+```bash
+SOURCE_RUN="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/pubmedqa_context_appendix_c_v2_full500_seed31_20260722"
+SOURCE_ANALYSIS="$SCRATCHDIR/final_project/archehr_sebaseline/analysis_outputs/pubmedqa_context_appendix_c_v2_full500_seed31_20260722"
+BASELINE_SE_ANALYSIS="$SCRATCHDIR/final_project/archehr_sebaseline/analysis_outputs/pubmedqa_context_v2_se_full500_seed31_20260805"
+TEMP_RUN="$SCRATCHDIR/final_project/archehr_sebaseline/outputs/pubmedqa_v2_se_temperature_sensitivity_200_seed31_20260806"
+TEMP_ANALYSIS="$SCRATCHDIR/final_project/archehr_sebaseline/analysis_outputs/pubmedqa_v2_se_temperature_sensitivity_200_seed31_20260806"
+```
+
+The batch created the manifest once, ran both new temperature arms in separate
+Python processes, reused the matching baseline rows, applied 20,000 paired
+bootstrap resamples, and passed postflight for both 200-question/2,000-generation
+arms and the comparison summary. AUROC at `T=0.7/1.0/1.3` was
+`0.5837/0.6213/0.5945`; both paired differences versus `T=1.0` had intervals
+crossing zero. AP and mean-SE differences were also unresolved. `T=0.7`
+increased the single-cluster fraction by 5 percentage points, 95% CI
+`[+1.0,+9.5]`, without a resolved ranking change. Record this as no clear SE
+performance effect within the tested range and cohort, not general temperature
+invariance.
+
 ## Monitor jobs
 
 ```bash
@@ -247,6 +280,10 @@ sacct -j 5750742,5750745 \
 
 squeue -j 5921808,5921809 -o "%.18i %.30j %.2t %.12M %.20R %.24E"
 sacct -j 5921808,5921809 \
+  --format=JobID,JobName,State,ExitCode,Elapsed,Start,End,MaxRSS,AllocTRES%80
+
+squeue -j 5931810,5931811 -o "%.18i %.30j %.2t %.12M %.20R %.24E"
+sacct -j 5931810,5931811 \
   --format=JobID,JobName,State,ExitCode,Elapsed,Start,End,MaxRSS,AllocTRES%80
 
 tail -f pubmedqa-probe-xfer-5750742.out

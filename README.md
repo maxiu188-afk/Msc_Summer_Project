@@ -7,12 +7,15 @@ This repository studies:
 > Semantic Entropy, P(True), and hidden-state probes.**
 
 The three research phases, bounded diagnostics, supervisor-approved UQ closing
-evaluation, and one separately approved PubMedQA completion are complete. The
-completion adds ten-sample Semantic Entropy to the already accepted
-500-question PubMedQA Appendix-C context-v2 condition. It reuses the frozen
-prompt, low-temperature decision errors, model, and NLI configuration; it does
-not reopen prompt tuning, model-scale extension, Probe training, calibration,
-or correctness judging.
+evaluation, and the separately approved PubMedQA completions are complete. The
+final bounded temperature-sensitivity diagnostic reused the accepted `T=1.0`
+arm and added only `T=0.7/1.3` on one fixed 200-question subset. It found no
+resolved temperature effect on SE error-ranking performance over that range.
+The preceding PubMedQA completion added ten-sample Semantic Entropy to the
+already accepted 500-question PubMedQA Appendix-C context-v2 condition. Both
+additions reused the frozen prompt, low-temperature decision errors, model, and
+NLI configuration; neither reopened prompt tuning, model-scale extension,
+Probe training, calibration, or correctness judging.
 
 The thesis-oriented Chinese synthesis is
 [`RESEARCH_RESULTS_SYNTHESIS_ZH.md`](RESEARCH_RESULTS_SYNTHESIS_ZH.md).
@@ -118,6 +121,15 @@ this collapse alone cannot distinguish genuinely consistent answers from NLI
 over-merging. The BioASQ ten-sample normalized-NLL result remains omitted from
 the cross-dataset column because the PubMedQA NLL rows use one answer.
 
+A final paired diagnostic tested `T=0.7/1.0/1.3` on a deterministic stratified
+200-question subset. AUROC was `0.5837/0.6213/0.5945`; both changes relative to
+`T=1.0` had 95% bootstrap intervals crossing zero (`[-0.0913,+0.0123]` and
+`[-0.0774,+0.0213]`). AP and mean-SE changes were likewise unresolved. Lowering
+temperature to `0.7` did increase the single-cluster fraction by 5 percentage
+points, 95% CI `[+1.0,+9.5]`, but this did not produce a resolved ranking change.
+The supported conclusion is therefore no clear SE-performance effect within
+the tested range and cohort, not temperature invariance in general.
+
 ## Completed thesis-closing evaluation
 
 The final closing scope added validation-fitted calibration, selective
@@ -194,8 +206,9 @@ Primary documents:
 
 The supervisor-approved calibration/selective-prediction completion,
 correctness-label audit, zero-refit PubMedQA calibration transfer, and bounded
-PubMedQA-v2 Semantic Entropy addition are complete. No experimental scope
-remains open. The following remain closed:
+PubMedQA-v2 Semantic Entropy addition are complete. The final 200-question
+paired temperature diagnostic described above is also complete, so no
+experimental scope remains open. The following remain closed:
 
 - no additional PubMedQA prompt or error-case tuning;
 - no full 1B factoid/list expansion after the 8/50 and 3/50 feasibility

@@ -101,6 +101,8 @@ def _args(root: Path) -> SimpleNamespace:
         analysis_dir=root / "analysis",
         expected_examples=2,
         max_examples=None,
+        selected_ids_path=None,
+        temperature=1.0,
         model_name="google/gemma-3-12b-it",
         nli_model_name="pritamdeka/PubMedBERT-MNLI-MedNLI",
         max_new_tokens=192,
@@ -140,6 +142,32 @@ class PubMedQAV2SemanticEntropyTests(unittest.TestCase):
             _write_source(root, prompt_version="pubmedqa_context_explanation_v1")
             with self.assertRaisesRegex(ValueError, "context-v2"):
                 runner.load_frozen_v2_source(_args(root))
+
+    def test_manifest_selection_and_temperature_change_only_requested_arm(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            _write_source(root)
+            manifest = root / "manifest.csv"
+            with manifest.open("w", encoding="utf-8", newline="") as outfile:
+                writer = csv.DictWriter(outfile, fieldnames=["example_id"])
+                writer.writeheader()
+                writer.writerow({"example_id": "2"})
+                writer.writerow({"example_id": "1"})
+            args = _args(root)
+            args.selected_ids_path = manifest
+            args.temperature = 0.7
+            result = runner.run_experiment(
+                args,
+                generator=StaticGenerator(["no. Unsupported.", "maybe. Mixed."]),
+                nli_scorer=ExactTextScorer(),
+            )
+            generations = runner.read_jsonl(root / "output" / "generations.jsonl")
+
+        self.assertEqual(result["rows"]["examples"], 2)
+        self.assertEqual(result["generation"]["temperature"], 0.7)
+        self.assertTrue(result["selection"]["selection_is_external_manifest"])
+        self.assertEqual([row["example_id"] for row in generations[::10]], ["2", "1"])
+        self.assertEqual({row["temperature"] for row in generations}, {0.7})
 
 
 if __name__ == "__main__":
