@@ -62,7 +62,16 @@ reproducibility, not as an instruction to rerun experiments.
 The generic `scripts/run_level4.py` and `scripts/check_level4_outputs.py`
 remain active because the accepted BioASQ batch wrapper calls them. Early
 ArchEHR/Level-3 command-line wrappers and completed RunPod transport scripts
-have moved to `archive_unused/scripts/` without deleting their source history.
+are now in the local-only `.local_archive/` together with other superseded or
+exploratory code. That directory is ignored by Git and is not part of the
+GitHub repository.
+
+The maintained tree intentionally excludes the third-party
+`semantic_uncertainty` reference checkout, early ArchEHR/Level-3 pipelines,
+superseded BioASQ judge routes, completed one-off repair utilities, the
+post-hoc feature-fusion analysis, and the one-time summary-clustering extension.
+Their source paths are preserved inside the dated local archive so the cleanup
+is reversible on this machine.
 
 ## Data and result boundary
 
@@ -71,6 +80,8 @@ environments, caches, and local literature are intentionally outside Git. They
 were not moved or deleted during the closeout cleanup. Accepted result
 documents retain job IDs, artifact locations, and hashes needed to bind claims
 to those local or Isambard artifacts.
+Archived code is also outside Git under `.local_archive/`; it must not be
+reintroduced into a commit without an explicit decision to restore a route.
 The NLL probability-quality supplement is stored at
 `archehr_sebaseline/analysis_outputs/bioasq_phase2_uq_calibration_nll_supplement_20260827/`;
 its summary binds the unchanged validation/test UQ hashes and records that test
@@ -88,8 +99,8 @@ workflow:
 - `archive_unused/docs/project_history/ISAMBARD_COMMANDS_FINAL.md`: completed
   server command notebook;
 - `archive_unused/docs/historical_results/`: pilots and non-current results;
-- `archive_unused/scripts/`: superseded command-line and provider-specific
-  scripts.
+- `.local_archive/2026-08-27-code-cleanup/`: local-only source archive, excluded
+  from GitHub by `.gitignore`.
 
 Archived commands may contain historical paths and must not be treated as
 current run instructions.

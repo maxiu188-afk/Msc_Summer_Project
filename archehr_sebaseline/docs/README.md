@@ -72,9 +72,11 @@ define additional research claims.
 ## Archived exploration
 
 Superseded meeting briefs, early pilots, question-only PubMedQA transfer, and
-post-hoc feature-fusion diagnostics are under `../../archive_unused/`. The
-complete Phase-2 plan and the older mixed-status package README are also
-archived there now that experiments are frozen.
+the report for the post-hoc feature-fusion diagnostic are under
+`../../archive_unused/`. The complete Phase-2 plan and the older mixed-status
+package README are also archived there now that experiments are frozen.
+Superseded and exploratory source code is kept only in the ignored local
+`../../.local_archive/` and is not part of GitHub.
 In particular:
 
 - `../../archive_unused/docs/historical_results/feature_fusion_diagnostics_20260728.md`
