@@ -19,6 +19,10 @@ Probe training, calibration, or correctness judging.
 A final saved-artifact selective-prediction supplement then froze operating
 thresholds on BioASQ validation and applied them unchanged to test; it required
 no model generation or refitting.
+A final offline probability-quality supplement also added the already-saved
+10-sample normalized NLL score under the same validation-only calibration
+protocol. It did not regenerate answers or extend the separate
+validation-fixed operating-point experiment.
 
 The thesis-oriented Chinese synthesis is
 [`RESEARCH_RESULTS_SYNTHESIS_ZH.md`](RESEARCH_RESULTS_SYNTHESIS_ZH.md).
@@ -145,14 +149,16 @@ prompt selection.
 | Accuracy-Probe | **0.8058** | **0.1776** | 0.0891 | **0.2780** |
 | Blind P(True) | 0.7900 | 0.2156 | 0.1922 | 0.2909 |
 | Semantic Entropy | 0.7484 | 0.1839 | **0.0298** | 0.2799 |
+| 10-sample normalized NLL | 0.7382 | 0.1936 | 0.0493 | 0.2870 |
 | P(True)-Probe | 0.7452 | 0.2001 | 0.0984 | 0.2905 |
 
 Accuracy-Probe ranks error significantly better than SE, while their Brier,
 log-loss, and AURAC differences remain unresolved. SE has the lowest ECE and
 is the only method whose global calibrator beats the type-prevalence baseline
-on list questions. All three single-answer BioASQ mappings have negative Brier
-skill when transferred unchanged to PubMedQA, so ranking transfer is not
-calibration transfer.
+on list questions. The auxiliary NLL row completes the probability-quality
+comparison without changing the primary-method bootstrap conclusions. All
+three single-answer BioASQ mappings have negative Brier skill when transferred
+unchanged to PubMedQA, so ranking transfer is not calibration transfer.
 
 The validation-fixed operating-point supplement shows the deployment boundary
 behind those curves. At the nominal 0.80 coverage target, achieved test
@@ -162,7 +168,8 @@ and P(True)-Probe, with retained risks `0.581/0.601/0.567/0.590` versus
 lowest achieved coverage, so this is not a pairwise superiority claim. SE's
 0.95 validation threshold retains all test examples because of boundary ties,
 and the same global 0.80 thresholds produce much lower coverage on list than
-summary questions. Full protocol and conditional bootstrap intervals are in
+summary questions. NLL was not added to this separate operating-point
+supplement. Full protocol and conditional bootstrap intervals are in
 [`phase2_uq_calibration_completion.md`](archehr_sebaseline/docs/phase2_uq_calibration_completion.md).
 
 The blinded correctness audit reviewed 90 answers, balanced 30 per type. Human

@@ -31,7 +31,8 @@ Start with:
 - `phase2_uq_calibration_completion.md`: completed supervisor-approved closing
   evaluation for validation-fitted calibration, selective prediction,
   validation-fixed deployment operating points, correctness-label audit, label
-  sensitivity, and zero-refit PubMedQA calibration transfer.
+  sensitivity, zero-refit PubMedQA calibration transfer, and the saved-artifact
+  10-sample normalized-NLL probability-quality supplement.
 - `pubmedqa_frozen_probe_transfer.md`: bounded frozen-Probe transfer under the
   official PubMedQA evidence context, including comparison with blind P(True),
   verbalized confidence, NLL, and token-entropy baselines, plus the completed
@@ -89,7 +90,9 @@ into the main narrative without a new explicit research decision.
 The supervisor-approved calibration, selective-prediction, correctness-audit,
 zero-refit transfer analysis, bounded PubMedQA context-v2 Semantic Entropy row,
 fixed 200-question paired temperature diagnostic, and validation-fixed
-selective-prediction operating-point supplement are complete. Do not
+selective-prediction operating-point supplement are complete. The saved
+10-sample normalized-NLL probability-quality row is also complete and does not
+extend the operating-point experiment. Do not
 retune prompts, expand the model grid, train new Probes, extend 1B factoid/list,
 or open any other clustering work. The temperature diagnostic changed no other
 protocol field and found no clear SE-ranking effect over `T=0.7–1.3`; future

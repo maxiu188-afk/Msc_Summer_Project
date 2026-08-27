@@ -4,7 +4,9 @@
 The scalar calibration models are fitted once on the labelled Phase-2
 validation split and applied unchanged to the Phase-2 test split.  The same
 BioASQ-fitted mappings can optionally be applied to PubMedQA as a zero-refit
-calibration-transfer diagnostic.
+calibration-transfer diagnostic. Ten-sample normalized NLL is retained as an
+auxiliary BioASQ comparator because the matched validation/test UQ files
+already contain the score.
 """
 
 from __future__ import annotations
@@ -27,10 +29,13 @@ METHOD_FIELDS = {
     "blind_p_true": "blind_p_true_uncertainty",
     "accuracy_probe": "accuracy_probe",
     "p_true_probe": "p_true_probe",
+    "ten_sample_normalized_nll": "normalized_nll_10_samples",
 }
 PRIMARY_METHODS = ("discrete_semantic_entropy", "blind_p_true", "accuracy_probe")
-ALL_METHODS = PRIMARY_METHODS + ("p_true_probe",)
+AUXILIARY_METHODS = ("p_true_probe", "ten_sample_normalized_nll")
+ALL_METHODS = PRIMARY_METHODS + AUXILIARY_METHODS
 NATIVE_PROBABILITY_METHODS = ("blind_p_true", "accuracy_probe", "p_true_probe")
+UQ_FILE_METHODS = ("discrete_semantic_entropy", "ten_sample_normalized_nll")
 PUBMEDQA_FIELDS = {
     "blind_p_true": "p_true_blind_uncertainty",
     "accuracy_probe": "accuracy_probe_score",
@@ -54,7 +59,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--exclude-semantic-entropy",
         action="store_true",
-        help="Run the predeclared interim analysis for P(True)/Probes only.",
+        help=(
+            "Run the predeclared interim analysis for P(True)/Probes only; "
+            "this also excludes sampled NLL because no matched UQ file is required."
+        ),
     )
     parser.add_argument("--pubmedqa-predictions", type=Path, default=None)
     parser.add_argument("--output-dir", type=Path, required=True)
@@ -140,6 +148,7 @@ def write_plots(
         "blind_p_true": "Blind P(True)",
         "p_true_probe": "P(True)-Probe",
         "discrete_semantic_entropy": "Semantic Entropy",
+        "ten_sample_normalized_nll": "10-sample normalized NLL",
     }
     methods = [method for method in ALL_METHODS if any(row["method"] == method for row in reliability_rows)]
 
@@ -259,12 +268,14 @@ def load_split(
         raise ValueError(f"{split} labels do not contain both classes.")
     scores: dict[str, np.ndarray] = {}
     for method in methods:
-        if method == "discrete_semantic_entropy":
+        if method in UQ_FILE_METHODS:
             if uq is None:
                 raise ValueError(
-                    f"{split} Semantic Entropy requires the matched UQ-score file."
+                    f"{split} {method} requires the matched UQ-score file."
                 )
-            values = [uq[str(row["example_id"])]["discrete_semantic_entropy"] for row in ordered]
+            values = [
+                uq[str(row["example_id"])][METHOD_FIELDS[method]] for row in ordered
+            ]
         else:
             values = [row[METHOD_FIELDS[method]] for row in ordered]
         scores[method] = finite_array(values, name=f"{split} {method}")
@@ -531,12 +542,15 @@ def main() -> int:
         if args.exclude_semantic_entropy
         else PRIMARY_METHODS
     )
-    active_methods = active_primary_methods + ("p_true_probe",)
+    active_auxiliary_methods = (
+        ("p_true_probe",) if args.exclude_semantic_entropy else AUXILIARY_METHODS
+    )
+    active_methods = active_primary_methods + active_auxiliary_methods
     if not args.exclude_semantic_entropy and (
         args.validation_uq_scores is None or args.test_uq_scores is None
     ):
         raise ValueError(
-            "Semantic Entropy analysis requires --validation-uq-scores and "
+            "Semantic Entropy/NLL analysis requires --validation-uq-scores and "
             "--test-uq-scores."
         )
     base_rows = read_csv(args.phase2_predictions.resolve())
@@ -575,7 +589,15 @@ def main() -> int:
                 "dataset": "bioasq_test",
                 "method": method,
                 "calibration": "validation_logistic",
-                "role": "primary" if method in active_primary_methods else "auxiliary_cross_target",
+                "role": (
+                    "primary"
+                    if method in active_primary_methods
+                    else (
+                        "auxiliary_cross_target"
+                        if method == "p_true_probe"
+                        else "auxiliary_comparator"
+                    )
+                ),
                 **method_metrics(test["labels"], raw, probability, bins=args.bins),
             }
         )
@@ -673,12 +695,13 @@ def main() -> int:
     if args.pubmedqa_predictions is not None:
         inputs["pubmedqa_predictions"] = args.pubmedqa_predictions.resolve()
     summary = {
-        "schema_version": "phase2_uq_calibration_v1",
-        "status": "partial_without_semantic_entropy" if args.exclude_semantic_entropy else "complete",
+        "schema_version": "phase2_uq_calibration_v2",
+        "status": "partial_without_sampled_uq" if args.exclude_semantic_entropy else "complete",
         "target": "incorrect=1",
         "primary_methods": list(active_primary_methods),
-        "auxiliary_method": "p_true_probe",
+        "auxiliary_methods": list(active_auxiliary_methods),
         "semantic_entropy_included": not args.exclude_semantic_entropy,
+        "ten_sample_normalized_nll_included": not args.exclude_semantic_entropy,
         "calibration_fit_split": "validation",
         "evaluation_split": "test",
         "test_used_for_fitting_or_selection": False,
@@ -696,6 +719,7 @@ def main() -> int:
     write_json(output_dir / "summary.json", summary, overwrite=args.overwrite)
     print(
         f"calibration=PASS validation=384 test=384 se={not args.exclude_semantic_entropy} "
+        f"nll={not args.exclude_semantic_entropy} "
         f"pubmedqa={summary['rows']['pubmedqa']} "
         f"output={output_dir}"
     )

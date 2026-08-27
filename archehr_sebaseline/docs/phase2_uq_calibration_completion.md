@@ -1,6 +1,6 @@
 # Phase-2 UQ Calibration and Selective-Prediction Completion
 
-Last updated: 2026-08-20
+Last updated: 2026-08-27
 
 ## Decision and status
 
@@ -29,6 +29,11 @@ A separately authorized saved-artifact supplement later tested whether
 validation-selected selective-prediction thresholds preserve their operating
 points on test. That offline supplement is complete and does not reopen model
 generation, Probe training, calibration, or any other experimental scope.
+On 2026-08-27, a further authorized saved-artifact supplement added the
+already-collected `10-sample normalized NLL` to the BioASQ probability-quality
+comparison. It uses the same validation-only calibration and frozen test
+evaluation, requires no answer generation or judging, and does not add NLL to
+the separate validation-fixed operating-point experiment.
 
 ## Common target and methods
 
@@ -41,10 +46,15 @@ low-temperature main answer.
 | Primary | Blind P(True) | `1 - P(True)` from the fixed continuation prompt |
 | Primary | Accuracy-Probe | frozen block-24/LT probability of Claude incorrect |
 | Auxiliary | P(True)-Probe | frozen block-24/LT probability of high P(True)-derived uncertainty |
+| Auxiliary | 10-sample normalized NLL | mean per-token NLL over the ten `T=1.0` samples |
 
 P(True)-Probe remains an auxiliary cross-target method for correctness. Its
 separate fidelity to the train-derived P(True) target is not redefined by this
-analysis.
+analysis. Ten-sample normalized NLL is an auxiliary comparator so the
+probability-quality table covers the same sampled token baseline already
+reported in the Phase-2 ranking, efficiency, and model-scale sections. It also
+restores NLL-family coverage consistent with the cross-dataset comparison while
+preserving the distinction from PubMedQA's single-answer NLL.
 
 ## Frozen splits
 
@@ -91,8 +101,9 @@ Primary test outputs are:
 
 Question-type results use the same global validation-fitted calibrator. No
 type-specific calibration model, Probe, layer, token, or threshold is fitted.
-Raw SE is not a probability and therefore receives no uncalibrated Brier/ECE
-claim. Native `[0,1]` P(True)/Probe scores are retained as diagnostics.
+Raw SE and NLL are not probabilities and therefore receive no uncalibrated
+Brier/ECE claim. Native `[0,1]` P(True)/Probe scores are retained as
+diagnostics.
 
 ## Correctness-label audit
 
@@ -177,7 +188,7 @@ SE result.
 
 ### BioASQ test calibration
 
-The four scalar mappings were fitted on all 384 valid-labelled validation
+The five scalar mappings were fitted on all 384 valid-labelled validation
 questions and applied unchanged to the 384 valid-labelled test questions.
 
 | Method | AUROC | Calibrated Brier | Brier skill | Log loss | 10-bin ECE | AURAC 0.5--1.0 |
@@ -185,6 +196,7 @@ questions and applied unchanged to the 384 valid-labelled test questions.
 | Accuracy-Probe | **0.8058** | **0.1776** | **0.2125** | 0.5386 | 0.0891 | **0.2780** |
 | Blind P(True) | 0.7900 | 0.2156 | 0.0444 | 0.6174 | 0.1922 | 0.2909 |
 | Semantic Entropy | 0.7484 | 0.1839 | 0.1847 | **0.5341** | **0.0298** | 0.2799 |
+| 10-sample normalized NLL | 0.7382 | 0.1936 | 0.1419 | 0.5645 | 0.0493 | 0.2870 |
 | P(True)-Probe | 0.7452 | 0.2001 | 0.1131 | 0.5860 | 0.0984 | 0.2905 |
 
 The test-prevalence constant has Brier `0.2256`. Before validation calibration,
@@ -217,10 +229,14 @@ estimate. Relative to blind P(True), SE is significantly better on Brier, log
 loss, and AURAC even though their AUROC difference remains unresolved.
 Accuracy-Probe retains its bootstrap-supported Brier, log-loss, and AURAC
 advantage over blind P(True), while their AUROC difference remains unresolved.
+The auxiliary NLL comparator ranks below all four existing methods by AUROC,
+but after validation calibration it has better Brier, log loss, ECE, and AURAC
+point estimates than blind P(True) and P(True)-Probe. No new pairwise bootstrap
+claim was added because the frozen primary-method comparison remains unchanged.
 
 At 80% coverage, retained error risk is `0.5779` for SE, `0.5877` for
-Accuracy-Probe, `0.6006` for blind P(True), and `0.5942` for P(True)-Probe,
-versus `0.6563` at full coverage.
+Accuracy-Probe, `0.5909` for 10-sample normalized NLL, `0.6006` for blind
+P(True), and `0.5942` for P(True)-Probe, versus `0.6563` at full coverage.
 
 ### Validation-fixed selective-prediction operating points
 
@@ -305,14 +321,15 @@ One global validation-fitted mapping was used for every type.
 | Semantic Entropy | +0.1221 | **+0.1666** | +0.0350 |
 | Accuracy-Probe | +0.1553 | -0.1344 | +0.1613 |
 | Blind P(True) | -0.0036 | -0.3834 | -0.0428 |
+| 10-sample normalized NLL | **+0.2047** | -0.5169 | +0.0123 |
 | P(True)-Probe | +0.0571 | -0.2365 | +0.0326 |
 
 List error prevalence is `0.9029`, compared with `0.5886` for factoid and
 `0.5366` for summary. SE is the only method whose global calibrator beats the
-type-prevalence constant on list, while Accuracy-Probe is strongest on factoid
-and summary. This extends the answer-form conclusion from ranking to
-calibration: method suitability remains answer-form dependent. No type-specific
-calibrator is fitted post hoc.
+type-prevalence constant on list. NLL has the strongest factoid Brier-skill
+point estimate, while Accuracy-Probe is strongest on summary. This extends the
+answer-form conclusion from ranking to calibration: method suitability remains
+answer-form dependent. No type-specific calibrator is fitted post hoc.
 
 ### PubMedQA zero-refit transfer
 
@@ -341,6 +358,22 @@ analysis_outputs/bioasq_phase2_uq_calibration_full_20260801/
   risk_coverage.svg
   paired_bootstrap.csv
   pubmedqa_transfer_metrics.csv
+  summary.json
+```
+
+The NLL supplement is preserved separately so the accepted 2026-08-01 snapshot
+is not overwritten:
+
+```text
+analysis_outputs/bioasq_phase2_uq_calibration_nll_supplement_20260827/
+  metrics_overall.csv
+  metrics_by_type.csv
+  reliability_bins.csv
+  reliability_diagram.svg
+  risk_coverage.csv
+  risk_coverage.svg
+  calibrated_predictions.csv
+  paired_bootstrap.csv
   summary.json
 ```
 
