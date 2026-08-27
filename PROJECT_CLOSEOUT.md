@@ -1,6 +1,6 @@
 # Project Closeout and Reproducibility Map
 
-Last updated: 2026-08-20
+Last updated: 2026-08-27
 
 ## Status
 
@@ -9,6 +9,10 @@ No prompt tuning, model extension, Probe training, calibration refit, clustering
 expansion, or additional PubMedQA temperature run is currently planned.
 The separately approved validation-fixed selective-prediction operating-point
 analysis is complete and required no model generation, training, or refitting.
+A separately authorized offline supplement has also added the already-saved
+10-sample normalized NLL score to the BioASQ probability-quality comparison
+under the same validation-only calibration protocol. It does not extend the
+validation-fixed operating-point experiment.
 
 This file is the concise operational replacement for the completed Phase-2
 plan, the Isambard command notebook, and the chronological runtime log. Their
@@ -67,6 +71,10 @@ environments, caches, and local literature are intentionally outside Git. They
 were not moved or deleted during the closeout cleanup. Accepted result
 documents retain job IDs, artifact locations, and hashes needed to bind claims
 to those local or Isambard artifacts.
+The NLL probability-quality supplement is stored at
+`archehr_sebaseline/analysis_outputs/bioasq_phase2_uq_calibration_nll_supplement_20260827/`;
+its summary binds the unchanged validation/test UQ hashes and records that test
+was not used for fitting or selection.
 
 ## Historical provenance
 

@@ -1,6 +1,6 @@
 # 临床 QA 不确定性方法适用条件：三阶段结果总览
 
-更新时间：2026-08-07
+更新时间：2026-08-27
 
 ## 研究主题
 
@@ -21,6 +21,9 @@ selective prediction、正确性标签人工审核和零重校准 PubMedQA trans
 selective prediction、PubMedQA transfer 和正确性标签人工审核现已全部完成。
 之后单独批准的 PubMedQA SE 温度敏感性诊断也已完成；在固定 200 题和
 `T=0.7–1.3` 范围内，未发现 SE 排序表现受到明显影响。论文收尾实验到此冻结。
+2026-08-27 又用已有 validation/test 分数补齐了 `10-sample normalized NLL`
+的概率质量比较；该补充不重新生成答案、不重做标签，也不扩展另一个
+validation-fixed operating-point 实验。
 
 ## 四个连续结论
 
@@ -266,7 +269,7 @@ SE”，而应限定为本次测试范围内没有检测到明显的 SE 表现�
 
 ### Calibration 与 selective prediction 结果
 
-四个分数采用同一协议：在 384 个 BioASQ validation 样本上拟合一维
+五个分数采用同一协议：在 384 个 BioASQ validation 样本上拟合一维
 logistic calibration，只在 384 个 test 样本上评估，目标统一为
 `incorrect=1`。
 
@@ -275,6 +278,7 @@ logistic calibration，只在 384 个 test 样本上评估，目标统一为
 | Accuracy-Probe | **0.8058** | **0.1776** | **0.2125** | 0.5386 | 0.0891 | **0.2780** |
 | Blind P(True) | 0.7900 | 0.2156 | 0.0444 | 0.6174 | 0.1922 | 0.2909 |
 | Semantic Entropy | 0.7484 | 0.1839 | 0.1847 | **0.5341** | **0.0298** | 0.2799 |
+| `10-sample normalized NLL` | 0.7382 | 0.1936 | 0.1419 | 0.5645 | 0.0493 | 0.2870 |
 | P(True)-Probe | 0.7452 | 0.2001 | 0.1131 | 0.5860 | 0.0984 | 0.2905 |
 
 20,000 次配对 bootstrap 得到：
@@ -291,6 +295,11 @@ AUROC 优势为 `+0.05745 [+0.00528,+0.10949]`，但 Brier、log loss 和 AURAC
 区间支持的优势。因此，ranking、calibration 和 selective prediction 不会
 产生完全相同的方法排序。
 
+NLL 的 AUROC 点估计低于其余四种方法，但经 validation calibration 后，
+Brier、log loss、ECE 和 AURAC 点估计均优于 blind P(True) 与
+P(True)-Probe。它是补齐比较范围的辅助 comparator，不改变三种 primary
+方法的 20,000 次配对 bootstrap 结论，也没有新增事后显著性声明。
+
 随后批准的离线 operating-point 补充没有在 test 内重新取固定比例，而是在
 384 个 validation 样本上冻结 `0.80/0.90/0.95` coverage 阈值，再原样应用到
 384 个 test 样本。`0.80` 目标下，SE、blind P(True)、Accuracy-Probe 和
@@ -301,11 +310,13 @@ coverage 不同，这些风险不能直接解释为方法间显著优胜。SE �
 阈值粒度限制；同一个全局 `0.80` 阈值还让 list coverage 仅为
 `0.417–0.650`，而 summary 为 `0.951–1.000`。这是一项部署覆盖差异诊断，
 没有拟合题型专属阈值。
+这一 validation-fixed operating-point 补充仍只包含原四种方法；本次 NLL
+补充只属于前面的实验一，不追加实验二。
 
 分题型 Brier skill 进一步显示：SE 在 list 上为 `+0.1666`，是唯一超过该
-题型 prevalence baseline 的方法；Accuracy-Probe 在 factoid 和 summary 上
-分别为 `+0.1553` 和 `+0.1613`，表现最好。这把“方法表现依赖答案形式”的
-主结论从 ranking 扩展到了 calibration。
+题型 prevalence baseline 的方法；NLL 在 factoid 上为 `+0.2047`，
+Accuracy-Probe 在 summary 上为 `+0.1613`，分别取得最高点估计。这把“方法
+表现依赖答案形式”的主结论从 ranking 扩展到了 calibration。
 
 把 BioASQ 拟合的 calibration mapping 原样应用到 PubMedQA v2 后，blind
 P(True)、Accuracy-Probe 和 P(True)-Probe 的 Brier skill 分别为
@@ -422,6 +433,8 @@ Claude 的 API 成本、延迟和直接判断的非传递性使其不适合作�
   PubMedQA calibration transfer 均已完成。
 - validation-fixed selective-prediction operating-point 补充已完成；不再追加
   阈值调参或题型专属策略。
+- `10-sample normalized NLL` 的 probability-quality 辅助行已用保存产物补齐；
+  不追加 NLL 的 validation-fixed operating-point 实验。
 
 下一阶段是把现有证据写入 Results、Discussion 和 Limitations，不继续增加
 无关实验分支。除非导师明确开启一个独立的新想法，否则实验保持冻结。

@@ -83,6 +83,7 @@ class Phase2UQCalibrationTests(unittest.TestCase):
                 {
                     "example_id": example_id,
                     "discrete_semantic_entropy": score,
+                    "normalized_nll_10_samples": score * 2.0,
                     "p_true_probe_uncertainty": score,
                     "accuracy_probe_uncertainty": score,
                     "blind_p_true_uncertainty": score,
@@ -94,6 +95,10 @@ class Phase2UQCalibrationTests(unittest.TestCase):
             loaded = calibration.load_split(base_rows, uq_path, "validation")
         self.assertEqual(len(loaded["example_ids"]), 384)
         self.assertEqual(set(loaded["scores"]), set(calibration.ALL_METHODS))
+        np.testing.assert_allclose(
+            loaded["scores"]["ten_sample_normalized_nll"],
+            2.0 * loaded["scores"]["discrete_semantic_entropy"],
+        )
 
     def test_load_split_can_run_non_se_analysis_without_uq_file(self) -> None:
         base_rows = []
