@@ -22,15 +22,6 @@ SPEC = importlib.util.spec_from_file_location("summary_length_comparison", ANALY
 assert SPEC is not None and SPEC.loader is not None
 ANALYSIS = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(ANALYSIS)
-REPAIR_PATH = (
-    PROJECT_ROOT / "scripts" / "repair_summary_length_sentence_counts.py"
-)
-REPAIR_SPEC = importlib.util.spec_from_file_location(
-    "summary_length_sentence_repair", REPAIR_PATH
-)
-assert REPAIR_SPEC is not None and REPAIR_SPEC.loader is not None
-REPAIR = importlib.util.module_from_spec(REPAIR_SPEC)
-REPAIR_SPEC.loader.exec_module(REPAIR)
 
 
 class SummaryLengthTests(unittest.TestCase):
@@ -174,42 +165,6 @@ class SummaryLengthTests(unittest.TestCase):
         self.assertEqual(
             summary["paired_correctness_counts"]["missing_paired_label"], 1
         )
-
-    def test_sentence_repair_changes_only_derived_fields(self) -> None:
-        scores = [
-            {
-                "example_id": "q1",
-                "blind_p_true_uncertainty": "0.2",
-                "discrete_semantic_entropy": "0.3",
-                "main_word_count": "999",
-                "main_sentence_count": "999",
-                "main_one_or_two_sentence_compliant": "0",
-                "sample_word_count_mean": "999",
-                "sample_sentence_count_mean": "999",
-                "sample_one_or_two_sentence_compliance_rate": "0",
-            }
-        ]
-        main = [
-            {
-                "example_id": "q1",
-                "clean_answer": "C. elegans is widely studied. It is a model organism.",
-            }
-        ]
-        samples = [
-            {
-                "example_id": "q1",
-                "sample_id": index,
-                "clean_answer": "C. elegans is widely studied. It is a model organism.",
-            }
-            for index in range(10)
-        ]
-        repaired = REPAIR.recompute_condition_rows(scores, main, samples)[0]
-        self.assertEqual(repaired["blind_p_true_uncertainty"], "0.2")
-        self.assertEqual(repaired["discrete_semantic_entropy"], "0.3")
-        self.assertEqual(repaired["main_sentence_count"], 2)
-        self.assertEqual(repaired["main_one_or_two_sentence_compliant"], 1)
-        self.assertEqual(repaired["sample_one_or_two_sentence_compliance_rate"], 1.0)
-
 
 if __name__ == "__main__":
     unittest.main()

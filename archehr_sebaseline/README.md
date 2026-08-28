@@ -37,9 +37,9 @@ The package covers:
   paired-bootstrap analyses, including validation-fixed deployment operating
   points.
 
-ArchEHR-QA library modules remain in `src/` and continue to have regression
-coverage, but their old command-line wrappers are archived because ArchEHR was
-not the final research benchmark.
+Early ArchEHR-QA and Level-3 library routes are locally archived because they
+were not part of the final BioASQ/PubMedQA research path. Shared utilities still
+used by Level-4 remain in `src/` with regression coverage.
 
 ## Environment
 
@@ -73,9 +73,9 @@ are:
 - PubMedQA: frozen transfer, context-v2 SE, and temperature-sensitivity scripts.
 
 `scripts/run_level4.py` and `scripts/check_level4_outputs.py` are retained
-because the accepted BioASQ batch wrapper invokes them. Files under
-`../archive_unused/scripts/` are provenance only and are not maintained entry
-points. The old RunPod-specific requirements file moved with those scripts.
+because the accepted BioASQ batch wrapper invokes them. Superseded and
+exploratory code, including old RunPod scripts, is preserved under the ignored
+`../.local_archive/` and does not appear in the GitHub tree.
 
 ## Tests
 

@@ -10,9 +10,10 @@ and neither should be presented as a primary project result.
 
 Source experiment: final 1,000-question Phase-1 BioASQ runs, seeds 31 and 47.
 
-The CPU-only `analysis/run_uq_feature_fusion.py` analysis used repeated
-five-fold out-of-fold logistic regression and 2,000 paired bootstrap
-resamples. It did not change any generated answer or UQ artifact.
+The CPU-only feature-fusion analysis used repeated five-fold out-of-fold
+logistic regression and 2,000 paired bootstrap resamples. It did not change any
+generated answer or UQ artifact. Its completed exploratory script is retained
+only in the local code archive and is no longer Git-tracked.
 
 | Comparison with blind P(True) | Seed 31 AUROC change (95% CI) | Seed 47 AUROC change (95% CI) |
 | --- | ---: | ---: |

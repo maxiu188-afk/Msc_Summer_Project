@@ -1,9 +1,11 @@
-# Archived and Unused Material
+# Archived Documentation and Evidence
 
 This is the single repository-wide holding area for material that is no longer
-part of the active research workflow but is retained for provenance or possible
-future inspection. Moving a file here means **do not use it as current evidence
-or as an active run instruction**.
+part of the active research workflow but is retained on GitHub for provenance
+or possible future inspection. Moving a document or compact evidence snapshot
+here means **do not use it as current evidence or as an active run
+instruction**. Archived code belongs in the ignored local `.local_archive/`,
+not in this tracked directory.
 
 ## Layout
 
@@ -11,7 +13,6 @@ or as an active run instruction**.
 - `docs/historical_results/`: result reports that are not comparable with the
   current BioASQ/PubMedQA protocol.
 - `docs/literature_extracts/`: generated paper-text snapshots and old notes.
-- `scripts/`: superseded command-line, Slurm, and provider-specific wrappers.
 - `data/`: obsolete or superseded local data. Generated data remain ignored by
   Git; record their origin in `data/README.md` before placing them here.
 - `results/`: obsolete generated outputs and server-result snapshots. Large or
@@ -20,11 +21,14 @@ or as an active run instruction**.
 ## Rules for future use
 
 1. Do not delete research artifacts merely because they are no longer active;
-   move them into the matching subdirectory here.
+   move documents or compact evidence into the matching subdirectory here and
+   move code into `.local_archive/`.
 2. Add a short reason, source path, and archive date to the nearest README.
 3. Never place credentials, model weights, virtual environments, caches, or
    restricted datasets here.
 4. Current documentation belongs in `archehr_sebaseline/docs/`, with the
    repository-level map in `PROJECT_CLOSEOUT.md`; only one active document
    should own each protocol or result.
-5. Archived commands may contain stale paths and must be revalidated before use.
+5. Historical documents may name commands that are now only in the local code
+   archive. Those commands contain stale paths and must be revalidated before
+   any restoration or use.

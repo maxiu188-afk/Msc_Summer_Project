@@ -26,6 +26,10 @@ Thumbs.db
 .agents/
 .codex/
 
+# Local-only provenance archive. Archived code is intentionally excluded from
+# GitHub; see PROJECT_CLOSEOUT.md for the maintained-code boundary.
+.local_archive/
+
 archehr_sebaseline/outputs/
 # Raw datasets and derived local split manifests are reproducible but too large
 # or machine-local to commit.

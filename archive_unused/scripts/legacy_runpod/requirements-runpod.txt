@@ -1,7 +1,0 @@
-# The Runpod PyTorch template already provides a CUDA-enabled torch build.
-# Keep that build instead of letting pip replace it with a CPU-only wheel.
-transformers>=4.50.0
-huggingface_hub>=0.30.0
-sentencepiece
-protobuf
-tiktoken

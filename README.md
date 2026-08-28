@@ -248,9 +248,9 @@ The project now returns to thesis and supervisor-discussion preparation.
 ```text
 PROJECT_CLOSEOUT.md         Frozen scope and concise reproducibility map
 archehr_sebaseline/        Active code, protocols, and primary result documents
-semantic_uncertainty/      Reference implementation from the SE literature
 server_results/            Active local server-result snapshots
-archive_unused/            Superseded, exploratory, and low-usability material
+archive_unused/            Tracked historical documents and compact evidence
+.local_archive/            Local-only archived code; intentionally ignored
 literature/                Local source material; intentionally not Git-tracked
 ```
 
@@ -259,5 +259,6 @@ The active evidence and script map is
 the full Phase-2 plan, and chronological job provenance are preserved under
 [`archive_unused/docs/project_history/`](archive_unused/docs/project_history/).
 
-Archived material must not be presented as current evidence. See
-[`archive_unused/README.md`](archive_unused/README.md).
+Archived documents must not be presented as current evidence. See
+[`archive_unused/README.md`](archive_unused/README.md). Superseded and
+exploratory code is kept only in `.local_archive/` and is not part of GitHub.

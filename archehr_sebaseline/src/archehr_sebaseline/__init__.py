@@ -1,3 +1,3 @@
-"""ArchEHR-QA Semantic Entropy baseline package."""
+"""Clinical-QA uncertainty evaluation package."""
 
 __version__ = "0.1.0"

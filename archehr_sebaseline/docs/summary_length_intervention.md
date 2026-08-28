@@ -169,13 +169,16 @@ deployment method. See `summary_clustering_diagnostic.md`.
 
 ## Reproducibility
 
-Collection and repair:
+Collection:
 
 ```text
 scripts/run_summary_length_intervention.py
 scripts/run_summary_length_intervention_isambard.sbatch
-scripts/repair_summary_length_sentence_counts.py
 ```
+
+The accepted saved artifacts already include the deterministic sentence-count
+repair. Its completed one-off utility is retained only in the local code
+archive and is not a maintained or Git-tracked entry point.
 
 Paired analysis:
 
